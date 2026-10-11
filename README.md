@@ -1,4 +1,4 @@
-# Climate Table — HVAC energy comparison
+# Building Energy Analysis Selection Tool (BEAST) — HVAC energy comparison
 
 Select a US city, state and climate year (2015–2059). Sup3rCC EC-Earth3-CC SSP2-4.5 supplies hourly temperature, relative humidity, DHI, DNI and GHI. The app estimates loads for a 150,000 ft² building, sizes generic CAV equipment, compares two heating/cooling combinations, and reports electricity, gas input, unmet loads and electricity-generation CO₂. The weather dataset covers the contiguous US and DC.
 
@@ -72,3 +72,9 @@ Node >=22.13; existing Vinext/Cloudflare configuration and lockfile are preserve
 - `node scripts/check-location-energy.mjs`: tariff structures, gas units, EPA geometry/ZIP ambiguity, CO₂ multiplication, parser failures, missing keys and independent provider errors.
 - `python scripts/build-engineering-guide.py`: rebuild the PDF; render and visually inspect before publishing.
 - Use the supported Sites source helper to build, commit/push, package and publish. Do not start a preview when browser QA is unavailable.
+
+## BEAST analysis flow
+
+The initial Analysis inputs page collects location/year, editable building and equipment assumptions, one to three equipment scenarios, and flat utility rates and CO₂ factors. Continue to results validates all inputs and opens an annual scorecard before detailed results.
+
+The scorecard reports modeled HVAC site energy (electricity and gas converted to MMBtu), estimated utility cost (kWh × $/kWh + therms × $/therm), and CO₂ (kWh × kg/kWh + therms × kg/therm, converted to metric tons). The editable rate/factor defaults are illustrative, not automatically sourced location rates. Annual totals require complete weather coverage; unmet-load warnings remain visible. Lighting and plug loads are excluded from these HVAC totals.

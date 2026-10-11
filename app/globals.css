@@ -382,3 +382,22 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .energy-status { padding: 12px 15px; background: #fff6e6; border-radius: 5px; }
 .location-energy .energy-retrieved { font-size: .75rem; margin: 22px 0 0; }
 @media(max-width: 760px) { .location-energy { padding: 22px 20px; } .energy-emissions { padding: 18px; } .emission-cases { grid-template-columns: 1fr; gap: 12px; } .rate-terms { grid-template-columns: 1fr; gap: 6px; } .rate-terms dd { margin-bottom: 8px; } }
+.analysis-assumptions, .annual-scorecard { padding: 28px 30px; border-top: 1px solid var(--border); }
+.analysis-assumptions h2, .annual-scorecard h2 { font-size: 1.5rem; font-weight: 650; margin-bottom: 8px; }
+.analysis-assumptions > p, .analysis-assumptions fieldset > p, .annual-scorecard > p { color: var(--muted-foreground); line-height: 1.6; margin-bottom: 20px; }
+.continue-actions { padding: 24px 30px; border-top: 1px solid var(--border); display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.add-equipment { margin-bottom: 18px; }
+.scenario-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.scenario-title { flex-wrap: wrap; }
+.annual-scorecard { background: #f3f8fb; }
+.scorecard-scenario { margin-top: 24px; }
+.scorecard-scenario h3 { font-size: 1rem; font-weight: 650; margin-bottom: 12px; }
+.scorecard-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.scorecard-grid > div { padding: 22px; border: 1px solid var(--border); border-radius: 12px; background: white; }
+.scorecard-grid span { font-size: .875rem; color: #475569; }
+.scorecard-grid strong { display: block; font-size: 2rem; color: #174e6c; margin: 12px 0; overflow-wrap: anywhere; }
+.scorecard-grid small { display: block; font-size: .85rem; font-weight: 500; }
+.scorecard-grid p, .scorecard-scenario > p { font-size: .8rem; line-height: 1.6; color: #475569; }
+.edit-inputs { padding: 20px 30px 0; }
+.page-intro h1 { max-width: 900px; }
+@media (max-width: 760px) { .scorecard-grid { grid-template-columns: 1fr; } .analysis-assumptions, .annual-scorecard { padding: 24px 20px; } }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Climate Table · HVAC energy comparison",
+  title: "Building Energy Analysis Selection Tool (BEAST) · HVAC energy comparison",
   description: "Hourly building loads, equipment energy use, and unmet heating and cooling by location and year.",
   icons: {
     icon: "/favicon.svg",
