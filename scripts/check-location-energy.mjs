@@ -14,8 +14,6 @@ const egrid = JSON.parse(read("lib/data/egrid-2023.json")), zip = JSON.parse(rea
 emit("location-energy", read("lib/location-energy.ts"));
 emit("climate", read("lib/climate.ts"));
 emit("emissions", read("lib/emissions.ts"));
-emit("gas-tariff", read("lib/gas-tariff.ts"));
-emit("gas-route", read("app/api/gas-tariff/route.ts").replace('from "@/lib/gas-tariff"', 'from "./gas-tariff.mjs"'));
 globalThis.__locationEnergyEnv = { NLR_API_KEY: "DO_NOT_TRANSMIT_THIS_SENTINEL" };
 globalThis.__locationEnergyProcessEnv = {};
 let route = read("app/api/location-energy/route.ts").replace('import { env } from "cloudflare:workers";', "const env = globalThis.__locationEnergyEnv;").replaceAll("process.env", "globalThis.__locationEnergyProcessEnv").replace('from "@/lib/climate"', 'from "./climate.mjs"').replace('from "@/lib/location-energy"', 'from "./location-energy.mjs"');
@@ -26,27 +24,12 @@ try {
   const m = await import(pathToFileURL(join(temp, "location-energy.mjs")).href);
   const { GET } = await import(pathToFileURL(join(temp, "route.mjs")).href);
   const { electricityCo2 } = await import(pathToFileURL(join(temp, "emissions.mjs")).href);
-  const { parseMgeGas } = await import(pathToFileURL(join(temp, "gas-tariff.mjs")).href);
-  const { GET: gasGET } = await import(pathToFileURL(join(temp, "gas-route.mjs")).href);
   const region = { kgCo2PerKwh: 0.5 };
   const result = { equipment: {}, error: null, summary: { completeHours: 8760, electricity: 1000 } };
   assert.equal(electricityCo2(result, region), 500);
   assert.equal(electricityCo2({ ...result, equipment: null }, region), null);
   assert.equal(electricityCo2(result, null), null);
   assert.equal(electricityCo2({ ...result, summary: { completeHours: 0, electricity: 0 } }, region), null);
-  const gasHtml = 'services rendered on and after October 1, 2026.<h2>Distribution service</h2><table><thead><tr><th>Distribution (GSD-1)</th></tr></thead><tbody><tr><td>Charge per day</td><td>$0.75</td></tr></tbody></table><table><thead><tr><th>Supply (FS-1)</th></tr></thead><tbody><tr><td>All therms</td><td>$0.1570</td></tr></tbody></table>Total Charges for Business Customers';
-  const gasSchedules = parseMgeGas(gasHtml);
-  assert.equal(gasSchedules.effectiveDate, "October 1, 2026");
-  assert.equal(gasSchedules.schedules[0].rows[0][1], "$0.75");
-  assert.equal(parseMgeGas(gasHtml + gasHtml.replace("$0.75", "$999")).schedules.length, 2);
-  assert.throws(() => parseMgeGas(gasHtml.replace("<h2>Distribution service</h2>", "missing")), /Unrecognized/);
-  const liveHtml = process.argv[2];
-  if (liveHtml) { const parsedGas = parseMgeGas(readFileSync(liveHtml, "utf8")); assert.equal(parsedGas.schedules.length, 13); console.log(`MGE public page parsed: ${parsedGas.schedules.length} schedules, effective ${parsedGas.effectiveDate}.`); }
-  globalThis.fetch = async (url, options) => { assert.equal(url, "https://www.mge.com/my-account/rates/natural-gas-rates/business-natural-gas-rates"); assert.equal(options.redirect, "manual"); return new Response(gasHtml); };
-  assert.equal((await gasGET(new Request("https://site.example/api/gas-tariff?provider=mge"))).status, 200);
-  assert.equal((await gasGET(new Request("https://site.example/api/gas-tariff?provider=unknown"))).status, 400);
-  globalThis.fetch = async () => new Response("<html>changed</html>");
-  assert.equal((await gasGET(new Request("https://site.example/api/gas-tariff?provider=mge"))).status, 502);
   for (const v of [null, undefined, "", "  ", true, false, {}, [], "Infinity", NaN]) assert.equal(m.finiteNumber(v), null);
   assert.equal(m.finiteNumber("0"), 0);
   assert.equal(m.publicUrl("javascript:alert(1)"), null);
@@ -137,6 +120,21 @@ try {
   assert.equal(partial.emissions.status, "ok");
   assert.ok(!JSON.stringify(partial).includes("imaginary sensitive URL"));
   assert.ok(!JSON.stringify(partial).includes("fixture-eia-key"));
+  // Switching location must change both upstream requests and emissions geometry.
+  globalThis.fetch = async url => {
+    const u = new URL(url);
+    if (u.hostname === "api.openei.org") {
+      assert.equal(u.searchParams.get("lat"), "44.9778");
+      assert.equal(u.searchParams.get("lon"), "-93.265");
+      return Response.json({ items: [tariff] });
+    }
+    assert.equal(u.searchParams.get("facets[duoarea][]"), "SMN");
+    return Response.json({ response: { data: [gasRow("2026-02", 12, { duoarea: "SMN" })] } });
+  };
+  const moved = await (await GET(request("latitude=44.9778&longitude=-93.265&state=MN"))).json();
+  assert.equal(moved.gas.state, "MN");
+  assert.equal(moved.gas.prices[0].dollarsPerMcf, 12);
+  assert.ok(moved.emissions.regions.some(r => r.code === "MROW"));
   globalThis.fetch = async url => new URL(url).hostname === "api.openei.org" ? Response.json({ items: [tariff] }) : new Response("SECRET", { status: 403 });
   const reverse = await (await GET(request())).json();
   assert.equal(reverse.electricity.status, "ok");

@@ -7,7 +7,6 @@ import type { RtuResult } from "@/lib/rtu";
 import type { SchoolRow } from "@/lib/school";
 import type { ElectricTariff, LocationEnergyContext, RateTier } from "@/lib/location-energy";
 import { electricityCo2 } from "@/lib/emissions";
-import { GasTariffLookup } from "./gas-tariff";
 
 const n = (value: number | null | undefined, digits = 3) => value === null || value === undefined ? "Not provided" : value.toLocaleString(undefined, { maximumFractionDigits: digits });
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -95,7 +94,7 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
         {data.electricity.status === "missing_key" && <p><Source href="https://apps.openei.org/services/api/signup/">Get an OpenEI API key</Source> and provide it to configure the lookup.</p>}
         {!!data.electricity.tariffs.length && <label className="energy-select-label" htmlFor="electric-tariff">Utility and tariff<select id="electric-tariff" value={tariffId} onChange={event => setTariffId(event.target.value)}><option value="">Select an eligible tariff</option>{data.electricity.tariffs.map(r => <option key={r.id} value={r.id}>{r.utility} · {r.name}</option>)}</select></label>}{tariff && <Tariff rate={tariff}/>}
       </details>
-      <details className="energy-provider" open><summary>Natural gas rates <span>{data.gas.status === "missing_key" ? "EIA connection needed" : "State benchmark"}</span></summary><GasTariffLookup state={place.stateCode}/><h5>State commercial benchmark</h5><p>{data.gas.message}</p>
+      <details className="energy-provider" open><summary>Natural gas rates <span>{data.gas.status === "missing_key" ? "EIA connection needed" : "State benchmark"}</span></summary><h5>State commercial benchmark</h5><p>{data.gas.message}</p>
         {data.gas.status === "missing_key" && <p><Source href="https://www.eia.gov/opendata/register.php">Get an EIA API key</Source> and provide it to configure the lookup.</p>}
         {!!data.gas.prices.length && <div className="rate-scroll"><table><thead><tr><th>Month</th><th>{data.gas.state} commercial delivered average ($/Mcf)</th></tr></thead><tbody>{data.gas.prices.map(r => <tr key={r.period}><td>{r.period}</td><td>{n(r.dollarsPerMcf, 2)}</td></tr>)}</tbody></table></div>}
         <p>For the building’s actual rate structure, use its gas utility’s commercial schedule: commodity charge, delivery charge, monthly customer charge, minimum bill and applicable riders. The EIA average cannot resolve those components.</p><Source href={data.gas.sourceUrl}>EIA natural gas source</Source>

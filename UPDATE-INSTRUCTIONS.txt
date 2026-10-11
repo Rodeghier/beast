@@ -1,0 +1,29 @@
+GitHub location update
+
+Upload/replace these files at the same repository paths:
+- README.md
+- app/page.tsx
+- components/location-energy.tsx
+- public/engineering-guide.pdf
+- scripts/build-engineering-guide.py
+- scripts/check-location-energy.mjs
+
+Delete these obsolete files from GitHub:
+- app/api/gas-tariff/route.ts
+- components/gas-tariff.tsx
+- lib/gas-tariff.ts
+
+No new application files are required.
+
+ZIP upload: Extract the ZIP first, then upload the contents of its files folder to the root of your existing repository, preserving app/, components/, public/, and scripts/ paths. Do not upload the enclosing files folder itself. Delete the three obsolete files listed above, then commit.
+
+Git alternative: Place location-neutral.patch outside the repository, open a terminal at your repository root, and run:
+  git apply --check /path/to/location-neutral.patch
+  git apply /path/to/location-neutral.patch
+The patch includes the updated PDF and all three deletions. Apply only to the version before this location-neutral update. If the check fails, use the replacement files instead.
+
+Keep your existing environment/API key configuration. This update does not replace it.
+
+Changes: Blank city/state inputs; explicit state selection; no MGE-only gas adapter; location-driven rates/emissions regression check; updated documentation.
+
+Validation: TypeScript, location-energy checks, and production build passed.

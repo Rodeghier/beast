@@ -1,0 +1,386 @@
+diff --git a/README.md b/README.md
+index f1b01c1..aee258f 100644
+--- a/README.md
++++ b/README.md
+@@ -10,7 +10,6 @@ Select a US city, state and climate year (2015–2059). Sup3rCC EC-Earth3-CC SSP
+ - `lib/school.ts`: single-zone steady-state building heat and moisture balance; internal module name retained for compatibility.
+ - `lib/rtu-curves.ts`, `lib/rtu.ts`, `lib/equipment-catalog.ts`: variable SHR, operating maps, sizing and hourly equipment energy.
+ - `app/api/location-energy/route.ts`, `lib/location-energy.ts`: OpenEI electricity tariffs, EIA gas benchmarks and keyless EPA subregion lookup.
+-- `app/api/gas-tariff/route.ts`, `lib/gas-tariff.ts`: keyless MGE commercial gas schedule adapter.
+ - `components/location-energy.tsx`, `lib/emissions.ts`: rate display, electricity CO₂ comparison and hourly CO₂ CSV.
+ 
+ The linked [engineering guide](public/engineering-guide.pdf) contains equations, assumptions, source links and the current worked example. Source synchronization and deployment are managed by Sites; project identity is in `.openai/hosting.json`.
+@@ -44,7 +43,7 @@ The current Madison 2025 example selects 19 × 25 tons (475 tons), uses 1,455,08
+ 
+ Electricity: OpenEI URDB v8 returns approved commercial candidates effective at retrieval time near city coordinates. Users select an eligible tariff; the app displays tiers, TOU schedules, demand charges/measurement windows, fixed/minimum charges, eligibility, notes and sources. It does not calculate an account bill from HVAC-only hourly data. Rates may omit riders or be outdated. Results are capped at 100 records, with an explicit truncation notice.
+ 
+-Gas: Wisconsin users can explicitly select MGE to retrieve 13 current distribution/supply schedules from its public page, without a key. The adapter includes effective date and eligibility PDF links; it excludes historical accordions and fails visibly on schema changes. It displays the publisher's component tables and does not calculate combined charges. Other utilities require their published tariff. EIA independently returns the latest 12 available state commercial delivered-price averages ($/Mcf); this is a benchmark, not a local tariff breakdown. No automatic therm conversion or fixed-charge addition is made.
++Gas: EIA returns the latest 12 available state commercial delivered-price averages ($/Mcf); this is a benchmark, not a local tariff breakdown. No automatic therm conversion or fixed-charge addition is made.
+ 
+ EPA: bundled Power Profiler/eGRID2023 revision 2 data (released June 12, 2025) supplies geometry, ZIP/utility mappings and annual total-output CO₂ rates. Data source URLs, pinned commit and source hashes are recorded in the two `lib/data/egrid*.json` provenance records. Coordinates identify approximate candidates; ZIP can refine them, and multiple subregions require user choice. `kg CO₂/kWh = lb CO₂/MWh × 0.45359237 / 1000`. That factor is multiplied by hourly HVAC electricity and summed. The factor is constant across hours and weather years, not an hourly/marginal/future-grid forecast.
+ 
+@@ -61,7 +60,7 @@ Server-only runtime secrets (never NEXT_PUBLIC variables):
+ | OPENEI_API_KEY | [OpenEI / api.data.gov key](https://apps.openei.org/services/api/signup/) for electricity tariffs |
+ | EIA_API_KEY | [Separate EIA key](https://www.eia.gov/opendata/register.php) for state gas benchmarks |
+ 
+-The app never reuses NLR_API_KEY for OpenEI. Missing keys produce independent provider messages while EPA data, solar and the MGE adapter remain usable. Configure secrets in Sites and redeploy to apply them. For local development, copy `.env.example` to ignored `.env`; never commit credentials.
++The app never reuses NLR_API_KEY for OpenEI. Missing keys produce independent provider messages while EPA data and solar remain usable. Configure secrets in Sites and redeploy to apply them. For local development, copy `.env.example` to ignored `.env`; never commit credentials.
+ 
+ ## Validation
+ 
+@@ -70,6 +69,6 @@ Node >=22.13; existing Vinext/Cloudflare configuration and lockfile are preserve
+ - `node node_modules/typescript/bin/tsc --noEmit`
+ - `node scripts/check-school-model.mjs /absolute/path/to/2025-solar.csv`: analytical loads, radiation geometry, solar units, missing inputs, psychrometrics, schedules and full-year export.
+ - `node scripts/check-rtu-model.mjs /absolute/path/to/2025-solar.csv`: pinned maps, variable SHR, no margin/defrost additions, all equipment combinations, capacity/energy balances and minimum feasible selection.
+-- `node scripts/check-location-energy.mjs`: tariff structures, gas units, EPA geometry/ZIP ambiguity, CO₂ multiplication, parser failures, missing keys and independent provider errors. Optional argument: a downloaded MGE HTML file to verify the public-page adapter.
++- `node scripts/check-location-energy.mjs`: tariff structures, gas units, EPA geometry/ZIP ambiguity, CO₂ multiplication, parser failures, missing keys and independent provider errors.
+ - `python scripts/build-engineering-guide.py`: rebuild the PDF; render and visually inspect before publishing.
+ - Use the supported Sites source helper to build, commit/push, package and publish. Do not start a preview when browser QA is unavailable.
+diff --git a/app/api/gas-tariff/route.ts b/app/api/gas-tariff/route.ts
+deleted file mode 100644
+index 0a25439..0000000
+--- a/app/api/gas-tariff/route.ts
++++ /dev/null
+@@ -1,14 +0,0 @@
+-import { MGE_GAS_SOURCE, parseMgeGas } from "@/lib/gas-tariff";
+-
+-export async function GET(request: Request) {
+-  if (new URL(request.url).searchParams.get("provider") !== "mge") return Response.json({ error: "Select a supported gas utility." }, { status: 400 });
+-  try {
+-    const response = await fetch(MGE_GAS_SOURCE, { redirect: "manual", signal: AbortSignal.timeout(20000) });
+-    if (!response.ok || Number(response.headers.get("Content-Length")) > 1_000_000) throw new Error("upstream");
+-    const html = await response.text();
+-    if (html.length > 1_000_000) throw new Error("oversized");
+-    return Response.json({ ...parseMgeGas(html), retrievedAt: new Date().toISOString() }, { headers: { "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });
+-  } catch {
+-    return Response.json({ error: "MGE’s current tariff page could not be read. Use the utility source link to check its published schedule." }, { status: 502 });
+-  }
+-}
+diff --git a/app/page.tsx b/app/page.tsx
+index c09b97f..891a36a 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -35,12 +35,12 @@ async function request(url: string, signal: AbortSignal) {
+ }
+ 
+ function Choice({ id, label, value, onChange, children, disabled = false }: { id: string; label: string; value: string; onChange: (value: string) => void; children: React.ReactNode; disabled?: boolean }) {
+-  return <Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger id={id} aria-label={label} className="field-select"><SelectValue /></SelectTrigger><SelectContent position="popper">{children}</SelectContent></Select>;
++  return <Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger id={id} aria-label={label} className="field-select"><SelectValue placeholder={`Select ${label.toLowerCase()}`} /></SelectTrigger><SelectContent position="popper">{children}</SelectContent></Select>;
+ }
+ 
+ export default function Home() {
+-  const [city, setCity] = useState("Madison");
+-  const [state, setState] = useState("WI");
++  const [city, setCity] = useState("");
++  const [state, setState] = useState("");
+   const [year, setYear] = useState("2025");
+   const [tab, setTab] = useState("query");
+   const [stage, setStage] = useState<Stage>("idle");
+@@ -98,6 +98,10 @@ export default function Home() {
+   }, []);
+ 
+   const startQuery = useCallback(async (query: { city: string; state: string; year: number }) => {
++    if (!query.city.trim() || !Object.hasOwn(STATES, query.state)) {
++      setError("Enter a city or town and select a state.");
++      return { status: "error", error: "A city and state are required." };
++    }
+     operation.current?.abort();
+     const controller = new AbortController(); operation.current = controller;
+     setError(""); setResult(null); setCandidates([]); setPlace(null); setPending(query); setTab("data"); setStage("locating");
+@@ -173,10 +177,10 @@ export default function Home() {
+         <TabsContent value="query" className="query-panel"><div className="query-grid">
+           <section className="form-section"><div className="section-heading"><span className="section-icon"><MapPin size={22}/></span><div><h2>Location and year</h2></div></div>
+             <form onSubmit={e => { e.preventDefault(); void startQuery({ city, state, year: Number(year) }); }}>
+-              <div className="form-location-row"><div className="form-field"><label htmlFor="city">City or town</label><input id="city" name="city" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Madison" required minLength={1} maxLength={100} autoComplete="address-level2" disabled={busy}/></div><div className="form-field"><label htmlFor="state">State</label><Choice id="state" label="State" value={state} onChange={setState} disabled={busy}>{Object.entries(STATES).map(([code, name]) => <SelectItem key={code} value={code}>{name}</SelectItem>)}</Choice></div></div>
++              <div className="form-location-row"><div className="form-field"><label htmlFor="city">City or town</label><input id="city" name="city" value={city} onChange={e => setCity(e.target.value)} placeholder="Enter city or town" required minLength={1} maxLength={100} autoComplete="address-level2" disabled={busy}/></div><div className="form-field"><label htmlFor="state">State</label><Choice id="state" label="State" value={state} onChange={setState} disabled={busy}>{Object.entries(STATES).map(([code, name]) => <SelectItem key={code} value={code}>{name}</SelectItem>)}</Choice></div></div>
+               <div className="form-field year-field"><label htmlFor="year">Year</label><Choice id="year" label="Year" value={year} onChange={setYear} disabled={busy}>{Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, i) => MIN_YEAR + i).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</Choice><p className="field-hint">Available years: 2015–2059</p></div>
+-              {!supportsClimate(state) && <div className="coverage-note" role="status"><Info size={17}/><span>We can locate cities in {STATES[state]}, but this Sup3rCC dataset has no climate data there.</span></div>}
+-              <div className="coordinate-note"><MapPin size={17}/><span>Search cities and towns in all 50 states and Washington, DC.</span></div><div className="form-actions"><button className="button primary" type="submit" disabled={busy || city.trim().length < 1}>{busy ? <><LoaderCircle className="spin" size={18}/>Loading data</> : <>{supportsClimate(state) ? "Continue to table" : "Find location"}<ArrowRight size={18}/></>}</button></div>
++              {state && !supportsClimate(state) && <div className="coverage-note" role="status"><Info size={17}/><span>We can locate cities in {STATES[state]}, but this Sup3rCC dataset has no climate data there.</span></div>}
++              <div className="coordinate-note"><MapPin size={17}/><span>Search cities and towns in all 50 states and Washington, DC.</span></div><div className="form-actions"><button className="button primary" type="submit" disabled={busy || city.trim().length < 1 || !state}>{busy ? <><LoaderCircle className="spin" size={18}/>Loading data</> : <>{supportsClimate(state) ? "Continue to table" : "Find location"}<ArrowRight size={18}/></>}</button></div>
+             </form>
+           </section><aside className="dataset-section"><div className="eyebrow">WEATHER DATA</div><h3>Hourly climate projections</h3><p className="dataset-description">2-meter temperature, relative humidity, and hourly DHI / DNI / GHI.</p><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Air temperature</strong><span>Degrees Fahrenheit · °F</span></div></div><div className="variable"><span className="variable-icon humidity"><Droplets size={20}/></span><div><strong>Dew point</strong><span>Derived from temperature + RH · °F</span></div></div><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Solar irradiance</strong><span>DHI · DNI · GHI in W/m²</span></div></div><dl className="dataset-meta"><div><dt>Climate model</dt><dd>EC-Earth3-CC</dd></div><div><dt>Scenario</dt><dd>SSP2-4.5</dd></div><div><dt>Time interval</dt><dd>60 minutes</dd></div><div><dt>Grid resolution</dt><dd>4 km</dd></div><div><dt>Climate coverage</dt><dd>48 contiguous states + DC</dd></div></dl><div className="dataset-footnote"><Clock3 size={15}/><span>Local standard time, without daylight saving time. February 29 excluded.</span></div></aside>
+         </div><SchoolModel value={school} onChange={setSchool}/><EquipmentComparison choices={systems} onChange={updateSystem} results={[]} active={activeSystem} onActive={setActiveSystem}/><RtuModel value={rtu} onChange={setRtu} system={systems[activeSystem]}/></TabsContent>
+diff --git a/components/gas-tariff.tsx b/components/gas-tariff.tsx
+deleted file mode 100644
+index 16ec439..0000000
+--- a/components/gas-tariff.tsx
++++ /dev/null
+@@ -1,21 +0,0 @@
+-"use client";
+-import { useEffect, useState } from "react";
+-import { MGE_GAS_SOURCE, type GasTariff } from "@/lib/gas-tariff";
+-
+-export function GasTariffLookup({ state }: { state: string }) {
+-  const [provider, setProvider] = useState(""), [data, setData] = useState<GasTariff | null>(null), [error, setError] = useState(""), [loading, setLoading] = useState(false);
+-  useEffect(() => {
+-    setData(null); setError(""); setLoading(!!provider);
+-    if (!provider) return;
+-    const controller = new AbortController();
+-    void fetch(`/api/gas-tariff?provider=${provider}`, { signal: controller.signal }).then(async response => { const result = await response.json() as GasTariff & { error?: string }; if (!response.ok) throw new Error(result.error); return result as GasTariff; }).then(result => { if (!controller.signal.aborted) setData(result); }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Gas tariff lookup failed."); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+-    return () => controller.abort();
+-  }, [provider]);
+-  if (state !== "WI") return null;
+-  return <div className="gas-tariff-lookup"><h5>Utility-published charge structure</h5><p>MGE has a direct public connection available. Select it only if MGE supplies gas to this building; the city’s electric utility does not establish the gas provider. Other providers require their published schedule.</p>
+-    <label className="energy-select-label" htmlFor="gas-provider">Gas utility<select id="gas-provider" value={provider} onChange={event => setProvider(event.target.value)}><option value="">Select your gas provider</option><option value="mge">Madison Gas and Electric (MGE)</option></select></label>
+-    {loading && <p role="status">Reading MGE’s current gas tariff…</p>}{error && <p role="alert" className="energy-status">{error}</p>}
+-    {data && <><p><strong>{data.provider}</strong> · effective {data.effectiveDate}. Retrieved {new Date(data.retrievedAt).toLocaleDateString()}.</p><p>Distribution and supply are separate schedules. Select applicable service classes using the linked tariff eligibility rules and the building’s full gas use. Values below reproduce the utility’s component tables; they are not combined into a bill.</p>{data.schedules.map((schedule, i) => <details className="rate-detail" key={i}><summary>{schedule.name}</summary><div className="rate-scroll"><table><thead><tr><th>Charge / qualifier</th><th>Published value</th></tr></thead><tbody>{schedule.rows.map((row, j) => <tr key={j}><td>{row[0]}</td><td>{row.slice(1).join(" · ") || "—"}</td></tr>)}</tbody></table></div>{schedule.sourceUrl && <p><a href={schedule.sourceUrl} target="_blank" rel="noreferrer">Schedule and eligibility (PDF)</a></p>}</details>)}</>}
+-    <p><a href={MGE_GAS_SOURCE} target="_blank" rel="noreferrer">MGE commercial gas rates</a> · no API key required</p>
+-  </div>;
+-}
+diff --git a/components/location-energy.tsx b/components/location-energy.tsx
+index 81e915e..bbd3180 100644
+--- a/components/location-energy.tsx
++++ b/components/location-energy.tsx
+@@ -7,7 +7,6 @@ import type { RtuResult } from "@/lib/rtu";
+ import type { SchoolRow } from "@/lib/school";
+ import type { ElectricTariff, LocationEnergyContext, RateTier } from "@/lib/location-energy";
+ import { electricityCo2 } from "@/lib/emissions";
+-import { GasTariffLookup } from "./gas-tariff";
+ 
+ const n = (value: number | null | undefined, digits = 3) => value === null || value === undefined ? "Not provided" : value.toLocaleString(undefined, { maximumFractionDigits: digits });
+ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+@@ -95,7 +94,7 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
+         {data.electricity.status === "missing_key" && <p><Source href="https://apps.openei.org/services/api/signup/">Get an OpenEI API key</Source> and provide it to configure the lookup.</p>}
+         {!!data.electricity.tariffs.length && <label className="energy-select-label" htmlFor="electric-tariff">Utility and tariff<select id="electric-tariff" value={tariffId} onChange={event => setTariffId(event.target.value)}><option value="">Select an eligible tariff</option>{data.electricity.tariffs.map(r => <option key={r.id} value={r.id}>{r.utility} · {r.name}</option>)}</select></label>}{tariff && <Tariff rate={tariff}/>}
+       </details>
+-      <details className="energy-provider" open><summary>Natural gas rates <span>{data.gas.status === "missing_key" ? "EIA connection needed" : "State benchmark"}</span></summary><GasTariffLookup state={place.stateCode}/><h5>State commercial benchmark</h5><p>{data.gas.message}</p>
++      <details className="energy-provider" open><summary>Natural gas rates <span>{data.gas.status === "missing_key" ? "EIA connection needed" : "State benchmark"}</span></summary><h5>State commercial benchmark</h5><p>{data.gas.message}</p>
+         {data.gas.status === "missing_key" && <p><Source href="https://www.eia.gov/opendata/register.php">Get an EIA API key</Source> and provide it to configure the lookup.</p>}
+         {!!data.gas.prices.length && <div className="rate-scroll"><table><thead><tr><th>Month</th><th>{data.gas.state} commercial delivered average ($/Mcf)</th></tr></thead><tbody>{data.gas.prices.map(r => <tr key={r.period}><td>{r.period}</td><td>{n(r.dollarsPerMcf, 2)}</td></tr>)}</tbody></table></div>}
+         <p>For the building’s actual rate structure, use its gas utility’s commercial schedule: commodity charge, delivery charge, monthly customer charge, minimum bill and applicable riders. The EIA average cannot resolve those components.</p><Source href={data.gas.sourceUrl}>EIA natural gas source</Source>
+diff --git a/lib/gas-tariff.ts b/lib/gas-tariff.ts
+deleted file mode 100644
+index 5085c67..0000000
+--- a/lib/gas-tariff.ts
++++ /dev/null
+@@ -1,24 +0,0 @@
+-export const MGE_GAS_SOURCE = "https://www.mge.com/my-account/rates/natural-gas-rates/business-natural-gas-rates";
+-export type GasSchedule = { name: string; sourceUrl: string | null; rows: string[][] };
+-export type GasTariff = { provider: string; effectiveDate: string; sourceUrl: string; retrievedAt: string; schedules: GasSchedule[] };
+-function plain(html: string): string {
+-  return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;/g, "'").replace(/\s+/g, " ").trim().slice(0, 1500);
+-}
+-/** Parse only the current rate section, never the historical monthly accordion. */
+-export function parseMgeGas(html: string): Omit<GasTariff, "retrievedAt"> {
+-  const match = /services rendered on and after\s+([A-Za-z]+ \d{1,2}, \d{4})\./.exec(html);
+-  const start = html.indexOf("<h2>Distribution service</h2>"), end = html.indexOf("Total Charges for Business Customers", start);
+-  if (!match || start < 0 || end < start || end - start > 80000) throw new Error("Unrecognized current gas tariff format");
+-  const schedules: GasSchedule[] = [];
+-  for (const table of html.slice(start, end).matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)) {
+-    const head = /<thead\b[^>]*>([\s\S]*?)<\/thead>/i.exec(table[1])?.[1];
+-    const body = /<tbody\b[^>]*>([\s\S]*?)<\/tbody>/i.exec(table[1])?.[1];
+-    if (!head || !body) continue;
+-    const name = plain(head), rawPath = /href="([^"]+)"/i.exec(head)?.[1];
+-    const sourceUrl = rawPath && /^\/MGE\/media\/[a-zA-Z0-9_./-]+\.pdf$/i.test(rawPath) && !rawPath.includes("..") ? `https://www.mge.com${rawPath}` : null;
+-    const rows = [...body.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(row => [...row[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(cell => plain(cell[1])).filter(Boolean)).filter(row => row.length);
+-    if (name && rows.length) schedules.push({ name, sourceUrl, rows });
+-  }
+-  if (!schedules.some(s => s.name.includes("GSD-1")) || !schedules.some(s => s.name.includes("FS-1")) || schedules.length > 30) throw new Error("Incomplete gas tariff structure");
+-  return { provider: "Madison Gas and Electric", effectiveDate: match[1], sourceUrl: MGE_GAS_SOURCE, schedules };
+-}
+diff --git a/public/engineering-guide.pdf b/public/engineering-guide.pdf
+index 1d77439642025cdb93abb1da6b30fb1e8408fb3e..27bc6ec428cfe21fcd0e79029cefdf04a06343d0 100644
+GIT binary patch
+delta 3586
+zcmai1OUUc!c}D*^N%{W?O-ZMdx#V<y+p;BFzUY3j<cn;}@=dlSTfX09%lC_H*-lDm
+zF(s>X(`g+rS(IeaeJTIqlyio5NK;CokU$`GTWFzl)k2_~S=8rDnmO~&qFTN0^F7b|
+zJ@1DkzV|18_m$@#f90d*2gE&kuib~z1cKfZ%&!yjnvmF^9X<l6^MAbu1LXO?f$yFF
+z8hGdY6!5;zet7=JUq|12V4i&EtLHzt`D~$cKE4l~+jsBWklg3mhY#QS)^DBdyEixw
+z|M87~zd7^Ycmq0r_nnWvPBKB}9%Jwz#^Lukb&lWq&(b&l{C8gC1jYs_7W>V@@4g#8
+zWABCE!-*ir5?A;$7RLoCjQkDjf8PD=^WVPr?EJ~^(XY+F@(2Uy`Nz+Yhkttimp1_R
+z@Z)E({P{=EzII-{h@QRk1c04a^KS#h*?Q?Y-!47`@bin8ADmMQ&sF#7OYq@O7vFz+
+zE%vHJ%KG`u`CZHZ5V!9$0DU%IygIkl96Z1CvH>vH61gk-;-v_X51+pL_$k1?mi^l&
+zKe;(S|0MA6i@*PA^jg(;k-hxu4G_N}xL4wf`~;|7ZCnjpe)<G(T^UygmnTmF&$Ym(
+zFP}Y^p8|jN^zs)^fUjL{Zh`j!^78B!_z)m2kz0Vj#aN6YX#^!Me|!rh-bnxX7Wm7H
+zaC=q#;T;gY!MV%FcUKv8`T5%b|NNV80e^D~(9f?4czgNT+ko&K{e1wwz5MFgHT(et
+z{Oa~nhk(fQf53qG?dAK}6<zSa=B-PRzlLwiz#rXS{v{1W0Q&N?GH`#2jCd(gZWkAr
+zK?-4k6jG%a1nuEQ4$a{^11rvI`fTbAZFG0oS93sRX6lq3?IMyOv$d5}Fo+Sl?b~57
+zL?)(6!bzjKaLmvQe-Sxs+}<e8loOI}hYOel!YI5B==&Z>V&mH0gqa|HYGrHXzDNcs
+zb+3mtc-OC3EE1%)xljR#+mm!WtGCEFM77%7&Qv+0hPdpwUH0$6xhxk1&4Km&LpR+U
+z=Ekec0PcuWd9IBZ$a56a3v%KO4Y+MO7*IUKxG0r#+yud}Dbw6I;Lc#?a-3SxRRbFZ
+z#9%OrETSorvAb|Tpvs}V7VXoZhuh{lRwlWw4U|Gc@KoobRI!zjW^aeifnN7Um1#=V
+z@O7Y*WALT-P+8mVcuAcN3Q!ul#*VeW?UN(@dYiU=?FAbgHg}e^3E&P6p%a4>mR+uT
+zjWX!7w#SuRZ&yVXau&*Y|FO$PwxDO4-=(7^LsvGDjI74`aU{vEn4vnFsdaW%>$U_v
+z5w^A=9fB%R#Z|7<NPggMOKur1CE@HKTNtIAaL`4GgIPhdqOFvxxR@AxGSSe%@%SXj
+zu6>srkFur^ug~1%G22Y)2d?jFCzPBnw-yCgr>PSiceUbc=^i!UYqV0^!a)~I+9&AH
+zRxQ*^OF<yJwnv5;!CqBuzLA;15<TPEJ!M+QxdEL_XUB))zBsf*Ea5Ceg5HR=q>wQ<
+z1weg{b{q^E+Iouhc+iQqXt}~U7F>!^Gr`2pW&``Mziu8=GGAc=katceI+7kKSmJO_
+zOZ)cH&H7q}UMk;;SboZbF_2(dQfT8x+$mG0V(tUu$`kHj>$uB!;aNTt9j4%(&Mt8w
+zTR)ARk!n$I)@)`tD{)9<!Oy1)ZLS2V1lcR^&CMddtnEduJ~EOG3tA}UG~&iMw-Ibn
+zJVum{Eof;pJf51|6f!y&j@W7pM#}nlI_Yo6#KIY9u57Vg^vY|Itu+TcbO@ztSjHzX
+zO|C|rj$wBKTW`8`I4d5NiAv;S{$T{^Ez0c7a<3hOSu2V3Y$_>$#>8sGrfQ-!k$9gy
+zpX<$xQ*I3WF?B*vQ4!Z0WzKIyd|itatFcI_bBIr&WpK!~NA2c;*>cFj(~0-;t_%hD
+zW||ovcJWi+-jI;#W6h0`DlITL;_TbKOku&{+1gYm2z<F7^~JbMw|DkBEG-%kY~#F8
+ztrQ)WqNPSfg?H*(u7^gH$YHPrgU0|Kip_1%-SzQ1qs?uHtwy=Qx@+@wr~}j3&MKG*
+zZEHA>I7;?UwSlH&gabVQ;YP9(Qlh!JRCO&YJEl<9Jf>IOO-+nzm*TzFF+dHR<k8V?
+zWV}6x5RJ_?<{VQ;O-Fy7b<v<-kI?;Lv0vpoi=73kM^c)rFwYQtCq0|mhHu;tNy)`#
+zcO;$Jkvmq^BDqrxTZ2nymeuseGVbzs(SsRmfLnLeyJYRjW?e#juKI?}h-hOj=N<k+
+zXbJ_E4uZymj&-h(^I?MIJjBa+D>jrjX=Exga1EImJG`g*jW$2${b5t%yE~c6YN6a>
+zl_Js$(CO%#om9pYPfn*&hgv!g4Hj*4XvpqhxxL=SDxgP1_=6s+G&OZR?>RCDXDl>c
+zWXVFxbqp48aB8#zMuY(8d%b4iJF!%bTUl)8EwQGS4Cnjd`7#;rvLuxc27=db@Q{$3
+zqV5hFbdT5gYLl$js$$_J4_v#gzTUL)trF8F*)A2>65T~FA>^|B&Xror>4Ujau@G8t
+zXCPNtv^zM(wI&Esbg!u5uB-O^L{+o>UI-+8b8^!u2-kO~u$R&qNv-6(zA)0VO_W^s
+z>BCNQCzpsKZp+z3R@D4d{B-mixWn{_VZP_~MaHUY2<!cZ<=G&Vsk^G7L(Ly+Gt$x%
+zUim}XNQ|%Z`r(k}E6TDB`q(LrNfjgzO4W}98^HrnG-xbGVRftxN24^3w`UHWPqky+
+zl{R*G8z{K$SFowlpCu+rKRk1tQc_8-UF98Uf%%s%Lj%FGUo`O?&vhnP(aN@zL8VM;
+zVqr=Y(sF7e9milNxl%eK(5nu|V5DdXO=%{_FcEV~W_Ps%1*d!3DBI;hz3HyvF?~7V
+z^TIY?N^v0RZ|VL{0hbGHauoE(PqVI|(fQnDw`~<u+o_)kh+{gMV9@d`u|1CBsc~ZN
+z30A5dUxw2%@#;S8SXLLs45Mt|vU`T)a#S%9$FoW^m`+5N({XYn+88ZW6O5B47@u7X
+zO_r%NRt_ZB?$peg-i~7P#9DRrlbr(WIAs+9o(}kCDh>}|1=n&TUv9?NQjh})wxO9-
+zCXaCV;7e(12eKUWlS&RwbumhE_W4eSowRo)#MN*6@V=g{yUMTujn#^|qqkOd1{>D;
+zC`6+5UcW|>)n=uca}H&AFKj{~Gs1dJSwv3aH0vuEF6Y5JQ9Gqr7@kk-N}P5wRWvjf
+zDm04v$ciVr)|T2npACDO?!z7{^SLpIs-6C3EcAR3ubR6F8(SnBYbCl}BAqSa-}-kM
+zt2eZ!-H@27B@9Lg4Htghs_=uP<ZM(s*{x%>j?snc(zC)66{}QGI$bfF%$Tt-K2*BZ
+zYzyT~kZ|EVI}xp^TFa1QK0nsNxMW;@)B-*Li03a`fO2yp*?aWWbHBO2dmW%O#au7z
+zU&I)Ke2n2VjbV>?IL$KXV~oB2E5C$s^k@5?KHr#RNQQnyBpHVM62@UyyI(X&axC@O
+z3{7$Lbp-iBBQ%ZU)SKApx=b?^_t+uL(Dauvj=|p)ztXZO!#%<nl*S*Q7K8s^$DcRM
+zPz0ksF32z(`?wPpC8@_9vjj;zJ{gwcaO(1(J>Xjjj3CDhH$qK<G#CRN(FBH%$O%qU
+zC}(ge78U+K#wF7SB<l4HcNfwu>u`UadaeWAU8pku?)aV}?xNAV{lTyge_)R%cPvXV
+M+@0GkmC|?r3z<CcsQ>@~
+
+delta 3962
+zcmai1NvJE?d8Tf+op<lE4en02U(>JYD^+PMRjKAd^H7pXvs4;ODh*XqNh*z{DTz(6
+z2!VjT>O>HcO;#pghs1;%cuCu#p|i*)&ag2!i$H?|@gfUDHU=+J_dd6Ixo_dK`v33z
+z=lj3&pTpt&FMjxiPe1v>NAmmBEp{v2`qLzg-ICm|9LjPi;*Sp>o&O2&0QC9iz#pFf
+z26*@U?W>pGpPm2u`d9cJ`^N8n@w~fv=_==Mzvnu4Z{9rz-txX&c=zGc=f8FS(L1jM
+z-2L}k|8;eK^SxJ~^Ecl8=q-{#$y=NyP@E@j35r39^Jic5oKs)>leZtHNSs4y4u5s-
+z?Pr11YO157&C0*}I--t7o8$W6->C<E?_aBj<4#>7Q+1ELM6~1HSnK;e^4iq-v!@?^
+zKoTU%bEK8vWj>BXY0G~_%RfK+${Bg;K4+gro^w2kVc6%v6homj`Kq`p5<CCPGtWB&
+z|4`Q6tv|V0AN2KMe@m0+?_awg3UpsG_xW$1`|kepy&qoz#O3GLz&q#Y_G@>aJ%2k7
+zke9y#fb2OkO8~_A4`#n}M%G_CzhMLb^8BwKzkikuCxD;7`UB|hJI1%(JbSjjJ9+(Y
+zR{--sa~It*BEY_+_~h?10Ao==XZYjx`A47J)4YHF-p3HYT2yg>zWeGAe)uN9e=gwN
+zyI*|r>DA>g0pQD*UtR+@51M}V=|4sQ{GRYzR}^;7c2TZ?=H=-V;DPV*lPdtU6j|CX
+z&)xu>0B?!=;Dz!A@clQfy?p5j;IPpzZ(058rf!u)J*dmg^d=Iy(bwaRHou{$i}VBt
+zUSk}M5fp;amp^?1Bwlepdjfn1pf7)P4P>nnU;h0X`0(=6w}H?L-wp70*O%)LEc5oa
+zfuB9Otelpa`T%fWU;Z4k%<npZ|GmB>0zml1e_()defgi1g`NVy`sw8_$`<NP1HXT5
+z>9o!uctvBEpO%5!(?s*+G5>63=WrP=RfbbeZh?>x&2&9_b%5y|q>b|PdSHi#a1il(
+zH;BY*exuwi!jS-GGcq9wa>jSI=5mpk78B6`zG#=AKmcdah}`uo;AkjESJchSqwup~
+zE#&Lj^HF*_Nce;e3HeXCeWx;r#}dq(TGgCQhp8{vUSVc7j&WOQ*+m$02u2+>MbeYg
+zV6E@U_gZ44kbqWQt-E77<$MNqsquN@$km(vHbNMU+}0jy=2c~zs+Csit_zN#F=#Bw
+zb#ce9!$+`y+js3EY}aC$xpC^zNg;?T8F<r5As&Z8Ym>o-SHih0?)7inaHGA8b#3@4
+zjjp0XmenB7-e$&{j;SLRCV97H<qe8`yKY+vixH@^yIwfm2}EVOT^T`#5n~^-v$~G?
+zkiJ`6W_xhCSSKo|d7L_=*h(*-v>5H2i*py*TJIJ}I8g8=eCg`2uTLlAKI~EE(`@S~
+zWwF7|PY-QuinlkbTDmNdP^*-P&$^A>ic6P=Fr%?^zfI;+h7j~O<rL@(5*==d4_$P;
+zS9Di5RUzkGIztpW)f70xQj@@v6Zn&R%VWAGme#R-xQ)3QbXFDvC8yc$i!5EUH|H+U
+zm2ahXRF$Z~u2$3IK@u|zM+lzOa?oUdjJKC!z3FUr1%>xwB$P|S0R-$CVcU@9o2`o8
+z_4f^jMq!I03h{#`X}vk_;~_MT7rj#TWZ+t}8nP9osLhy_xdp!UY#Y^4pfza>s`wC(
+znb}amse~rz*4Hnv)l8^VY^2n%z1CM3=yE&Z1(y`)G_Y+eQ8T*{?|K%fg#0saB%;zr
+zWGZD=Nt7J&pp#5H3lSuS?O@Y(fLqp_v4T#ALZPGA`a{A@m2;raWEbM7OwLQL9<e1P
+z&bA_k?dV#mxKcz~3&kN5)p=KCmht%zwPxRidRTT7hJ{|JI!i&r5Uyn87$ZBktpi8G
+zPMDaw?Rg^?Z@Qgzz7RS%m5g&FVC`UJ&vLd(?G&4*#5Cw)+lm5D+nyO}gR@opjsWvy
+zN-CfM6s|gAo^a>rFUQ+X26TDt29zUpc?=n1e30&sWkvRTrFsY%byp68Z5(wPH73P<
+zg<pyrZZ@C<tlvWd%T>nZY%Z{6wy6e}z5R$)!cp+lVl;t`JH-7gOsU4032pYxBZ$@F
+zsNm#Wu1F2c7@3^WYq<oJStl#iN)#@(nr^Wzm6<`ehZi}CUMIIm&&{T*NSG+QJwcPt
+ztX&<?j7+*lEq;hj2E1?U<&IMm^_9GxY;WFfV@NESW>0fXZiKX6t`aqkHs(D#KwKi_
+zXwG9>RRcqs)*{vVB$?-p#d@W!EBIzr_lA682&H6LGn>>V>m}G2=%TB6Z3M<f%}};7
+zmRT+lvdd0VC>&MOAgj67p-=KjM?-?VbOGGR<HA@Cuh9KTSD<2e;|vG+0<)8wm>TZM
+z@+`$x=j3i?%z`qucSQz%bgGraZbV_HMr&D2uIMD|^=Y^=6L$V4Tg|7Ut<k0&_a3C8
+z+P7X*Eu6sFfzn4ilAJWhiomXHu>hFtYcZ}k*ZG*dUpai~@=4vN^_Zed@W^rG!|txz
+zjtk!X0grWaIJhVTU>SE&Dp^0Ss6t<g4VDd;9-Z65{-_ZQ#gPiQZ%5NpjL-Kr-H;0k
+z!4<JP3Ns=xUz63=sOzlH`khjvpd`3eI<e4{K!h<$Q?^dTb<`U;bwW}(3#t(!-Zasn
+zZralodo0em_$4HmxpHgg5V4t0nb^~TCRohchrYoc^tjEIh#tg@oJxplK6qGB?qzT|
+zHisB%401)qIqC!iVTQMYlynF}6-RSZK<rppEYK|M%6WQZ#_Js$&h-fwsCjnlXn}UA
+zqDMzwSa6qC8ZPXr&iO7p-Q=V-X68h5OXj3;)Cgm-aIry0W6d#92dABpPfjG4_%3Mr
+z%&j;^7j%ay3tdnkCjN9EHDCjs2rMmZiw;IB!J`N~96LM+4RHivXpPY+anzXuimZp>
+zWgbj1YS3jvhaQcf>La|>h%<wYk`U&-4O3~>Rd+({@+(KC(A|bSvA#!2jq8i02zjDI
+zhaH32u1|08x^hlKP~n*2%64Ww$n<I<s8GrZ@dy%$bz`JNLsOzGHhRh=ET4k7N!j{v
+zlAR_nMstguN!!gw!GLLBnMlkP=uSp@$x~0&tBHj(yU3*KK0byeU8ZE?DiwFVoMd=V
+zS##lDURS-95;n6DuHFC?(;~#cM$e9?>+u#njChnZGLa{0X0_#LPbq^J8A)bO)p#o&
+zaR~t^*$+oK3`6>xxyL5@q)Ax895Y7gw+^5*IZD1%9rh%I_M)K{m}$znj^|;~GuIg{
+zv~uEFLml^95tvI8=0ML)_Y9KTQ*<@xY6-UKQdO4fK`f<9UE8cgPizTRhGY6FKRT5g
+zKBn)(c1uojRLe04A68vyG&0Ta1#g*Ey7IagiX4qOmGQb8HEchsvVqkmM3U+_KC_d4
+z{n(Kh7_4T7ioOw+5L+6i6&WnmyP_EAIP5BNY&LBf-OM!2RTGkwgSyaW>FqvS-VRjq
+zG)of!Gbkgh)Xr9#TJM-gz1_0)f=s<g1tQqeF5R=+c1$h3$n=&*pgIo?=c)N@Q1kV`
+z(IzZPi+N;7Duu}~scoTUR+IcCv`3^G9=|{8PUp<EU5e%XqL9q3Aw|za*2&ESd>TYr
+znK3gM+jTEfFsI8YH>|rk9;~_Q)G+{U=d)Q&iu?3_8w8`30@h8!NX@t0WxC~lG#8AI
+zQ^+Db>L{r1n-S}Cxj*c5b@ll-^Y?c8<OaK?sTYC_6t7M^erx^aG3<7Id-Gsm49zmH
+zVfXFFqd1o49%BT<QIFRWERI=U-}~|F90W&^R(D{H(<>lPVC17fie>S~0x6c~Uc-2j
+ze4K>FFz&G!hQWEO+q)kx#hfgQVJHTB6}-n-?!JGyAHP;@Vf<?tM_}yZIF7`v{__8=
+zWi2g_tHqK8ra#^>OEa$#T3YbOJK->fd%R<gWZ1`*;TW93E`uKMJb{fT;|V=dF&4u#
+znxZBoiRn7SYPi*1>Kq#h{icY^KlFeU{m?t#_@&L}a7$VGZ>1Z5&G?3HU8?(jW`9t3
+Shlgv%ajXS79I0~p=KlbFEn8~<
+
+diff --git a/scripts/build-engineering-guide.py b/scripts/build-engineering-guide.py
+index a3e935c..e16d2dc 100644
+--- a/scripts/build-engineering-guide.py
++++ b/scripts/build-engineering-guide.py
+@@ -172,13 +172,13 @@ h('Electricity tariff information')
+ p('OpenEI Utility Rate Database v8 retrieves approved commercial tariff candidates near the selected coordinates, effective at retrieval time. The user must select the actual utility and eligible service class. The interface exposes energy tiers, weekday/weekend period schedules, demand charges and intervals, fixed/minimum charges, dates and source links. Records may be incomplete or outdated; verify the published tariff.','small')
+ p('Tariff structures are displayed, not applied as a complete bill. A bill also depends on all meter loads, utility demand intervals, billing dates, taxes, riders and ratchets. One-hour HVAC data cannot reproduce subhourly billing demand or the full account bill. OpenEI requires OPENEI_API_KEY; the NLR key is not reused automatically.','small')
+ h('Natural gas')
+-p('For Wisconsin users who explicitly select Madison Gas and Electric, a key-free adapter reads the utility’s current public commercial distribution and supply tables, their effective date and tariff PDF links. It omits historical monthly accordions and fails visibly if the format changes. Provider eligibility and the complete bill remain subject to the utility tariff. Other gas utilities need their own published schedules.','small')
++p('Natural gas benchmarks follow the selected state. Actual natural gas charge structures require the building’s gas provider and its published commercial tariff, including applicable distribution, supply, fixed and demand charges. The app does not assume a local gas utility from the city or electric service territory.','small')
+ p('The separate EIA API uses EIA_API_KEY to retrieve the latest 12 available monthly state commercial delivered-gas averages in $/Mcf. These are benchmarks, not utility tariff structures or future-price forecasts. They include reported commodity, delivery and other charges. The application does not add fixed charges to that average or automatically convert gas volumes to therms.','small')
+ h('Location-based electricity generation CO₂')
+ eq('kg CO2/kWh = (lb CO2/MWh) x 0.45359237 / 1000\nHourly kg CO2 = hourly HVAC kWh x kg CO2/kWh\nPeriod metric tonnes CO2 = sum(hourly kg CO2) / 1000')
+ p('The bundled EPA Power Profiler / eGRID2023 revision 2 data maps city coordinates to candidate subregions. An optional building ZIP refines utility/subregion mapping; overlapping candidates require a choice. The 2023 total-output CO₂ factor is constant across hours and weather years. It is not marginal emissions, CO₂e, a future-grid projection or a utility-specific contractual factor. No API key is needed.','small')
+ p('Case totals and the hourly CSV cover electricity generation CO₂ only. Natural gas combustion, transmission losses and upstream emissions are excluded. Do not interpret gas-versus-electric electricity-only CO₂ as a total-emissions ranking. Missing energy is blank; incomplete-year totals are labeled as available hours.','small')
+-p(link('https://apps.openei.org/services/doc/rest/util_rates/?version=8','OpenEI URDB documentation')+'; '+link('https://www.eia.gov/dnav/ng/ng_pri_sum_a_EPG0_PCS_DMcf_m.htm','EIA commercial natural gas prices')+'; '+link('https://www.mge.com/my-account/rates/natural-gas-rates/business-natural-gas-rates','MGE gas rates')+'; '+link('https://www.epa.gov/egrid/summary-data','EPA eGRID factors')+'.','small')
++p(link('https://apps.openei.org/services/doc/rest/util_rates/?version=8','OpenEI URDB documentation')+'; '+link('https://www.eia.gov/dnav/ng/ng_pri_sum_a_EPG0_PCS_DMcf_m.htm','EIA commercial natural gas prices')+'; '+link('https://www.epa.gov/egrid/summary-data','EPA eGRID factors')+'.','small')
+ 
+ def page_frame(canvas,doc):
+  canvas.saveState(); canvas.setStrokeColor(colors.HexColor('#DCE6EB')); canvas.line(45,43,567,43)
+diff --git a/scripts/check-location-energy.mjs b/scripts/check-location-energy.mjs
+index 91a2f3f..b4c0c4e 100644
+--- a/scripts/check-location-energy.mjs
++++ b/scripts/check-location-energy.mjs
+@@ -14,8 +14,6 @@ const egrid = JSON.parse(read("lib/data/egrid-2023.json")), zip = JSON.parse(rea
+ emit("location-energy", read("lib/location-energy.ts"));
+ emit("climate", read("lib/climate.ts"));
+ emit("emissions", read("lib/emissions.ts"));
+-emit("gas-tariff", read("lib/gas-tariff.ts"));
+-emit("gas-route", read("app/api/gas-tariff/route.ts").replace('from "@/lib/gas-tariff"', 'from "./gas-tariff.mjs"'));
+ globalThis.__locationEnergyEnv = { NLR_API_KEY: "DO_NOT_TRANSMIT_THIS_SENTINEL" };
+ globalThis.__locationEnergyProcessEnv = {};
+ let route = read("app/api/location-energy/route.ts").replace('import { env } from "cloudflare:workers";', "const env = globalThis.__locationEnergyEnv;").replaceAll("process.env", "globalThis.__locationEnergyProcessEnv").replace('from "@/lib/climate"', 'from "./climate.mjs"').replace('from "@/lib/location-energy"', 'from "./location-energy.mjs"');
+@@ -26,27 +24,12 @@ try {
+   const m = await import(pathToFileURL(join(temp, "location-energy.mjs")).href);
+   const { GET } = await import(pathToFileURL(join(temp, "route.mjs")).href);
+   const { electricityCo2 } = await import(pathToFileURL(join(temp, "emissions.mjs")).href);
+-  const { parseMgeGas } = await import(pathToFileURL(join(temp, "gas-tariff.mjs")).href);
+-  const { GET: gasGET } = await import(pathToFileURL(join(temp, "gas-route.mjs")).href);
+   const region = { kgCo2PerKwh: 0.5 };
+   const result = { equipment: {}, error: null, summary: { completeHours: 8760, electricity: 1000 } };
+   assert.equal(electricityCo2(result, region), 500);
+   assert.equal(electricityCo2({ ...result, equipment: null }, region), null);
+   assert.equal(electricityCo2(result, null), null);
+   assert.equal(electricityCo2({ ...result, summary: { completeHours: 0, electricity: 0 } }, region), null);
+-  const gasHtml = 'services rendered on and after October 1, 2026.<h2>Distribution service</h2><table><thead><tr><th>Distribution (GSD-1)</th></tr></thead><tbody><tr><td>Charge per day</td><td>$0.75</td></tr></tbody></table><table><thead><tr><th>Supply (FS-1)</th></tr></thead><tbody><tr><td>All therms</td><td>$0.1570</td></tr></tbody></table>Total Charges for Business Customers';
+-  const gasSchedules = parseMgeGas(gasHtml);
+-  assert.equal(gasSchedules.effectiveDate, "October 1, 2026");
+-  assert.equal(gasSchedules.schedules[0].rows[0][1], "$0.75");
+-  assert.equal(parseMgeGas(gasHtml + gasHtml.replace("$0.75", "$999")).schedules.length, 2);
+-  assert.throws(() => parseMgeGas(gasHtml.replace("<h2>Distribution service</h2>", "missing")), /Unrecognized/);
+-  const liveHtml = process.argv[2];
+-  if (liveHtml) { const parsedGas = parseMgeGas(readFileSync(liveHtml, "utf8")); assert.equal(parsedGas.schedules.length, 13); console.log(`MGE public page parsed: ${parsedGas.schedules.length} schedules, effective ${parsedGas.effectiveDate}.`); }
+-  globalThis.fetch = async (url, options) => { assert.equal(url, "https://www.mge.com/my-account/rates/natural-gas-rates/business-natural-gas-rates"); assert.equal(options.redirect, "manual"); return new Response(gasHtml); };
+-  assert.equal((await gasGET(new Request("https://site.example/api/gas-tariff?provider=mge"))).status, 200);
+-  assert.equal((await gasGET(new Request("https://site.example/api/gas-tariff?provider=unknown"))).status, 400);
+-  globalThis.fetch = async () => new Response("<html>changed</html>");
+-  assert.equal((await gasGET(new Request("https://site.example/api/gas-tariff?provider=mge"))).status, 502);
+   for (const v of [null, undefined, "", "  ", true, false, {}, [], "Infinity", NaN]) assert.equal(m.finiteNumber(v), null);
+   assert.equal(m.finiteNumber("0"), 0);
+   assert.equal(m.publicUrl("javascript:alert(1)"), null);
+@@ -137,6 +120,21 @@ try {
+   assert.equal(partial.emissions.status, "ok");
+   assert.ok(!JSON.stringify(partial).includes("imaginary sensitive URL"));
+   assert.ok(!JSON.stringify(partial).includes("fixture-eia-key"));
++  // Switching location must change both upstream requests and emissions geometry.
++  globalThis.fetch = async url => {
++    const u = new URL(url);
++    if (u.hostname === "api.openei.org") {
++      assert.equal(u.searchParams.get("lat"), "44.9778");
++      assert.equal(u.searchParams.get("lon"), "-93.265");
++      return Response.json({ items: [tariff] });
++    }
++    assert.equal(u.searchParams.get("facets[duoarea][]"), "SMN");
++    return Response.json({ response: { data: [gasRow("2026-02", 12, { duoarea: "SMN" })] } });
++  };
++  const moved = await (await GET(request("latitude=44.9778&longitude=-93.265&state=MN"))).json();
++  assert.equal(moved.gas.state, "MN");
++  assert.equal(moved.gas.prices[0].dollarsPerMcf, 12);
++  assert.ok(moved.emissions.regions.some(r => r.code === "MROW"));
+   globalThis.fetch = async url => new URL(url).hostname === "api.openei.org" ? Response.json({ items: [tariff] }) : new Response("SECRET", { status: 403 });
+   const reverse = await (await GET(request())).json();
+   assert.equal(reverse.electricity.status, "ok");

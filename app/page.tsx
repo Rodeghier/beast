@@ -35,12 +35,12 @@ async function request(url: string, signal: AbortSignal) {
 }
 
 function Choice({ id, label, value, onChange, children, disabled = false }: { id: string; label: string; value: string; onChange: (value: string) => void; children: React.ReactNode; disabled?: boolean }) {
-  return <Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger id={id} aria-label={label} className="field-select"><SelectValue /></SelectTrigger><SelectContent position="popper">{children}</SelectContent></Select>;
+  return <Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger id={id} aria-label={label} className="field-select"><SelectValue placeholder={`Select ${label.toLowerCase()}`} /></SelectTrigger><SelectContent position="popper">{children}</SelectContent></Select>;
 }
 
 export default function Home() {
-  const [city, setCity] = useState("Madison");
-  const [state, setState] = useState("WI");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [year, setYear] = useState("2025");
   const [tab, setTab] = useState("query");
   const [stage, setStage] = useState<Stage>("idle");
@@ -98,6 +98,10 @@ export default function Home() {
   }, []);
 
   const startQuery = useCallback(async (query: { city: string; state: string; year: number }) => {
+    if (!query.city.trim() || !Object.hasOwn(STATES, query.state)) {
+      setError("Enter a city or town and select a state.");
+      return { status: "error", error: "A city and state are required." };
+    }
     operation.current?.abort();
     const controller = new AbortController(); operation.current = controller;
     setError(""); setResult(null); setCandidates([]); setPlace(null); setPending(query); setTab("data"); setStage("locating");
@@ -173,10 +177,10 @@ export default function Home() {
         <TabsContent value="query" className="query-panel"><div className="query-grid">
           <section className="form-section"><div className="section-heading"><span className="section-icon"><MapPin size={22}/></span><div><h2>Location and year</h2></div></div>
             <form onSubmit={e => { e.preventDefault(); void startQuery({ city, state, year: Number(year) }); }}>
-              <div className="form-location-row"><div className="form-field"><label htmlFor="city">City or town</label><input id="city" name="city" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Madison" required minLength={1} maxLength={100} autoComplete="address-level2" disabled={busy}/></div><div className="form-field"><label htmlFor="state">State</label><Choice id="state" label="State" value={state} onChange={setState} disabled={busy}>{Object.entries(STATES).map(([code, name]) => <SelectItem key={code} value={code}>{name}</SelectItem>)}</Choice></div></div>
+              <div className="form-location-row"><div className="form-field"><label htmlFor="city">City or town</label><input id="city" name="city" value={city} onChange={e => setCity(e.target.value)} placeholder="Enter city or town" required minLength={1} maxLength={100} autoComplete="address-level2" disabled={busy}/></div><div className="form-field"><label htmlFor="state">State</label><Choice id="state" label="State" value={state} onChange={setState} disabled={busy}>{Object.entries(STATES).map(([code, name]) => <SelectItem key={code} value={code}>{name}</SelectItem>)}</Choice></div></div>
               <div className="form-field year-field"><label htmlFor="year">Year</label><Choice id="year" label="Year" value={year} onChange={setYear} disabled={busy}>{Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, i) => MIN_YEAR + i).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</Choice><p className="field-hint">Available years: 2015–2059</p></div>
-              {!supportsClimate(state) && <div className="coverage-note" role="status"><Info size={17}/><span>We can locate cities in {STATES[state]}, but this Sup3rCC dataset has no climate data there.</span></div>}
-              <div className="coordinate-note"><MapPin size={17}/><span>Search cities and towns in all 50 states and Washington, DC.</span></div><div className="form-actions"><button className="button primary" type="submit" disabled={busy || city.trim().length < 1}>{busy ? <><LoaderCircle className="spin" size={18}/>Loading data</> : <>{supportsClimate(state) ? "Continue to table" : "Find location"}<ArrowRight size={18}/></>}</button></div>
+              {state && !supportsClimate(state) && <div className="coverage-note" role="status"><Info size={17}/><span>We can locate cities in {STATES[state]}, but this Sup3rCC dataset has no climate data there.</span></div>}
+              <div className="coordinate-note"><MapPin size={17}/><span>Search cities and towns in all 50 states and Washington, DC.</span></div><div className="form-actions"><button className="button primary" type="submit" disabled={busy || city.trim().length < 1 || !state}>{busy ? <><LoaderCircle className="spin" size={18}/>Loading data</> : <>{supportsClimate(state) ? "Continue to table" : "Find location"}<ArrowRight size={18}/></>}</button></div>
             </form>
           </section><aside className="dataset-section"><div className="eyebrow">WEATHER DATA</div><h3>Hourly climate projections</h3><p className="dataset-description">2-meter temperature, relative humidity, and hourly DHI / DNI / GHI.</p><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Air temperature</strong><span>Degrees Fahrenheit · °F</span></div></div><div className="variable"><span className="variable-icon humidity"><Droplets size={20}/></span><div><strong>Dew point</strong><span>Derived from temperature + RH · °F</span></div></div><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Solar irradiance</strong><span>DHI · DNI · GHI in W/m²</span></div></div><dl className="dataset-meta"><div><dt>Climate model</dt><dd>EC-Earth3-CC</dd></div><div><dt>Scenario</dt><dd>SSP2-4.5</dd></div><div><dt>Time interval</dt><dd>60 minutes</dd></div><div><dt>Grid resolution</dt><dd>4 km</dd></div><div><dt>Climate coverage</dt><dd>48 contiguous states + DC</dd></div></dl><div className="dataset-footnote"><Clock3 size={15}/><span>Local standard time, without daylight saving time. February 29 excluded.</span></div></aside>
         </div><SchoolModel value={school} onChange={setSchool}/><EquipmentComparison choices={systems} onChange={updateSystem} results={[]} active={activeSystem} onActive={setActiveSystem}/><RtuModel value={rtu} onChange={setRtu} system={systems[activeSystem]}/></TabsContent>

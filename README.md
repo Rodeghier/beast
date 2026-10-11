@@ -1,5 +1,3 @@
-> GitHub export: start with GITHUB_UPLOAD.md. This archive includes existing credentials in .env, as requested. Keep it private.
-
 # Climate Table — HVAC energy comparison
 
 Select a US city, state and climate year (2015–2059). Sup3rCC EC-Earth3-CC SSP2-4.5 supplies hourly temperature, relative humidity, DHI, DNI and GHI. The app estimates loads for a 150,000 ft² building, sizes generic CAV equipment, compares two heating/cooling combinations, and reports electricity, gas input, unmet loads and electricity-generation CO₂. The weather dataset covers the contiguous US and DC.
@@ -12,7 +10,6 @@ Select a US city, state and climate year (2015–2059). Sup3rCC EC-Earth3-CC SSP
 - `lib/school.ts`: single-zone steady-state building heat and moisture balance; internal module name retained for compatibility.
 - `lib/rtu-curves.ts`, `lib/rtu.ts`, `lib/equipment-catalog.ts`: variable SHR, operating maps, sizing and hourly equipment energy.
 - `app/api/location-energy/route.ts`, `lib/location-energy.ts`: OpenEI electricity tariffs, EIA gas benchmarks and keyless EPA subregion lookup.
-- `app/api/gas-tariff/route.ts`, `lib/gas-tariff.ts`: keyless MGE commercial gas schedule adapter.
 - `components/location-energy.tsx`, `lib/emissions.ts`: rate display, electricity CO₂ comparison and hourly CO₂ CSV.
 
 The linked [engineering guide](public/engineering-guide.pdf) contains equations, assumptions, source links and the current worked example. Source synchronization and deployment are managed by Sites; project identity is in `.openai/hosting.json`.
@@ -46,7 +43,7 @@ The current Madison 2025 example selects 19 × 25 tons (475 tons), uses 1,455,08
 
 Electricity: OpenEI URDB v8 returns approved commercial candidates effective at retrieval time near city coordinates. Users select an eligible tariff; the app displays tiers, TOU schedules, demand charges/measurement windows, fixed/minimum charges, eligibility, notes and sources. It does not calculate an account bill from HVAC-only hourly data. Rates may omit riders or be outdated. Results are capped at 100 records, with an explicit truncation notice.
 
-Gas: Wisconsin users can explicitly select MGE to retrieve 13 current distribution/supply schedules from its public page, without a key. The adapter includes effective date and eligibility PDF links; it excludes historical accordions and fails visibly on schema changes. It displays the publisher's component tables and does not calculate combined charges. Other utilities require their published tariff. EIA independently returns the latest 12 available state commercial delivered-price averages ($/Mcf); this is a benchmark, not a local tariff breakdown. No automatic therm conversion or fixed-charge addition is made.
+Gas: EIA returns the latest 12 available state commercial delivered-price averages ($/Mcf); this is a benchmark, not a local tariff breakdown. No automatic therm conversion or fixed-charge addition is made.
 
 EPA: bundled Power Profiler/eGRID2023 revision 2 data (released June 12, 2025) supplies geometry, ZIP/utility mappings and annual total-output CO₂ rates. Data source URLs, pinned commit and source hashes are recorded in the two `lib/data/egrid*.json` provenance records. Coordinates identify approximate candidates; ZIP can refine them, and multiple subregions require user choice. `kg CO₂/kWh = lb CO₂/MWh × 0.45359237 / 1000`. That factor is multiplied by hourly HVAC electricity and summed. The factor is constant across hours and weather years, not an hourly/marginal/future-grid forecast.
 
@@ -63,7 +60,7 @@ Server-only runtime secrets (never NEXT_PUBLIC variables):
 | OPENEI_API_KEY | [OpenEI / api.data.gov key](https://apps.openei.org/services/api/signup/) for electricity tariffs |
 | EIA_API_KEY | [Separate EIA key](https://www.eia.gov/opendata/register.php) for state gas benchmarks |
 
-The app never reuses NLR_API_KEY for OpenEI. Missing keys produce independent provider messages while EPA data, solar and the MGE adapter remain usable. Configure secrets in Sites and redeploy to apply them. For local development, copy `.env.example` to ignored `.env`; never commit credentials.
+The app never reuses NLR_API_KEY for OpenEI. Missing keys produce independent provider messages while EPA data and solar remain usable. Configure secrets in Sites and redeploy to apply them. For local development, copy `.env.example` to ignored `.env`; never commit credentials.
 
 ## Validation
 
@@ -72,6 +69,6 @@ Node >=22.13; existing Vinext/Cloudflare configuration and lockfile are preserve
 - `node node_modules/typescript/bin/tsc --noEmit`
 - `node scripts/check-school-model.mjs /absolute/path/to/2025-solar.csv`: analytical loads, radiation geometry, solar units, missing inputs, psychrometrics, schedules and full-year export.
 - `node scripts/check-rtu-model.mjs /absolute/path/to/2025-solar.csv`: pinned maps, variable SHR, no margin/defrost additions, all equipment combinations, capacity/energy balances and minimum feasible selection.
-- `node scripts/check-location-energy.mjs`: tariff structures, gas units, EPA geometry/ZIP ambiguity, CO₂ multiplication, parser failures, missing keys and independent provider errors. Optional argument: a downloaded MGE HTML file to verify the public-page adapter.
+- `node scripts/check-location-energy.mjs`: tariff structures, gas units, EPA geometry/ZIP ambiguity, CO₂ multiplication, parser failures, missing keys and independent provider errors.
 - `python scripts/build-engineering-guide.py`: rebuild the PDF; render and visually inspect before publishing.
 - Use the supported Sites source helper to build, commit/push, package and publish. Do not start a preview when browser QA is unavailable.
