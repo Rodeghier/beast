@@ -1,0 +1,10 @@
+{
+  "source": "NLR ComStock standard-efficiency heat-pump RTU performance maps",
+  "repository": "https://github.com/NatLabRockies/ComStock",
+  "commit": "f25ac375311acb2448b4ee1665a8680e92abd24b",
+  "file": "resources/measures/upgrade_hvac_add_heat_pump_rtu/resources/performance_maps_hprtu_std.json",
+  "sha256": "1119708509b5b26cf41f41c2296412f3f1637e2407560c20abcca9799dd0a24b",
+  "retrieved": "2026-09-26",
+  "report": "https://docs.nlr.gov/docs/fy25osti/89042.pdf",
+  "license": "ComStock license (BSD-style with naming conditions); see public/references/comstock-license.txt"
+}
