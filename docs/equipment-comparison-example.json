@@ -1,0 +1,253 @@
+{
+  "model": "cav-equipment-2.0",
+  "location": "Madison, WI",
+  "year": 2025,
+  "cases": [
+    {
+      "system": {
+        "heating": "standard",
+        "cooling": "standard",
+        "lockoutF": 0
+      },
+      "equipment": {
+        "count": 24,
+        "tonsEach": 25,
+        "totalTons": 600,
+        "supplyCfm": 242400,
+        "outdoorCapacityCfm": 60600,
+        "peakVentilationCfm": 30000,
+        "reheatKwEach": 36,
+        "heatingBankBtuEach": 0
+      },
+      "summary": {
+        "gasTherms": 0,
+        "directHeat": 0,
+        "siteMMBtu": 5843.61214914011,
+        "unmetCoolingBtu": 1.935813997988589e-8,
+        "electricity": 1712593.666284107,
+        "fan": 984022.7999998588,
+        "compressor": 554207.7017081269,
+        "defrost": 1553.8649991176992,
+        "crankcase": 6207.1594384604705,
+        "reheat": 166602.1401384668,
+        "peakUnmetHeating": 3021539.0234118393,
+        "unmetHeatingHours": 70,
+        "unmetHeatingBtu": 75269725.82170346,
+        "unmetCoolingHours": 0,
+        "capacityLimitedHours": 0,
+        "heatingCopMin": 0.6588589569831028,
+        "heatingCopMax": 1.7934553859920481,
+        "boundedHours": 4098,
+        "lockoutHours": 70,
+        "completeHours": 8760,
+        "fullYear": true,
+        "simultaneousHours": 0
+      }
+    },
+    {
+      "system": {
+        "heating": "lab",
+        "cooling": "lab",
+        "lockoutF": 0
+      },
+      "equipment": {
+        "count": 24,
+        "tonsEach": 25,
+        "totalTons": 600,
+        "supplyCfm": 242400,
+        "outdoorCapacityCfm": 60600,
+        "peakVentilationCfm": 30000,
+        "reheatKwEach": 36,
+        "heatingBankBtuEach": 0
+      },
+      "summary": {
+        "gasTherms": 0,
+        "directHeat": 0,
+        "siteMMBtu": 5846.173663956307,
+        "unmetCoolingBtu": 1.935813997988589e-8,
+        "electricity": 1713344.3721725799,
+        "fan": 984022.7999998588,
+        "compressor": 554963.5271638373,
+        "defrost": 1556.9719338277675,
+        "crankcase": 6198.932936517632,
+        "reheat": 166602.1401384668,
+        "peakUnmetHeating": 3021539.0234118393,
+        "unmetHeatingHours": 70,
+        "unmetHeatingBtu": 75269725.82170346,
+        "unmetCoolingHours": 0,
+        "capacityLimitedHours": 0,
+        "heatingCopMin": 0.6572919330191581,
+        "heatingCopMax": 1.7340770683435522,
+        "boundedHours": 4098,
+        "lockoutHours": 70,
+        "completeHours": 8760,
+        "fullYear": true,
+        "simultaneousHours": 0
+      }
+    },
+    {
+      "system": {
+        "heating": "variable",
+        "cooling": "variable",
+        "lockoutF": 0
+      },
+      "equipment": {
+        "count": 25,
+        "tonsEach": 25,
+        "totalTons": 625,
+        "supplyCfm": 252500,
+        "outdoorCapacityCfm": 63125,
+        "peakVentilationCfm": 30000,
+        "reheatKwEach": 35,
+        "heatingBankBtuEach": 0
+      },
+      "summary": {
+        "gasTherms": 0,
+        "directHeat": 0,
+        "siteMMBtu": 5857.4447752423785,
+        "unmetCoolingBtu": 2.1694631868740544e-8,
+        "electricity": 1716647.608819343,
+        "fan": 1025023.75,
+        "compressor": 519927.45313581795,
+        "defrost": 1369.9993809094497,
+        "crankcase": 6537.032226166841,
+        "reheat": 163789.37407641383,
+        "peakUnmetHeating": 3004307.7081651893,
+        "unmetHeatingHours": 70,
+        "unmetHeatingBtu": 74063533.75443798,
+        "unmetCoolingHours": 0,
+        "capacityLimitedHours": 0,
+        "heatingCopMin": 0.8448066301167216,
+        "heatingCopMax": 1.9612410971626464,
+        "boundedHours": 4186,
+        "lockoutHours": 70,
+        "completeHours": 8760,
+        "fullYear": true,
+        "simultaneousHours": 0
+      }
+    },
+    {
+      "system": {
+        "heating": "cold",
+        "cooling": "variable",
+        "lockoutF": -10
+      },
+      "equipment": {
+        "count": 25,
+        "tonsEach": 25,
+        "totalTons": 625,
+        "supplyCfm": 252500,
+        "outdoorCapacityCfm": 63125,
+        "peakVentilationCfm": 30000,
+        "reheatKwEach": 35,
+        "heatingBankBtuEach": 0
+      },
+      "summary": {
+        "gasTherms": 0,
+        "directHeat": 0,
+        "siteMMBtu": 6047.638654267036,
+        "unmetCoolingBtu": 2.1694631868740544e-8,
+        "electricity": 1772387.9324873958,
+        "fan": 1025023.75,
+        "compressor": 575537.7322992438,
+        "defrost": 1368.0769424901316,
+        "crankcase": 6668.999169213545,
+        "reheat": 163789.37407641383,
+        "peakUnmetHeating": 3004307.7081651893,
+        "unmetHeatingHours": 19,
+        "unmetHeatingBtu": 25244588.763440244,
+        "unmetCoolingHours": 0,
+        "capacityLimitedHours": 0,
+        "heatingCopMin": 0.6496175005963079,
+        "heatingCopMax": 1.3990709517747468,
+        "boundedHours": 4188,
+        "lockoutHours": 19,
+        "completeHours": 8760,
+        "fullYear": true,
+        "simultaneousHours": 0
+      }
+    },
+    {
+      "system": {
+        "heating": "gas",
+        "cooling": "standard",
+        "lockoutF": 0
+      },
+      "equipment": {
+        "count": 24,
+        "tonsEach": 25,
+        "totalTons": 600,
+        "supplyCfm": 242400,
+        "outdoorCapacityCfm": 60600,
+        "peakVentilationCfm": 30000,
+        "reheatKwEach": 36,
+        "heatingBankBtuEach": 140000
+      },
+      "summary": {
+        "gasTherms": 7119.740846697599,
+        "directHeat": 0,
+        "siteMMBtu": 6182.753933631586,
+        "unmetCoolingBtu": 1.935813997988589e-8,
+        "electricity": 1603327.3050719888,
+        "fan": 984022.7999998588,
+        "compressor": 445930.32566086116,
+        "defrost": 0,
+        "crankcase": 6772.039272766001,
+        "reheat": 166602.1401384668,
+        "peakUnmetHeating": 0,
+        "unmetHeatingHours": 0,
+        "unmetHeatingBtu": 0,
+        "unmetCoolingHours": 0,
+        "capacityLimitedHours": 0,
+        "heatingCopMin": null,
+        "heatingCopMax": null,
+        "boundedHours": 4088,
+        "lockoutHours": 0,
+        "completeHours": 8760,
+        "fullYear": true,
+        "simultaneousHours": 0
+      }
+    },
+    {
+      "system": {
+        "heating": "resistance",
+        "cooling": "standard",
+        "lockoutF": 0
+      },
+      "equipment": {
+        "count": 24,
+        "tonsEach": 25,
+        "totalTons": 600,
+        "supplyCfm": 242400,
+        "outdoorCapacityCfm": 60600,
+        "peakVentilationCfm": 30000,
+        "reheatKwEach": 36,
+        "heatingBankBtuEach": 140000
+      },
+      "summary": {
+        "gasTherms": 0,
+        "directHeat": 166927.20554950275,
+        "siteMMBtu": 6040.359116697776,
+        "unmetCoolingBtu": 1.935813997988589e-8,
+        "electricity": 1770254.5106215337,
+        "fan": 984022.7999998588,
+        "compressor": 445930.32566086116,
+        "defrost": 0,
+        "crankcase": 6772.039272766001,
+        "reheat": 166602.1401384668,
+        "peakUnmetHeating": 0,
+        "unmetHeatingHours": 0,
+        "unmetHeatingBtu": 0,
+        "unmetCoolingHours": 0,
+        "capacityLimitedHours": 0,
+        "heatingCopMin": 0.9999999999999999,
+        "heatingCopMax": 1.0000000000000002,
+        "boundedHours": 4088,
+        "lockoutHours": 0,
+        "completeHours": 8760,
+        "fullYear": true,
+        "simultaneousHours": 0
+      }
+    }
+  ]
+}
