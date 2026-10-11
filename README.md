@@ -41,13 +41,13 @@ The current Madison 2025 example selects 19 × 25 tons (475 tons), uses 1,455,08
 
 ## Utility rates and CO₂
 
-Electricity: OpenEI URDB v8 returns approved commercial candidates effective at retrieval time near city coordinates. Users select an eligible tariff; the app displays tiers, TOU schedules, demand charges/measurement windows, fixed/minimum charges, eligibility, notes and sources. It does not calculate an account bill from HVAC-only hourly data. Rates may omit riders or be outdated. Results are capped at 100 records, with an explicit truncation notice.
+Electricity: OpenEI URDB v8 returns approved commercial candidates effective at retrieval time near city coordinates. Users select an eligible tariff; the app displays tiers, TOU schedules, demand charges/measurement windows, fixed/minimum charges, eligibility, notes and sources. Supported terms are applied to HVAC hourly use as a separate-meter, calendar-month estimate; this is not an actual whole-building account bill. Ratchets, coincident peaks, missing prices/schedules, unsupported units, and delivery-only tariffs block a total rather than silently dropping charges. Demand charges use hourly-average peak kW, with the source demand interval disclosed. Rates may omit riders or be outdated. Results are capped at 100 records, with an explicit truncation notice.
 
-Gas: EIA returns the latest 12 available state commercial delivered-price averages ($/Mcf); this is a benchmark, not a local tariff breakdown. No automatic therm conversion or fixed-charge addition is made.
+Gas: EIA returns the latest 12 available state commercial delivered-price averages ($/Mcf); this is a benchmark, not a local tariff breakdown. For each model calendar month, the newest API price for that month is applied using EPA’s default 10.26 therms/Mcf conversion. The exact source month is shown. Fixed charges are not added to this delivered-price benchmark. Missing required months block total cost for gas-consuming scenarios.
 
 EPA: bundled Power Profiler/eGRID2023 revision 2 data (released June 12, 2025) supplies geometry, ZIP/utility mappings and annual total-output CO₂ rates. Data source URLs, pinned commit and source hashes are recorded in the two `lib/data/egrid*.json` provenance records. Coordinates identify approximate candidates; ZIP can refine them, and multiple subregions require user choice. `kg CO₂/kWh = lb CO₂/MWh × 0.45359237 / 1000`. That factor is multiplied by hourly HVAC electricity and summed. The factor is constant across hours and weather years, not an hourly/marginal/future-grid forecast.
 
-CO₂ results exclude gas combustion, upstream emissions, transmission losses and other greenhouse gases. They must not be interpreted as total-emissions comparisons of gas versus electric systems. Missing energy remains blank; incomplete-year totals are marked as available hours. The CO₂ CSV includes source, data year, subregion and factor.
+Annual scorecard CO₂ includes electricity generation and direct natural gas combustion using EPA factors. It excludes upstream emissions, transmission losses and other greenhouse gases. The separate electricity-only detail and hourly CO₂ CSV retain their clearly labeled electricity-generation scope, including source, data year, subregion and factor. Missing energy remains blank; annual scorecards require a complete year.
 
 ## Configuration
 
@@ -60,7 +60,7 @@ Server-only runtime secrets (never NEXT_PUBLIC variables):
 | OPENEI_API_KEY | [OpenEI / api.data.gov key](https://apps.openei.org/services/api/signup/) for electricity tariffs |
 | EIA_API_KEY | [Separate EIA key](https://www.eia.gov/opendata/register.php) for state gas benchmarks |
 
-The app never reuses NLR_API_KEY for OpenEI. Missing keys produce independent provider messages while EPA data and solar remain usable. Configure secrets in Sites and redeploy to apply them. For local development, copy `.env.example` to ignored `.env`; never commit credentials.
+The app never reuses NLR_API_KEY for OpenEI. Missing keys produce independent provider messages while EPA data and solar remain usable. Configure secrets in Sites and redeploy to apply them. For local development, set the variables in an ignored `.env` file; never commit credentials.
 
 ## Validation
 
@@ -75,6 +75,12 @@ Node >=22.13; existing Vinext/Cloudflare configuration and lockfile are preserve
 
 ## BEAST analysis flow
 
-The initial Analysis inputs page collects location/year, editable building and equipment assumptions, one to three equipment scenarios, and flat utility rates and CO₂ factors. Continue to results validates all inputs and opens an annual scorecard before detailed results.
+The initial Analysis inputs page collects location/year, editable building and equipment assumptions, and one to three equipment scenarios. There are no manual utility rates or emissions factors. Continue to results validates inputs and opens an annual scorecard before detailed results.
 
-The scorecard reports modeled HVAC site energy (electricity and gas converted to MMBtu), estimated utility cost (kWh × $/kWh + therms × $/therm), and CO₂ (kWh × kg/kWh + therms × kg/therm, converted to metric tons). The editable rate/factor defaults are illustrative, not automatically sourced location rates. Annual totals require complete weather coverage; unmet-load warnings remain visible. Lighting and plug loads are excluded from these HVAC totals.
+One location-energy API response supplies the source choices for all scorecards and graphs. Users choose the applicable OpenEI tariff and EPA eGRID subregion; unique candidates are preselected. Electricity pricing uses monthly TOU energy tiers, weekday/weekend schedules, price and fuel adjustments, monthly/TOU demand tiers, fixed charges, and minimum charges. Annual minimum top-ups occur in December; annual fixed charges are allocated evenly. The local standard-time calendar excludes daylight-saving shifts and holiday exceptions. Confirm full-meter tariff eligibility and billing terms with the utility.
+
+CO₂ combines EPA eGRID2023 electricity factors with the EPA 2025 Emissions Factors Hub natural gas factor (53.06 kg/MMBtu = 5.306 kg/therm). The API returns factor provenance and EPA heat content (0.001026 MMBtu/scf = 10.26 therms/Mcf). These factors are not future-grid projections and exclude upstream emissions and non-CO₂ gases. Sources: [OpenEI URDB v8](https://apps.openei.org/services/doc/rest/util_rates/?version=8), [EPA 2025 Hub, Table 1](https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf).
+
+Annual energy, utility cost, and CO₂ comparison bars plus an interactive monthly chart share exactly the same calculations as the scorecards. The monthly table provides accessible values and an electricity charge breakdown. Unavailable values remain blank in charts, never zero. Annual totals require 8,760 unique valid hours (February 29 excluded); unmet-load warnings remain visible. Lighting and plug loads are excluded from these HVAC totals. Latest API rates are applied to the chosen weather year, not reconstructed historical rates or projected future prices.
+
+Run `node scripts/check-beast-scorecard.mjs` for tariff billing, EPA conversions, API failure/missing data, annual/monthly reconciliation, and scorecard/chart rendering checks.

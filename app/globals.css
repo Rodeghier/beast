@@ -401,3 +401,27 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .edit-inputs { padding: 20px 30px 0; }
 .page-intro h1 { max-width: 900px; }
 @media (max-width: 760px) { .scorecard-grid { grid-template-columns: 1fr; } .analysis-assumptions, .annual-scorecard { padding: 24px 20px; } }
+
+.scorecard-sources { background: white; padding: 20px; border: 1px solid var(--border); border-radius: 10px; margin: 20px 0; }
+.scorecard-sources h3, .performance-graphs h3 { font-size: 1.1rem; font-weight: 650; }
+.scorecard-sources p, .billing-breakdown p, .performance-graphs > p { font-size: .85rem; line-height: 1.6; margin-top: 10px; color: #475569; }
+.scorecard-sources a { text-decoration: underline; }
+.source-select-grid, .annual-graphs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.source-select-grid select { width: 100%; }
+.performance-graphs { margin-top: 28px; }
+.annual-graphs { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 16px; }
+.annual-graphs figure { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: white; }
+.annual-graphs figcaption { font-size: .9rem; font-weight: 650; min-height: 42px; }
+.annual-graph { height: 240px; width: 100%; aspect-ratio: auto; }
+.graph-values { list-style: none; padding: 0; margin-top: 12px; }
+.graph-values li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: .8rem; margin-top: 8px; }
+.graph-empty { padding: 24px 0; color: #64748b; font-size: .875rem; }
+.monthly-graph-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.monthly-graph-heading label { display: flex; gap: 12px; align-items: center; }
+.monthly-graph-heading select { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.monthly-performance-graph { width: 100%; height: 300px; aspect-ratio: auto; margin-top: 16px; }
+.billing-breakdown { margin-top: 24px; }
+.billing-breakdown summary { cursor: pointer; font-weight: 600; }
+.billing-breakdown h4 { font-weight: 650; margin: 18px 0 8px; }
+@media (max-width: 900px) { .annual-graphs { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .source-select-grid { grid-template-columns: 1fr; } }

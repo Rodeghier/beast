@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { STATES } from "@/lib/climate";
 import egridData from "@/lib/data/egrid-2023.json";
 import zipData from "@/lib/data/egrid-zip-2023.json";
-import { ELECTRICITY_SOURCE, GAS_SOURCE, EMISSIONS_SOURCE, parseElectricTariffs, parseGasPrices, resolveEmissions, type ElectricityContext, type GasContext, type LocationEnergyContext } from "@/lib/location-energy";
+import { ELECTRICITY_SOURCE, GAS_SOURCE, EMISSIONS_SOURCE, EPA_NATURAL_GAS, parseElectricTariffs, parseGasPrices, resolveEmissions, type ElectricityContext, type GasContext, type LocationEnergyContext } from "@/lib/location-energy";
 
 /** Fixed upstreams, no redirects, no user-controlled URLs, no raw error bodies. */
 async function providerJson(url: URL): Promise<unknown> {
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   const result: LocationEnergyContext = {
     electricity: electricResult.status === "fulfilled" ? electricResult.value : { status: "error", message: reason(electricResult.reason, "OpenEI"), tariffs: [], sourceUrl: ELECTRICITY_SOURCE },
     gas: gasResult.status === "fulfilled" ? gasResult.value : { status: "error", message: reason(gasResult.reason, "EIA"), prices: [], sourceUrl: GAS_SOURCE, state },
-    emissions: emissionsResult.status === "fulfilled" ? emissionsResult.value : { status: "error", message: "EPA subregion lookup could not be completed.", regions: [], utilities: [], method: zip ? "zip" : "coordinates", sourceUrl: EMISSIONS_SOURCE },
+    emissions: emissionsResult.status === "fulfilled" ? emissionsResult.value : { status: "error", message: "EPA subregion lookup could not be completed.", regions: [], utilities: [], method: zip ? "zip" : "coordinates", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE },
     retrievedAt: new Date().toISOString(),
   };
   return Response.json(result, { headers: { "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });

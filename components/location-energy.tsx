@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download, MapPin, RefreshCw } from "lucide-react";
 import type { Place } from "@/lib/climate";
 import type { RtuResult } from "@/lib/rtu";
 import type { SchoolRow } from "@/lib/school";
 import type { ElectricTariff, LocationEnergyContext, RateTier } from "@/lib/location-energy";
+import { annualPerformance } from "@/lib/utility-billing";
+import { AnnualScorecard } from "./annual-scorecard";
 import { electricityCo2 } from "@/lib/emissions";
 
 const n = (value: number | null | undefined, digits = 3) => value === null || value === undefined ? "Not provided" : value.toLocaleString(undefined, { maximumFractionDigits: digits });
@@ -19,7 +21,7 @@ function Rates({ title, rates, units }: { title: string; rates: RateTier[][] | n
 }
 function Schedule({ title, schedule }: { title: string; schedule: number[][] | null }) {
   if (!schedule) return null;
-  return <details className="rate-detail"><summary>{title}</summary><p>Cells identify the numbered rate period. Hours follow the utility schedule; these tables are informational and are not applied to the hourly load model.</p><div className="rate-scroll"><table className="rate-schedule"><thead><tr><th>Month / hour</th>{Array.from({ length: 24 }, (_, h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{schedule.map((hours, m) => <tr key={m}><th>{MONTHS[m]}</th>{hours.map((period, h) => <td key={h}>{period + 1}</td>)}</tr>)}</tbody></table></div></details>;
+  return <details className="rate-detail"><summary>{title}</summary><p>Cells identify the numbered rate period. Hours follow the utility schedule; these schedules are applied to the hourly electricity in the scorecard estimate when supported.</p><div className="rate-scroll"><table className="rate-schedule"><thead><tr><th>Month / hour</th>{Array.from({ length: 24 }, (_, h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{schedule.map((hours, m) => <tr key={m}><th>{MONTHS[m]}</th>{hours.map((period, h) => <td key={h}>{period + 1}</td>)}</tr>)}</tbody></table></div></details>;
 }
 function Tariff({ rate }: { rate: ElectricTariff }) {
   const e = rate.eligibility;
@@ -43,7 +45,7 @@ function Tariff({ rate }: { rate: ElectricTariff }) {
     <Schedule title="Demand schedule · weekdays" schedule={rate.demandWeekdaySchedule}/><Schedule title="Demand schedule · weekends" schedule={rate.demandWeekendSchedule}/>
     {!!rate.unsupportedClauses.length && <p className="energy-status">Additional or incomplete terms: {rate.unsupportedClauses.join("; ")}. Refer to the utility tariff.</p>}
     {rate.notes.map((note, i) => <p key={i}>{note}</p>)}
-    <p className="comparison-note">Tariff information only. A bill calculation also needs the building’s complete meter load, billing calendar, taxes, riders, ratchets and utility demand interval. Hourly HVAC use alone does not determine the bill.</p>
+    <p className="comparison-note">The scorecard applies supported tariff terms to HVAC hourly use as a separate-meter estimate. A whole-building bill also needs complete meter load, billing calendar, taxes, riders, ratchets and the utility demand interval. Unsupported terms prevent a total cost estimate.</p>
   </div>;
 }
 
@@ -62,6 +64,7 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
     }).then(next => {
       if (controller.signal.aborted) return;
       setData(next);
+      if (next.electricity.tariffs.length === 1) setTariffId(next.electricity.tariffs[0].id);
       if (next.emissions.regions.length === 1) setRegionCode(next.emissions.regions[0].code);
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Unable to load location energy data."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -69,6 +72,7 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
   }, [place.latitude, place.longitude, place.stateCode, zip, retry]);
   const region = data?.emissions.regions.find(r => r.code === regionCode);
   const tariff = data?.electricity.tariffs.find(r => r.id === tariffId);
+  const performance = useMemo(() => results.map(result => annualPerformance(result, rows, tariff, region, data?.gas, data?.emissions.naturalGas)), [results, rows, tariff, region, data]);
   function exportEmissions() {
     if (!region) return;
     const quote = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
@@ -77,7 +81,17 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
     const url = URL.createObjectURL(new Blob([lines.map(line => line.map(quote).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a"); a.href = url; a.download = `electricity-co2-${place.stateCode}-${year}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return <section className="location-energy" aria-label="Utility rates and electricity emissions">
+  return <><AnnualScorecard results={results} performance={performance} location={`${place.name}, ${place.state}`} year={year} loading={loading}>
+      {error && <p role="alert" className="energy-status">{error}</p>}
+      {data && <div className="scorecard-sources">
+        <h3>Utility and EPA sources</h3><p>Choose the tariff that serves your building. A single candidate is preselected; verify eligibility in the tariff details below.</p>
+        <div className="source-select-grid">{!!data.electricity.tariffs.length && <label className="energy-select-label" htmlFor="electric-tariff">Utility and tariff<select id="electric-tariff" value={tariffId} onChange={event => setTariffId(event.target.value)}><option value="">Select an eligible tariff</option>{data.electricity.tariffs.map(r => <option key={r.id} value={r.id}>{r.utility} · {r.name}</option>)}</select></label>}{!!data.emissions.regions.length && <label className="energy-select-label" htmlFor="emission-region">Applicable eGRID subregion<select id="emission-region" value={regionCode} onChange={event => setRegionCode(event.target.value)}><option value="">Select the applicable subregion</option>{data.emissions.regions.map(r => <option key={r.code} value={r.code}>{r.code} · {r.name}</option>)}</select></label>}</div>
+        {data.electricity.tariffs.length === 0 && <p role="status">{data.electricity.message}</p>}
+        <p>{tariff ? `${tariff.utility} · ${tariff.name}` : "Electricity cost requires a tariff selection."} {region ? `EPA eGRID ${region.year} · ${region.code} · ${n(region.kgCo2PerKwh, 6)} kg CO₂/kWh.` : data.emissions.message}</p>
+        <p>Natural gas: EPA {data.emissions.naturalGas.year} · {data.emissions.naturalGas.kgCo2PerTherm} kg CO₂/therm; {data.emissions.naturalGas.thermsPerMcf} therms/Mcf for EIA price conversion. <Source href={data.emissions.naturalGas.sourceUrl}>EPA combustion factors</Source> · <Source href={data.emissions.sourceUrl}>EPA eGRID</Source></p>
+        <p>EPA annual factors stay constant for all weather years. CO₂ excludes upstream emissions, methane, and nitrous oxide. Gas pricing uses the newest API price for each calendar month; source months appear in the breakdown.</p>
+      </div>}
+    </AnnualScorecard><section className="location-energy" aria-label="Utility rates and electricity emissions">
     <div className="comparison-heading"><div><span className="eyebrow">LOCATION ENERGY DATA</span><h3>Utility rates & electricity CO₂</h3><p>{place.name}, {place.stateCode} · current rate information and EPA annual emissions factors</p></div><button type="button" className="secondary-button" onClick={() => setRetry(v => v + 1)} disabled={loading}><RefreshCw size={15}/>Refresh</button></div>
     <form className="energy-zip" onSubmit={event => { event.preventDefault(); const v = zipDraft.trim(); if (v && !/^\d{5}$/.test(v)) { setZipError("Enter a five-digit ZIP code, or leave it blank."); return; } setZipError(""); setZip(v); }}>
       <label htmlFor="energy-zip"><MapPin size={15}/>Building ZIP code <span>(optional; refines EPA utility mapping)</span></label><div><input id="energy-zip" inputMode="numeric" maxLength={5} value={zipDraft} onChange={event => setZipDraft(event.target.value)} placeholder="ZIP code"/><button type="submit" className="secondary-button">Apply ZIP</button></div>{zipError && <p role="alert">{zipError}</p>}
@@ -86,13 +100,13 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
     {data && <>
       <div className="energy-emissions"><h4>Electricity generation CO₂</h4><p>{data.emissions.message}</p>
         {!!data.emissions.utilities.length && <p>EPA providers: {data.emissions.utilities.map(u => `${u.name} (${u.subregion})`).join("; ")}</p>}
-        {!!data.emissions.regions.length && <label className="energy-select-label" htmlFor="emission-region">Applicable eGRID subregion<select id="emission-region" value={regionCode} onChange={event => setRegionCode(event.target.value)}><option value="">Select the applicable subregion</option>{data.emissions.regions.map(r => <option key={r.code} value={r.code}>{r.code} · {r.name}</option>)}</select></label>}
+
         {region && <><p className="emission-factor"><strong>{n(region.kgCo2PerKwh, 6)}</strong> kg CO₂/kWh <span>· eGRID {region.year}, {region.code} total output rate</span></p><div className="emission-cases">{results.map((_, i) => { const kg = electricityCo2(results[i], region); return <div key={i}><span>Case {String.fromCharCode(65 + i)} · {results[i]?.summary.fullYear ? "annual" : "available hours"}</span><strong>{kg === null ? "Unavailable" : `${n(kg / 1000, 1)} t CO₂`}</strong><p>{results[i]?.equipment ? `${n(results[i].summary.electricity, 0)} kWh · ${n(results[i].summary.completeHours, 0)} valid hours` : "Equipment selection required"}</p></div>; })}</div><button type="button" className="secondary-button" onClick={exportEmissions}><Download size={15}/>Hourly CO₂ CSV</button></>}
         <p className="comparison-note">kWh × kg CO₂/kWh. The annual EPA factor is held constant across all hours and weather years, including future climate scenarios. It is not an hourly or future-grid forecast. Excludes gas combustion, upstream emissions and CO₂-equivalent gases, so this is not a total-emissions ranking of gas versus electric equipment. Compare unmet loads as well as energy.</p><Source href={data.emissions.sourceUrl}>EPA eGRID source</Source>
       </div>
       <details className="energy-provider" open><summary>Electricity tariff structure <span>{data.electricity.status === "missing_key" ? "Connection needed" : `${data.electricity.tariffs.length} candidates`}</span></summary><p>{data.electricity.message}</p>
         {data.electricity.status === "missing_key" && <p><Source href="https://apps.openei.org/services/api/signup/">Get an OpenEI API key</Source> and provide it to configure the lookup.</p>}
-        {!!data.electricity.tariffs.length && <label className="energy-select-label" htmlFor="electric-tariff">Utility and tariff<select id="electric-tariff" value={tariffId} onChange={event => setTariffId(event.target.value)}><option value="">Select an eligible tariff</option>{data.electricity.tariffs.map(r => <option key={r.id} value={r.id}>{r.utility} · {r.name}</option>)}</select></label>}{tariff && <Tariff rate={tariff}/>}
+{tariff && <Tariff rate={tariff}/>}
       </details>
       <details className="energy-provider" open><summary>Natural gas rates <span>{data.gas.status === "missing_key" ? "EIA connection needed" : "State benchmark"}</span></summary><h5>State commercial benchmark</h5><p>{data.gas.message}</p>
         {data.gas.status === "missing_key" && <p><Source href="https://www.eia.gov/opendata/register.php">Get an EIA API key</Source> and provide it to configure the lookup.</p>}
@@ -100,5 +114,5 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
         <p>For the building’s actual rate structure, use its gas utility’s commercial schedule: commodity charge, delivery charge, monthly customer charge, minimum bill and applicable riders. The EIA average cannot resolve those components.</p><Source href={data.gas.sourceUrl}>EIA natural gas source</Source>
       </details><p className="energy-retrieved">Retrieved {new Date(data.retrievedAt).toLocaleString()}. Rates and emissions data years are independent of the selected weather year.</p>
     </>}
-  </section>;
+  </section></>;
 }

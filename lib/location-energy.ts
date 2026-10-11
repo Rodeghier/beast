@@ -18,7 +18,10 @@ export type ElectricTariff = {
 export type EmissionRegion = { code: string; name: string; year: number; kgCo2PerKwh: number; lbCo2PerMwh: number };
 export type ElectricityContext = { status: ProviderStatus; message: string; tariffs: ElectricTariff[]; sourceUrl: string };
 export type GasContext = { status: ProviderStatus; message: string; prices: { period: string; dollarsPerMcf: number }[]; sourceUrl: string; state: string };
-export type EmissionsContext = { status: ProviderStatus; message: string; regions: EmissionRegion[]; utilities: { id: string; name: string; subregion: string }[]; method: "zip" | "coordinates"; sourceUrl: string };
+export type GasCombustion = { kgCo2PerTherm: number; thermsPerMcf: number; sourceUrl: string; year: number };
+// EPA 2025 Hub, Table 1: 53.06 kg CO2/MMBtu; HHV 0.001026 MMBtu/scf.
+export const EPA_NATURAL_GAS: GasCombustion = { kgCo2PerTherm: 5.306, thermsPerMcf: 10.26, year: 2025, sourceUrl: "https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf" };
+export type EmissionsContext = { naturalGas: GasCombustion; status: ProviderStatus; message: string; regions: EmissionRegion[]; utilities: { id: string; name: string; subregion: string }[]; method: "zip" | "coordinates"; sourceUrl: string };
 export type LocationEnergyContext = { electricity: ElectricityContext; gas: GasContext; emissions: EmissionsContext; retrievedAt: string };
 export const ELECTRICITY_SOURCE = "https://apps.openei.org/services/doc/rest/util_rates/?version=8";
 export const GAS_SOURCE = "https://www.eia.gov/dnav/ng/ng_pri_sum_a_EPG0_PCS_DMcf_m.htm";
@@ -73,14 +76,23 @@ export function parseElectricTariffs(payload: unknown, effectiveOn = Date.now() 
     const demandWeekdaySchedule = parseSchedule(r.demandweekdayschedule, demandRates?.length || 0), demandWeekendSchedule = parseSchedule(r.demandweekendschedule, demandRates?.length || 0);
     const flatDemandMonths = months(r.flatdemandmonths, flatDemandRates?.length || 0);
     const unsupportedClauses: string[] = [];
+    const malformedNumber = (v: unknown) => v !== undefined && v !== null && finiteNumber(v) === null;
+    if ([r.fixedchargefirstmeter, r.mincharge, r.demandwindow].some(malformedNumber)) unsupportedClauses.push("Invalid charge or demand-window value");
+    for (const structure of [r.energyratestructure, r.demandratestructure, r.flatdemandstructure]) {
+      if (Array.isArray(structure) && structure.some(period => Array.isArray(period) && period.some(rawTier => {
+        const tier = record(rawTier);
+        return [tier.max, tier.rate, tier.adj].some(malformedNumber);
+      }))) unsupportedClauses.push("Invalid numeric tier data");
+    }
     if ([r.lookbackMonths, r.lookbackPercent, r.lookbackRange].some(meaningful)) unsupportedClauses.push("Demand ratchet / historical lookback");
-    if ([r.coincidentratestructure, r.coincidentrateschedule].some(meaningful)) unsupportedClauses.push("Coincident peak demand");
+    if ([r.coincidentratestructure, r.coincidentrateschedule, r.coincidentschedule].some(meaningful)) unsupportedClauses.push("Coincident peak demand");
     if (meaningful(r.demandreactivepowercharge)) unsupportedClauses.push("Reactive power charge");
     if ([r.demandrateunit, r.flatdemandunit].some(v => typeof v === "string" && v !== "kW")) unsupportedClauses.push("Demand units other than monthly kW");
     if (energyRates?.some(p => p.some(t => t.unit && t.unit !== "kWh"))) unsupportedClauses.push("Energy tier units other than kWh");
     if ([r.energyattrs, r.demandattrs, r.fixedattrs].some(meaningful)) unsupportedClauses.push("Additional tariff attributes");
     if (meaningful(r.fixedchargeeaaddl)) unsupportedClauses.push("Additional-meter fixed charges");
     if (r.fixedchargefirstmeter !== undefined && !["$/day", "$/month", "$/year"].includes(String(r.fixedchargeunits)) || r.mincharge !== undefined && !["$/day", "$/month", "$/year"].includes(String(r.minchargeunits))) unsupportedClauses.push("Missing or unsupported fixed/minimum-charge units");
+    if (r.fueladjustmentsmonthly !== undefined && !numericMonths(r.fueladjustmentsmonthly)) unsupportedClauses.push("Invalid monthly fuel adjustments");
     if (meaningful(r.dgrules)) unsupportedClauses.push("Distributed-generation export compensation");
     if (r.energyratestructure && !energyRates || r.demandratestructure && !demandRates || r.flatdemandstructure && !flatDemandRates) unsupportedClauses.push("Invalid or unsupported rate structure");
     if (energyRates && (!energyWeekdaySchedule || !energyWeekendSchedule) || demandRates && (!demandWeekdaySchedule || !demandWeekendSchedule) || flatDemandRates && !flatDemandMonths) unsupportedClauses.push("Missing or invalid period schedule");
@@ -132,7 +144,7 @@ export function resolveEmissions(latitude: number, longitude: number, state: str
   let message = "Approximate subregion candidates from the selected city coordinates. Confirm the electricity provider or enter the building ZIP code; service territories can overlap.";
   if (zip) {
     const tuples = (zipData.zips[zip] || []).map(i => zipData.utilities[i]).filter(u => u && u[3] === state);
-    if (!tuples.length) return { status: "error", message: "No EPA utility mapping was found for this ZIP and state. Check the ZIP, or clear it to use city-coordinate candidates.", regions: [], utilities: [], method: "zip", sourceUrl: EMISSIONS_SOURCE };
+    if (!tuples.length) return { status: "error", message: "No EPA utility mapping was found for this ZIP and state. Check the ZIP, or clear it to use city-coordinate candidates.", regions: [], utilities: [], method: "zip", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE };
     utilities = tuples.map(u => ({ id: u[0], name: u[1], subregion: u[2] }));
     const codes = new Set(utilities.map(u => u.subregion));
     regions = data.regions.filter(r => codes.has(r.code));
@@ -141,5 +153,5 @@ export function resolveEmissions(latitude: number, longitude: number, state: str
   if (!regions.length) message = "No EPA subregion could be resolved from these coordinates. Enter a US building ZIP code to look up electricity-provider candidates.";
   if (regions.length > 1) message += " Multiple subregions match; select the applicable provider/subregion.";
   message += " Factors are annual average electricity CO₂ from eGRID2023, not hourly or future-year projections; natural gas combustion is separate.";
-  return { status: regions.length ? "ok" : "error", message, regions: regions.map(({ geometry: _, ...region }) => region), utilities, method: zip ? "zip" : "coordinates", sourceUrl: EMISSIONS_SOURCE };
+  return { status: regions.length ? "ok" : "error", message, regions: regions.map(({ geometry: _, ...region }) => region), utilities, method: zip ? "zip" : "coordinates", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE };
 }
