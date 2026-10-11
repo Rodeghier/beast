@@ -1,7 +1,8 @@
 import type { ClimateRow } from "./csv";
+import { solarGains, type SolarLocation } from "./solar";
 
 export const SCHOOL_AREA = 150_000;
-export const MODEL_VERSION = "school-heat-balance-1.0";
+export const MODEL_VERSION = "building-solar-2.0";
 export const BTU_PER_WH = 3.412141633;
 const PRESSURE_PA = 101325;
 
@@ -11,7 +12,8 @@ export const DEFAULT_SCHOOL = {
   envelopeUa: 0.10, ceilingFt: 14, infiltrationAch: 0.15,
   ventilationPerson: 10, ventilationArea: 0.12,
   lightingW: 0.9, equipmentW: 0.6, sensiblePerson: 245, latentPerson: 155,
-  solarPeak: 4,
+  stories: 2, aspectRatio: 2, rotationDeg: 0, windowPercent: 25, shgc: 0.35, shadeFactor: 1,
+  roofU: 0.04, wallU: 0.06, solarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
 };
 export type SchoolAssumptions = typeof DEFAULT_SCHOOL;
 export type SchoolField = { key: keyof SchoolAssumptions; label: string; unit: string; min: number; max: number; step: number };
@@ -23,8 +25,8 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "setbackCoolingF", label: "Unoccupied cooling setpoint", unit: "°F", min: 60, max: 110, step: 1 },
     { key: "indoorRh", label: "Maximum indoor RH", unit: "%", min: 20, max: 70, step: 1 },
   ] },
-  { title: "School schedule · Monday–Friday", fields: [
-    { key: "people", label: "Students + staff at full occupancy", unit: "people", min: 0, max: 10000, step: 1 },
+  { title: "Occupancy schedule · Monday–Friday", fields: [
+    { key: "people", label: "People at full occupancy", unit: "people", min: 0, max: 10000, step: 1 },
     { key: "startHour", label: "Occupied hours start", unit: "hour · 0–23", min: 0, max: 23, step: 1 },
     { key: "endHour", label: "Occupied hours end (exclusive)", unit: "hour · 1–24", min: 1, max: 24, step: 1 },
     { key: "summerPercent", label: "June–August occupancy", unit: "% of full", min: 0, max: 100, step: 1 },
@@ -36,12 +38,24 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "ventilationPerson", label: "Outdoor air per occupant", unit: "CFM/person", min: 0, max: 50, step: 0.5 },
     { key: "ventilationArea", label: "Outdoor air per floor area", unit: "CFM/ft²", min: 0, max: 1, step: 0.01 },
   ] },
-  { title: "Internal and solar heat gains", fields: [
+  { title: "Internal heat gains", fields: [
     { key: "lightingW", label: "Full lighting power", unit: "W/ft²", min: 0, max: 5, step: 0.1 },
     { key: "equipmentW", label: "Full equipment power", unit: "W/ft²", min: 0, max: 10, step: 0.1 },
     { key: "sensiblePerson", label: "Sensible heat per occupant", unit: "BTU/hr·person", min: 0, max: 1000, step: 5 },
     { key: "latentPerson", label: "Latent heat per occupant", unit: "BTU/hr·person", min: 0, max: 1000, step: 5 },
-    { key: "solarPeak", label: "Assumed peak solar gain / floor area", unit: "BTU/hr·ft²", min: 0, max: 30, step: 0.5 },
+  ] },
+  { title: "Solar gains · rectangular building", fields: [
+    { key: "stories", label: "Number of stories", unit: "equal floor plates", min: 1, max: 30, step: 1 },
+    { key: "aspectRatio", label: "Plan length / width", unit: "length runs east–west at 0° rotation", min: 0.2, max: 5, step: 0.1 },
+    { key: "rotationDeg", label: "Building rotation", unit: "degrees clockwise from north-facing façade", min: 0, max: 360, step: 5 },
+    { key: "windowPercent", label: "Window-to-wall area", unit: "% on each façade", min: 0, max: 95, step: 1 },
+    { key: "shgc", label: "Glazing SHGC", unit: "fraction of incident solar gain", min: 0, max: 1, step: 0.01 },
+    { key: "shadeFactor", label: "Window solar multiplier", unit: "0 = fully shaded; 1 = unshaded", min: 0, max: 1, step: 0.05 },
+    { key: "roofU", label: "Roof U-value for solar correction", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
+    { key: "wallU", label: "Opaque wall U-value for solar correction", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
+    { key: "solarAbsorptance", label: "Roof / wall solar absorptance", unit: "fraction", min: 0, max: 1, step: 0.05 },
+    { key: "outdoorFilm", label: "Exterior surface film coefficient", unit: "BTU/hr·ft²·°F", min: 1, max: 10, step: 0.1 },
+    { key: "groundReflectance", label: "Ground solar reflectance", unit: "fraction", min: 0, max: 1, step: 0.05 },
   ] },
 ];
 
@@ -49,7 +63,7 @@ export function validateSchool(a: SchoolAssumptions): string | null {
   for (const field of SCHOOL_FIELDS.flatMap(g => g.fields)) {
     const value = a[field.key];
     if (!Number.isFinite(value) || value < field.min || value > field.max) return `${field.label} must be between ${field.min} and ${field.max}.`;
-    if (["people", "startHour", "endHour"].includes(field.key) && !Number.isInteger(value)) return `${field.label} must be a whole number.`;
+    if (["people", "startHour", "endHour", "stories"].includes(field.key) && !Number.isInteger(value)) return `${field.label} must be a whole number.`;
   }
   if (a.heatingF >= a.coolingF || a.setbackHeatingF >= a.setbackCoolingF) return "Each heating setpoint must be lower than its cooling setpoint.";
   if (a.setbackHeatingF > a.heatingF || a.setbackCoolingF < a.coolingF) return "Unoccupied heating must be at or below occupied heating, and unoccupied cooling at or above occupied cooling.";
@@ -107,9 +121,10 @@ export type SchoolRow = ClimateRow & {
   ventilationCfm: number; infiltrationCfm: number;
   heatBalance: number | null; coolBalance: number | null; heatTransfer: number;
   freeFloatF: number | null; heatingSetpointF: number; coolingSetpointF: number;
+  solarGain: number | null; windowSolarGain: number | null; opaqueSolarGain: number | null; solarStatus: string;
 };
 
-export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions): SchoolRow[] {
+export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: SolarLocation | null): SchoolRow[] {
   const error = validateSchool(a); if (error) throw new Error(error);
   const infiltration = a.infiltrationAch * SCHOOL_AREA * a.ceilingFt / 60;
   const ua = a.envelopeUa * SCHOOL_AREA;
@@ -127,17 +142,14 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions): School
     const coolSetpoint = occupied ? a.coolingF : a.setbackCoolingF;
     const tempF = row.temperature !== null && Number.isFinite(row.temperature) && row.temperature >= -100 && row.temperature <= 100 ? fahrenheit(row.temperature) : null;
     const heatTransfer = ua + 1.08 * outdoorAirCfm;
+    const solar = solarGains(row, a, SCHOOL_AREA, site);
     const base: SchoolRow = { ...row, temperatureF: tempF, dewPointF: dewPointF(row.temperature, row.humidity), sensibleCooling: null, latentCooling: null, totalCooling: null, heating: null, occupied, occupants, outdoorAirCfm,
-      ventilationCfm: ventilation, infiltrationCfm: infiltration, heatBalance: null, coolBalance: null, heatTransfer, freeFloatF: null, heatingSetpointF: heatSetpoint, coolingSetpointF: coolSetpoint };
-    if (tempF === null) return base;
+      ventilationCfm: ventilation, infiltrationCfm: infiltration, heatBalance: null, coolBalance: null, heatTransfer, freeFloatF: null, heatingSetpointF: heatSetpoint, coolingSetpointF: coolSetpoint,
+      solarGain: solar.total, windowSolarGain: solar.windows, opaqueSolarGain: solar.opaque, solarStatus: solar.status };
+    if (tempF === null || solar.total === null) return base;
     const lighting = SCHOOL_AREA * a.lightingW * (0.10 + 0.90 * fraction) * BTU_PER_WH;
     const equipment = SCHOOL_AREA * a.equipmentW * (0.25 + 0.75 * fraction) * BTU_PER_WH;
-    // User-specified solar allowance, not measured irradiance. Average of the
-    // sine profile over each hourly bin (06:00–18:00 local standard time).
-    const from = Math.max(6, row.hour), to = Math.min(18, row.hour + 1);
-    const solarFraction = to > from ? 12 / Math.PI * (Math.cos(Math.PI * (from - 6) / 12) - Math.cos(Math.PI * (to - 6) / 12)) : 0;
-    const solar = SCHOOL_AREA * a.solarPeak * solarFraction;
-    const gains = lighting + equipment + occupants * a.sensiblePerson + solar;
+    const gains = lighting + equipment + occupants * a.sensiblePerson + solar.total;
     const sensible = Math.max(0, heatTransfer * (tempF - coolSetpoint) + gains);
     const heating = Math.max(0, heatTransfer * (heatSetpoint - tempF) - gains);
     // A thermostat deadband: estimate the equilibrium zone temperature, then
@@ -173,12 +185,14 @@ export function summarizeLoads(rows: SchoolRow[]) {
   return { sensible, total, heating, daily: [...daily.values()], completeHours };
 }
 
-export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: string, zone: string): string {
+export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: string, zone: string, site?: SolarLocation | null): string {
   const metadata: Record<string, string | number> = {
     Model: MODEL_VERSION, Location: location, Time: zone, Floor_area_ft2: SCHOOL_AREA,
     Basis: "Illustrative single-zone hourly steady-state load estimate; cooling negative; heating positive; total cooling includes sensible cooling",
     Schedule: "Mon-Fri; June-Aug reduced occupancy; no holidays; fixed local standard time; no Feb 29",
-    Limitations: "Assumed solar profile; no thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification; standard sea-level air",
+    Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and steady-state sol-air correction; no thermal lag or longwave sky correction",
+    Solar_latitude: site?.latitude ?? "", Solar_longitude: site?.longitude ?? "", Solar_UTC_offset: site?.utcOffset ?? "",
+    Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; roof/wall U-values affect solar correction only; entered total envelope UA controls air-temperature conduction",
     Dew_point: "ASHRAE ice/water saturation convention; frost point below freezing; blank at RH=0 or missing input",
     ...Object.fromEntries(SCHOOL_FIELDS.flatMap(g => g.fields.map(f => [`${f.label} (${f.unit})`, a[f.key]]))),
   };
@@ -186,7 +200,7 @@ export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: str
   const line = (values: unknown[]) => values.map(escape).join(",");
   const precision = (v: number | null) => v === null ? null : Number(v.toFixed(4));
   return [line(Object.keys(metadata)), line(Object.values(metadata)), "",
-    line(["Date", "Time_local", "Air_temperature_F", "Dew_point_F", "Sensible_cooling_BTU_hr", "Latent_cooling_BTU_hr", "Total_cooling_BTU_hr", "Heating_BTU_hr", "Occupied", "Occupants", "Outdoor_air_including_infiltration_CFM"]),
-    ...rows.map(r => line([dateLabel(r), timeLabel(r), precision(r.temperatureF), precision(r.dewPointF), precision(r.sensibleCooling), precision(r.latentCooling), precision(r.totalCooling), precision(r.heating), r.occupied ? "Yes" : "No", r.occupants, precision(r.outdoorAirCfm)])),
+    line(["Date", "Time_local", "Air_temperature_F", "Dew_point_F", "Sensible_cooling_BTU_hr", "Latent_cooling_BTU_hr", "Total_cooling_BTU_hr", "Heating_BTU_hr", "Occupied", "Occupants", "Outdoor_air_including_infiltration_CFM", "DHI_W_m2", "DNI_W_m2", "GHI_W_m2", "Solar_gain_BTU_hr", "Window_solar_gain_BTU_hr", "Opaque_solar_gain_BTU_hr", "Solar_status"]),
+    ...rows.map(r => line([dateLabel(r), timeLabel(r), precision(r.temperatureF), precision(r.dewPointF), precision(r.sensibleCooling), precision(r.latentCooling), precision(r.totalCooling), precision(r.heating), r.occupied ? "Yes" : "No", r.occupants, precision(r.outdoorAirCfm), r.dhi, r.dni, r.ghi, precision(r.solarGain), precision(r.windowSolarGain), precision(r.opaqueSolarGain), r.solarStatus])),
   ].join("\r\n");
 }

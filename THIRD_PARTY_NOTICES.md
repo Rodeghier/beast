@@ -14,6 +14,18 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+# EPA Power Profiler / eGRID data
+
+`lib/data/egrid-2023.json` and `lib/data/egrid-zip-2023.json` contain selected data from U.S. EPA Power Profiler, pinned to commit `f42a47a958325f134a11e609eaa6612893ad3140`, eGRID2023 revision 2. Original source URLs and SHA-256 hashes are embedded in each file. EPA does not endorse this application.
+
+Source: https://github.com/USEPA/power-profiler
+
+Dataset documentation: https://www.epa.gov/egrid/summary-data
+
+Source terms: https://github.com/USEPA/power-profiler/blob/f42a47a958325f134a11e609eaa6612893ad3140/LICENSE.md
+
+The complete MIT license is preserved at `public/references/epa-power-profiler-license.txt`.
+
 # NLR ComStock commercial heat-pump RTU data
 
 `lib/data/rtu/comstock-standard.json` is an unmodified copy of ComStock™ standard-performance heat-pump rooftop lookup data, pinned to commit `f25ac375311acb2448b4ee1665a8680e92abd24b` from NatLabRockies/ComStock. COP regressions, airflow modifiers, part-load data, and control references are attributed to that source. Full source details and the file hash are in `lib/data/rtu/provenance.json`.

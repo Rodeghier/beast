@@ -1,4 +1,4 @@
-export type ClimateRow = { year: number; month: number; day: number; hour: number; minute: number; temperature: number | null; humidity: number | null };
+export type ClimateRow = { year: number; month: number; day: number; hour: number; minute: number; temperature: number | null; humidity: number | null; dhi: number | null; dni: number | null; ghi: number | null };
 export type ClimateData = { metadata: Record<string, string>; rows: ClimateRow[] };
 
 // Quoted fields can contain commas, escaped quotes, and embedded newlines.
@@ -31,9 +31,14 @@ export function parseClimateCsv(csv: string, requestedYear: number): ClimateData
   const indices = ["year", "month", "day", "hour", "minute"].map(k => headers.indexOf(k));
   const ti = headers.findIndex(h => h.includes("temperature"));
   const hi = headers.findIndex(h => h.includes("relativehumidity"));
+  const solarIndices = ["dhi", "dni", "ghi"].map(key => headers.findIndex(h => h === key || h === `${key}wm2`));
   if (ti < 0 || hi < 0) throw new Error("The CSV is missing temperature or relative humidity.");
   const metadata: Record<string, string> = {};
   if (headerIndex >= 2) records[0].forEach((k, i) => { if (k) metadata[k] = records[1][i] ?? ""; });
+  for (const key of ["DHI Units", "DNI Units", "GHI Units"]) {
+    const unit = metadata[key]?.toLowerCase().replace(/[²^\s]/g, m => m === "²" ? "2" : "");
+    if (unit && unit !== "w/m2") throw new Error(`Unsupported ${key}: expected W/m².`);
+  }
   const rawNumber = (value: string | undefined) => !value?.trim() || /^(na|n\/a|nan|null|-+|none)$/i.test(value) ? null : Number(value);
   const rows = records.slice(headerIndex + 1).map((r, i): ClimateRow => {
     const values = indices.map(index => rawNumber(r[index]));
@@ -41,7 +46,11 @@ export function parseClimateCsv(csv: string, requestedYear: number): ClimateData
     const [year, month, day, hour, minute] = values as number[];
     if (year !== requestedYear || month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute !== 0 || new Date(Date.UTC(year, month - 1, day)).getUTCMonth() !== month - 1) throw new Error(`The CSV has an unexpected timestamp on data row ${i + 1}.`);
     const t = rawNumber(r[ti]); const h = rawNumber(r[hi]);
-    return { year, month, day, hour, minute, temperature: t !== null && Number.isFinite(t) && t > -273.15 ? t : null, humidity: h !== null && Number.isFinite(h) && h >= 0 && h <= 100 ? h : null };
+    const [dhi, dni, ghi] = solarIndices.map(index => {
+      const v = index < 0 ? null : rawNumber(r[index]);
+      return v !== null && Number.isFinite(v) && v >= 0 ? v : null;
+    });
+    return { year, month, day, hour, minute, temperature: t !== null && Number.isFinite(t) && t > -273.15 ? t : null, humidity: h !== null && Number.isFinite(h) && h >= 0 && h <= 100 ? h : null, dhi, dni, ghi };
   });
   if (!rows.length) throw new Error("NLR returned a CSV without hourly records.");
   return { metadata, rows };

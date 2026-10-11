@@ -17,8 +17,8 @@ export const FURNACE_SOURCE = `https://github.com/NatLabRockies/ComStock/blob/${
 export const RESISTANCE_SOURCE = "https://docs.nlr.gov/docs/fy24osti/86601.pdf";
 export const HEATING_OPTIONS: { id: HeatingType; name: string; description: string; source: string }[] = [
   ...Object.entries(FAMILIES).map(([id, f]) => ({ id: id as PerformanceFamily, name: f.name, description: f.description, source: familySource(id as PerformanceFamily) })),
-  { id: "gas", name: "Gas furnace · 80%", description: "ComStock baseline gas-coil efficiency: 80%. Heating bank sized separately to the year's peak coil heat need plus 10%, in 10,000 BTU/hr per-unit output increments. Gas is reported in therms.", source: FURNACE_SOURCE },
-  { id: "resistance", name: "Electric resistance · COP 1", description: "ComStock electric-coil model: COP 1. Heating bank sized separately to peak coil heat need plus 10%, in 10,000 BTU/hr per-unit output increments.", source: RESISTANCE_SOURCE },
+  { id: "gas", name: "Gas furnace · 80%", description: "ComStock baseline gas-coil efficiency: 80%. Heating bank sized separately to the year's peak coil heat need with no margin, in 10,000 BTU/hr per-unit output increments. Gas is reported in therms.", source: FURNACE_SOURCE },
+  { id: "resistance", name: "Electric resistance · COP 1", description: "ComStock electric-coil model: COP 1. Heating bank sized separately to peak coil heat need with no margin, in 10,000 BTU/hr per-unit output increments.", source: RESISTANCE_SOURCE },
 ];
 export const COOLING_OPTIONS: { id: CoolingType; name: string; description: string }[] = [
   { id: "standard", name: "Standard DX cooling", description: "Highest cooling stage from the standard HP-RTU family." },

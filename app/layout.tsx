@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Climate Table · School heating & cooling loads",
-  description: "Explore hourly temperature, dew point, and simulated heating and cooling loads for a 150,000 ft² K–12 school by US city, state, and year.",
+  title: "Climate Table · HVAC energy comparison",
+  description: "Hourly building loads, equipment energy use, and unmet heating and cooling by location and year.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

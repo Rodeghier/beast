@@ -3,7 +3,7 @@ import lab from "./data/rtu/comstock-lab.json";
 import variable from "./data/rtu/comstock-variable.json";
 import cold from "./data/rtu/comstock-cold.json";
 import { FAMILIES, type PerformanceFamily } from "./equipment-catalog";
-import { celsius, fahrenheit, humidityRatio, saturationPressure } from "./school";
+import { celsius, fahrenheit, humidityRatio } from "./school";
 
 export const CURVE_COMMIT = "f25ac375311acb2448b4ee1665a8680e92abd24b";
 export const CURVE_URL = `https://github.com/NatLabRockies/ComStock/blob/${CURVE_COMMIT}/resources/measures/upgrade_hvac_add_heat_pump_rtu/resources/performance_maps_hprtu_std.json`;
@@ -12,6 +12,8 @@ export const BTU_PER_KWH = 3412.141633;
 export const REFERENCE_COOLING_CFM_PER_TON = 404;
 export const REFERENCE_HEATING_CFM_PER_TON = 420;
 export const HEATING_LOCKOUT_F = 0;
+export const RATED_SHR = 0.77;
+export const SHR_SOURCE = "https://energyplus.readthedocs.io/en/stable/guides/engineering-reference/15.2-coils.html";
 
 type Curve = Record<string, unknown> & { name: string; form?: string };
 const curves = new Map<string, Curve>();
@@ -99,8 +101,72 @@ export function coolingFactors(enteringWbC: number, outdoorC: number, cfmPerTon:
   return { capacity: capT.value * capF.value, eir: eirT.value * eirF.value, bounded: capT.bounded || eirT.bounded || capF.bounded || eirF.bounded };
 }
 
+const enthalpy = (t: number, w: number) => 1.006 * t + w * (2501 + 1.86 * t); // kJ/kg dry air
+const massPerTon = (t: number, w: number, cfm: number) => 101325 / (287.042 * (t + 273.15) * (1 + 1.607858 * w)) * cfm * 0.00047194745;
+function saturatedTemperature(h: number) {
+  let lo = -100, hi = 90;
+  for (let i = 0; i < 32; i++) {
+    const t = (lo + hi) / 2;
+    if (enthalpy(t, humidityRatio(t, 100)!) > h) hi = t; else lo = t;
+  }
+  return (lo + hi) / 2;
+}
+const bypassCalibration = new Map<PerformanceFamily, { ao: number; bf: number }>();
+export function ratedBypassFactor(family: PerformanceFamily = "standard") {
+  let rated = bypassCalibration.get(family);
+  if (rated) return rated;
+  // Highest-stage source SHR at 80 F DB / 67 F WB, 95 F outdoors.
+  const db = celsius(80), wb = celsius(67), ws = humidityRatio(wb, 100)!;
+  const w = ((2501 - 2.326 * wb) * ws - 1.006 * (db - wb)) / (2501 + 1.86 * db - 4.186 * wb);
+  const hin = enthalpy(db, w), cfm = FAMILIES[family].coolingReferenceCfm;
+  // Invert the ADP sensible/total enthalpy ratio, then infer the rated BF.
+  let lo = -30, hi = wb;
+  for (let i = 0; i < 40; i++) {
+    const t = (lo + hi) / 2, wa = humidityRatio(t, 100)!, ha = enthalpy(t, wa);
+    const shr = (enthalpy(db, wa) - ha) / (hin - ha);
+    if (shr > RATED_SHR) hi = t; else lo = t;
+  }
+  const adp = (lo + hi) / 2, mass = massPerTon(db, w, cfm);
+  // Calibrate to NOMINAL rated capacity, not the curve's rounded value at rating.
+  // This matters for the 365 CFM/ton family, whose rated bypass is near zero.
+  const q = 12000 / BTU_PER_KWH;
+  const bf = 1 - q / (mass * (hin - enthalpy(adp, humidityRatio(adp, 100)!)));
+  if (!(bf > 0 && bf < 1)) throw new Error(`Invalid rated coil bypass factor: ${family}, BF=${bf}, Q=${q}, mass=${mass}, ADP=${adp}`);
+  rated = { bf, ao: -mass * Math.log(bf) };
+  bypassCalibration.set(family, rated);
+  return rated;
+}
+
+// EnergyPlus-style steady-state apparatus-dew-point / bypass-factor method.
+// On-cycle SHR varies with actual mixed-air DB/W, mass flow and mapped total
+// capacity. Cycling changes runtime, not coil geometry; condensate re-evaporation
+// and transient latent degradation are not modeled.
+export function coolingOperatingPoint(db: number, w: number, outdoorC: number, cfmPerTon: number, family: PerformanceFamily = "standard") {
+  const mass = massPerTon(db, w, cfmPerTon), bf = Math.exp(-ratedBypassFactor(family).ao / mass);
+  function point(effectiveW: number) {
+    const f = coolingFactors(wetBulbC(db, effectiveW), outdoorC, cfmPerTon, family);
+    const hin = enthalpy(db, effectiveW);
+    const ha = hin - (12000 / BTU_PER_KWH * f.capacity) / (mass * (1 - bf));
+    const adpC = saturatedTemperature(ha), wa = humidityRatio(adpC, 100)!;
+    return { ...f, adpC, wa, shr: clamp((enthalpy(db, wa) - ha) / (hin - ha), 0, 1) };
+  }
+  let p = point(w);
+  const dry = p.wa >= w;
+  if (dry) {
+    // Wet-bulb capacity/EIR curves cease to apply below the dry-out point.
+    // Find the equivalent entering humidity at dry-out, at actual mass flow.
+    let lo = w, hi = humidityRatio(db, 100)!;
+    for (let i = 0; i < 24; i++) {
+      const trial = (lo + hi) / 2, candidate = point(trial);
+      if (candidate.wa > trial) lo = trial; else hi = trial;
+    }
+    p = point((lo + hi) / 2);
+  }
+  return { capacity: p.capacity, eir: p.eir, bounded: p.bounded, shr: dry ? 1 : p.shr, adpC: p.adpC, bypassFactor: bf, dry };
+}
+
 export function heatingFactors(enteringDbC: number, enteringWbC: number, outdoorC: number, outsideW: number, cfmPerTon: number, family: PerformanceFamily = "standard", lockoutF = HEATING_LOCKOUT_F) {
-  if (outdoorC < celsius(lockoutF)) return { capacity: 0, powerFactor: 0, defrostPowerFactor: 0, bounded: false, lockout: true };
+  if (outdoorC < celsius(lockoutF)) return { capacity: 0, powerFactor: 0, bounded: false, lockout: true };
   const boost = family === "cold" && outdoorC <= -8.33333;
   const stage = boost ? "boost" : "high";
   const capFraction = family === "cold" ? (boost ? 1.388985813 : 1.350190651) : 1;
@@ -112,21 +178,10 @@ export function heatingFactors(enteringDbC: number, enteringWbC: number, outdoor
   const eirT = family === "variable" ? polynomial("heat_eir_ft4", enteringDbC, outdoorC, family) : lookup(family === "cold" ? `h_eir_${stage}` : "h_eir_T", enteringDbC, outdoorC, family);
   const ff = cfmPerTon / FAMILIES[family].heatingReferenceCfm;
   const capF = polynomial(family === "variable" ? "heat_cap_ff1" : "h_cap_allstages_ff", ff, 0, family), eirF = polynomial(family === "variable" ? "heat_eir_ff1" : "h_eir_allstages_ff", ff, 0, family);
-  let cap = capT.value * capF.value * capFraction, powerFactor = cap * eirT.value * eirF.value / copFraction, defrostPowerFactor = 0;
-  let bounded = capT.bounded || eirT.bounded || capF.bounded || eirF.bounded;
-  if (outdoorC <= 4.444) {
-    const coilC = 0.82 * outdoorC - 8.589;
-    const pv = saturationPressure(coilC)!;
-    const coilW = 0.621945 * pv / (101325 - pv);
-    const delta = Math.max(1e-6, outsideW - coilW), time = delta / (delta + 0.01446);
-    const reverseCycle = 0.01 * time * (7.222 - outdoorC) / 1.01667;
-    cap = Math.max(0, cap * 0.875 * (1 - time) - reverseCycle * capFraction);
-    powerFactor *= 0.954 * (1 - time);
-    const defrost = polynomial("defrost_eir", enteringWbC, outdoorC, family);
-    defrostPowerFactor = defrost.value * time / 1.01667 * capFraction;
-    bounded ||= defrost.bounded;
-  }
-  return { capacity: cap, powerFactor, defrostPowerFactor, bounded, lockout: false };
+  const cap = capT.value * capF.value * capFraction, powerFactor = cap * eirT.value * eirF.value / copFraction;
+  const bounded = capT.bounded || eirT.bounded || capF.bounded || eirF.bounded;
+  // Source temperature effects remain; no added frost/defrost adjustments.
+  return { capacity: cap, powerFactor, bounded, lockout: false };
 }
 
 export function runtimeFraction(plr: number, mode: "cooling" | "heating", family: PerformanceFamily = "standard") {
@@ -138,15 +193,14 @@ export function runtimeFraction(plr: number, mode: "cooling" | "heating", family
 
 // Maximum HEATING output and electrical input at a specified operating point.
 // Neither capacity nor full-load power depends on the building's requested load.
-// Values include the modeled frost/defrost effects, but exclude the supply fan.
+// Values exclude defrost, crankcase heaters, and the supply fan.
 export function heatingOperatingPoint(count: number, tonsEach: number, enteringDbC: number, enteringWbC: number, outdoorC: number, outsideW: number, cfmPerTon: number, family: PerformanceFamily = "standard", lockoutF = HEATING_LOCKOUT_F) {
   const f = heatingFactors(enteringDbC, enteringWbC, outdoorC, outsideW, cfmPerTon, family, lockoutF);
   const ratedBtu = count * tonsEach * 12000, ratedKw = ratedBtu / BTU_PER_KWH;
   const capacityBtu = ratedBtu * f.capacity;
   const compressorKw = ratedKw * f.powerFactor / ratedCop(tonsEach, "heating");
-  const defrostKw = ratedKw * f.defrostPowerFactor;
-  const inputKw = compressorKw + defrostKw;
-  return { capacityBtu, compressorKw, defrostKw, inputKw,
+  const inputKw = compressorKw;
+  return { capacityBtu, compressorKw, inputKw,
     cop: inputKw > 0 && capacityBtu > 0 ? capacityBtu / (BTU_PER_KWH * inputKw) : null,
     bounded: f.bounded, lockout: f.lockout };
 }

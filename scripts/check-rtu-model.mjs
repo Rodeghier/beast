@@ -8,8 +8,8 @@ import ts from "typescript";
 
 const temp = mkdtempSync(join(tmpdir(), "rtu-model-"));
 const source = readFileSync(new URL("../lib/data/rtu/comstock-standard.json", import.meta.url), "utf8");
-for (const name of ["csv", "school", "equipment-catalog", "rtu-curves", "rtu", "equipment-comparison"]) {
-  let code = readFileSync(new URL(`../lib/${name}.ts`, import.meta.url), "utf8").replace('import source from "./data/rtu/comstock-standard.json";', `const source = ${source};`).replace(/from "\.\/(csv|school|rtu-curves|rtu|equipment-catalog)"/g, 'from "./$1.mjs"');
+for (const name of ["csv", "solar", "school", "equipment-catalog", "rtu-curves", "rtu", "equipment-comparison"]) {
+  let code = readFileSync(new URL(`../lib/${name}.ts`, import.meta.url), "utf8").replace('import source from "./data/rtu/comstock-standard.json";', `const source = ${source};`).replace(/from "\.\/(csv|solar|school|rtu-curves|rtu|equipment-catalog)"/g, 'from "./$1.mjs"');
   code = code.replace(/import (\w+) from "(\.\/data\/rtu\/[^"]+\.json)";/g, (_, variable, path) => `const ${variable} = ${readFileSync(new URL(`../lib/${path.slice(2)}`, import.meta.url), "utf8")};`);
   writeFileSync(join(temp, name + ".mjs"), ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText);
 }
@@ -17,7 +17,8 @@ try {
   const m = await import(pathToFileURL(join(temp, "rtu.mjs")).href), c = await import(pathToFileURL(join(temp, "rtu-curves.mjs")).href), s = await import(pathToFileURL(join(temp, "school.mjs")).href), csv = await import(pathToFileURL(join(temp, "csv.mjs")).href);
   const close = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) < tol, `${a} != ${b}`);
   const school = s.DEFAULT_SCHOOL, rtu = m.DEFAULT_RTU;
-  const row = (f, rh = 50, rest = {}) => ({ year: 2025, month: 1, day: 7, hour: 12, minute: 0, temperature: s.celsius(f), humidity: rh, ...rest });
+  const solar = await import(pathToFileURL(join(temp, "solar.mjs")).href);
+  const row = (f, rh = 50, rest = {}) => ({ year: 2025, month: 1, day: 7, hour: 12, minute: 0, temperature: s.celsius(f), humidity: rh, dhi: 0, dni: 0, ghi: 0, ...rest });
   assert.equal(createHash("sha256").update(source).digest("hex"), "1119708509b5b26cf41f41c2296412f3f1637e2407560c20abcca9799dd0a24b");
   close(c.lookup("c_cap_high_T", 19.44, 35).value, 1);
   close(c.lookup("h_cap_T", 21.11, -17.78).value, 0.3974);
@@ -36,11 +37,11 @@ try {
   close(c.runtimeFraction(0.5, "cooling"), 0.5 / 0.875); close(c.runtimeFraction(0, "heating"), 0); close(c.runtimeFraction(1, "heating"), 1);
   assert.ok(c.heatingFactors(21.11, 15, s.celsius(-1), 0.001, 404).lockout);
   assert.ok(c.heatingFactors(21.11, 15, s.celsius(0), 0.001, 404).capacity > 0);
-  const bare = { ...school, people: 0, infiltrationAch: 0, ventilationArea: 0, ventilationPerson: 0, lightingW: 0, equipmentW: 0, solarPeak: 0 };
+  const bare = { ...school, people: 0, infiltrationAch: 0, ventilationArea: 0, ventilationPerson: 0, lightingW: 0, equipmentW: 0, windowPercent: 0, solarAbsorptance: 0 };
   const equipment = m.equipmentFor(2, 25, rtu), fanKw = 50 * 404 * 0.5 / 1000;
   const coldRow = s.simulateSchool([row(-5, 0)], bare)[0], cold = m.simulateRtuHour(coldRow, equipment, rtu, bare);
   close(cold.deliveredHeating, 0); assert.ok(cold.lockout); close(cold.unmetHeating, coldRow.heating - fanKw * c.BTU_PER_KWH);
-  close(cold.electricity, fanKw + 2 * 60 * 2.5 ** 0.67 / 1000);
+  close(cold.electricity, fanKw);
   // A deliberately undersized unit at +17 F: shortfall must occur ABOVE
   // lockout, and the compressor must draw mapped full-load input, not the
   // electrical power that would be needed to satisfy the entire building load.
@@ -51,7 +52,7 @@ try {
   assert.equal(limited.heatingShortfallReason, "Heat demand exceeds available heating capacity");
   close(limited.deliveredHeating, limited.usableHeating); close(limited.runtime, 1);
   close(limited.unmetHeating, limited.heatingDemand - limited.availableHeating);
-  close(limited.compressorKwh + limited.defrostKwh, limited.heatingFullLoadKw);
+  close(limited.compressorKwh, limited.heatingFullLoadKw);
   close(limited.operatingCop, limited.heatingFullLoadCop);
   close(limitedLoad.heating, limited.fanHeatCredit + limited.deliveredHeating + limited.unmetHeating);
   // Doubling demand at the same operating point must NOT increase capacity or
@@ -75,17 +76,42 @@ try {
   assert.equal(mild.mode, "Fan only"); close(mild.electricity, fanKw); close(mild.sensibleDemand, 0);
   const hotRow = s.simulateSchool([row(95, 0)], bare)[0], hot = m.simulateRtuHour(hotRow, equipment, rtu, bare);
   close(hot.sensibleDemand, -(300000 + fanKw * c.BTU_PER_KWH)); // fan heat counted once
-  close(hot.sensibleDemand, hot.deliveredCooling * rtu.sensibleHeatRatio, 1e-5);
+  close(hot.sensibleDemand, hot.deliveredCooling * hot.coolingShr, 1e-5);
   close(hot.reheatKwh, 0); close(hot.unmetCooling, 0);
   const latentOnly = { ...bare, people: 1200, sensiblePerson: 0, latentPerson: 155 };
   const latent = m.simulateRtuHour(s.simulateSchool([row(72, 50)], latentOnly)[0], m.equipmentFor(10, 25, rtu), rtu, latentOnly);
-  assert.ok(latent.reheatKwh > 0); close(-latent.deliveredCooling * rtu.sensibleHeatRatio - latent.reheatKwh * c.BTU_PER_KWH, -latent.sensibleDemand, 1e-5);
+  assert.ok(latent.reheatKwh > 0); close(-latent.deliveredCooling * latent.coolingShr - latent.reheatKwh * c.BTU_PER_KWH, -latent.sensibleDemand, 1e-5);
   assert.equal(m.simulateRtuHour(s.simulateSchool([{ ...row(90), humidity: null }], school)[0], equipment, rtu, school).electricity, null);
   assert.ok(m.validateRtu({ ...rtu, fanWPerCfm: NaN }));
   const short = m.selectRtu(s.simulateSchool([row(75), { ...row(75), humidity: null }], school), school, rtu);
   assert.equal(short.summary.fullYear, false); assert.equal(short.summary.completeHours, 1);
   assert.equal(short.equipment.peakVentilationCfm, 30000); // 5250 CFM infiltration does not count
   const catalog = await import(pathToFileURL(join(temp, "equipment-catalog.mjs")).href);
+  // SHR calibration and off-design coil behavior (independent of sizing).
+  const ratedDb = s.celsius(80), ratedWb = s.celsius(67), ratedWs = s.humidityRatio(ratedWb, 100);
+  const ratedW = ((2501 - 2.326 * ratedWb) * ratedWs - 1.006 * (ratedDb - ratedWb)) / (2501 + 1.86 * ratedDb - 4.186 * ratedWb);
+  for (const [family, definition] of Object.entries(catalog.FAMILIES)) {
+    const rated = c.coolingOperatingPoint(ratedDb, ratedW, 35, definition.coolingReferenceCfm, family);
+    close(rated.shr, .77, .002); // source curve values are not forced to unity at rating
+    assert.ok(rated.bypassFactor > 0 && rated.bypassFactor < .5);
+    const dry = c.coolingOperatingPoint(26, s.humidityRatio(26, 10), 35, 404, family);
+    const wet = c.coolingOperatingPoint(26, s.humidityRatio(26, 70), 35, 404, family);
+    assert.equal(dry.shr, 1); assert.equal(dry.dry, true);
+    assert.ok(wet.shr > 0 && wet.shr < .77); assert.equal(wet.dry, false);
+    const highFlow = c.coolingOperatingPoint(ratedDb, ratedW, 35, 550, family);
+    const lowFlow = c.coolingOperatingPoint(ratedDb, ratedW, 35, 300, family);
+    assert.ok(highFlow.bypassFactor > lowFlow.bypassFactor);
+    assert.ok(highFlow.shr > lowFlow.shr);
+    // No explicit defrost power or humidity-driven heating capacity penalty.
+    const a = c.heatingOperatingPoint(1, 25, 21.11, 8, -5, .001, 404, family);
+    const b = c.heatingOperatingPoint(1, 25, 21.11, 18, -5, .004, 404, family);
+    close(a.capacityBtu, b.capacityBtu); close(a.inputKw, b.inputKw);
+    assert.equal(a.inputKw, a.compressorKw);
+    assert.equal(a.defrostKw, undefined);
+  }
+  assert.equal(rtu.coolingMarginPercent, undefined);
+  assert.equal(cold.crankcaseKwh, undefined);
+  assert.equal(cold.defrostKwh, undefined);
   const comp = await import(pathToFileURL(join(temp, "equipment-comparison.mjs")).href);
   const manifest = JSON.parse(readFileSync(new URL("../docs/equipment-sources.json", import.meta.url), "utf8"));
   for (const entry of manifest.files.filter(f => f.family)) {
@@ -126,38 +152,40 @@ try {
   assert.ok(c.heatingOperatingPoint(1,25,21,15,s.celsius(-11),.001,404,"cold",-10).lockout);
   const fixture = process.argv[2];
   if (fixture) {
-    const climate = csv.parseClimateCsv(readFileSync(fixture, "utf8"), 2025), loads = s.simulateSchool(climate.rows, school);
+    const climate = csv.parseClimateCsv(readFileSync(fixture, "utf8"), 2025), loads = s.simulateSchool(climate.rows, school, solar.solarLocation(climate.metadata));
     const t0 = performance.now(), result = m.selectRtu(loads, school, rtu);
     const elapsed = performance.now() - t0;
     assert.ok(result.equipment); assert.equal(result.rows.length, 8760); assert.equal(result.summary.fullYear, true); assert.equal(result.summary.unmetCoolingHours, 0);
     const eq = result.equipment;
     assert.ok(eq.outdoorCapacityCfm >= 30000); assert.ok(eq.outdoorCapacityCfm < 35000 || eq.count > 12);
     for (const r of result.rows) {
-      for (const k of ["electricity", "compressorKwh", "fanKwh", "defrostKwh", "crankcaseKwh", "reheatKwh", "unmetHeating", "unmetCooling", "deliveredHeating"]) assert.ok(Number.isFinite(r[k]) && r[k] >= -1e-6, `${k}: ${r[k]}`);
-      close(r.electricity, r.compressorKwh + r.fanKwh + r.defrostKwh + r.crankcaseKwh + r.reheatKwh);
+      for (const k of ["electricity", "compressorKwh", "fanKwh", "reheatKwh", "unmetHeating", "unmetCooling", "deliveredHeating"]) assert.ok(Number.isFinite(r[k]) && r[k] >= -1e-6, `${k}: ${r[k]}`);
+      close(r.electricity, r.compressorKwh + r.fanKwh + r.reheatKwh);
       close(r.heatingDemand, r.deliveredHeating + r.unmetHeating, 1e-5);
       close(r.unmetHeating, Math.max(0, r.heatingDemand - r.usableHeating));
       assert.ok(r.deliveredHeating <= r.availableHeating + 1e-6);
       if (r.heatingFullLoadCop !== null) close(r.availableHeating, r.heatingFullLoadKw * c.BTU_PER_KWH * r.heatingFullLoadCop, 1e-5);
-      if (r.operatingCop !== null) close(r.deliveredHeating - r.deliveredCooling, r.operatingCop * c.BTU_PER_KWH * (r.compressorKwh + r.defrostKwh), 1e-5);
-      if (r.deliveredCooling < 0) assert.ok(r.availableCooling + 1 >= -r.deliveredCooling * 1.1);
+      if (r.operatingCop !== null) close(r.deliveredHeating - r.deliveredCooling, r.operatingCop * c.BTU_PER_KWH * (r.compressorKwh), 1e-5);
+      if (r.deliveredCooling < 0) assert.ok(r.availableCooling + 1 >= -r.deliveredCooling);
       assert.ok(r.runtime >= 0 && r.runtime <= 1); assert.ok(r.outdoorFraction <= 0.25);
     }
-    close(result.summary.electricity, result.summary.compressor + result.summary.fan + result.summary.defrost + result.summary.crankcase + result.summary.reheat, 1e-5);
+    close(result.summary.electricity, result.summary.compressor + result.summary.fan + result.summary.reheat, 1e-5);
     // Independently reject every smaller-count/size arrangement using hourly
     // available capacity vs demand, not the selection loop itself.
     for (let n = 1; n <= eq.count; n++) for (const tons of m.UNIT_SIZES) {
       if (n === eq.count && tons >= eq.tonsEach) continue;
       const candidate = m.equipmentFor(n, tons, rtu);
       if (candidate.outdoorCapacityCfm < 30000) continue;
-      assert.ok(loads.some(row => { const r = m.simulateRtuHour(row, candidate, rtu, school); return r.availableCooling > 0 && r.availableCooling + 0.01 < Math.max(-r.sensibleDemand / 0.77, -r.latentDemand / 0.23) * 1.1; }));
+      assert.ok(loads.some(row => { const r = m.simulateRtuHour(row, candidate, rtu, school); return r.availableCooling > 0 && (r.availableCooling * r.coolingShr + 0.01 < -r.sensibleDemand || r.availableCooling * (1 - r.coolingShr) + 0.01 < -r.latentDemand); }));
     }
     const exported = m.rtuCsv(loads, school, result, rtu, 'Madison, "WI"', "UTC-6"), parsed = csv.parseCsv(exported);
     assert.equal(parsed.length, 8763); assert.equal(parsed[0].length, parsed[1].length); assert.equal(parsed[2].length, parsed.at(-1).length);
     const energyIdx = parsed[2].indexOf("RTU_electricity_kWh"), unmetIdx = parsed[2].indexOf("Unmet_heating_BTU_hr");
     assert.ok(energyIdx > 0 && unmetIdx > 0); close(Number(parsed[3][energyIdx]), result.rows[0].electricity, 1e-6);
     for (const key of ["Usable_heating_capacity_BTU_hr", "Full_load_heating_electric_input_kW", "Full_load_electric_heating_COP", "Operating_electric_coil_COP", "Gas_input_therms", "Primary_resistance_heating_kWh", "Heating_shortfall_reason"]) assert.ok(parsed[2].includes(key));
-    close(result.summary.electricity, 1712593.666284107, .001); // original standard case remains unchanged
+    assert.ok(result.summary.coolingShrMax - result.summary.coolingShrMin > 0.05);
+    assert.ok(parsed[2].includes("Operating_cooling_SHR"));
+    assert.ok(!parsed[2].includes("Defrost_kWh") && !parsed[2].includes("Crankcase_kWh"));
     const comparisons = [];
     for (const heating of catalog.HEATING_OPTIONS.map(o => o.id)) {
       for (const cooling of catalog.COOLING_OPTIONS.map(o => o.id)) {
@@ -165,9 +193,13 @@ try {
         const comparison = m.selectRtu(loads, school, rtu, system);
         assert.ok(comparison.equipment); assert.equal(comparison.summary.fullYear, true);
         assert.equal(comparison.summary.unmetCoolingHours, 0);
+        if (!catalog.isHeatPump(heating)) {
+          const peakNeed = Math.max(...comparison.rows.map(r => r.heatingDemand));
+          assert.equal(comparison.equipment.heatingBankBtuEach, Math.ceil(peakNeed / comparison.equipment.count / 10000) * 10000);
+        }
         for (const r of comparison.rows) {
           for (const key of ["electricity", "gasTherms", "directHeatKwh", "unmetHeating", "availableHeating"]) assert.ok(Number.isFinite(r[key]) && r[key] >= 0, `${heating}/${cooling} ${key}: ${r[key]}`);
-          close(r.electricity, r.fanKwh + r.compressorKwh + r.defrostKwh + r.crankcaseKwh + r.reheatKwh + r.directHeatKwh, 1e-5);
+          close(r.electricity, r.fanKwh + r.compressorKwh + r.reheatKwh + r.directHeatKwh, 1e-5);
           close(r.heatingDemand, r.deliveredHeating + r.unmetHeating, 1e-5);
           if (heating === "gas") close(r.deliveredHeating, r.gasTherms * 100000 * .8, 1e-5);
           if (heating === "resistance") close(r.deliveredHeating, r.directHeatKwh * c.BTU_PER_KWH, 1e-5);
@@ -185,7 +217,7 @@ try {
     assert.equal(summaryCsv.length, 3); assert.equal(summaryCsv[0].length, summaryCsv[2].length);
     if (process.argv[5]) writeFileSync(process.argv[5], JSON.stringify({ model: m.RTU_VERSION, location: "Madison, WI", year: 2025, cases: comparisons }, null, 2));
     console.log(JSON.stringify({ equipmentCases: comparisons.map(c => ({ heating: c.system.heating, cooling: c.system.cooling, count: c.equipment.count, electricity: Math.round(c.summary.electricity), gasTherms: Math.round(c.summary.gasTherms), unmetHours: c.summary.unmetHeatingHours })) }));
-    const criticalIndex = result.rows.reduce((best, r, i) => { const utilization = x => x.availableCooling > 0 ? Math.max(-x.sensibleDemand / rtu.sensibleHeatRatio, -x.latentDemand / (1 - rtu.sensibleHeatRatio)) / x.availableCooling : 0; return utilization(r) > utilization(result.rows[best]) ? i : best; }, 0);
+    const criticalIndex = result.rows.reduce((best, r, i) => { const utilization = x => x.availableCooling > 0 ? Math.max(-x.sensibleDemand / x.coolingShr, x.coolingShr === 1 ? 0 : -x.latentDemand / (1 - x.coolingShr)) / x.availableCooling : 0; return utilization(r) > utilization(result.rows[best]) ? i : best; }, 0);
     const critical = { weather: climate.rows[criticalIndex], school: loads[criticalIndex], rtu: result.rows[criticalIndex] };
     const modelSummary = { critical, location: "Madison, WI", year: 2025, model: m.RTU_VERSION, equipment: eq, summary: result.summary, sample: result.rows[0], selectionMilliseconds: Math.round(elapsed) };
     console.log(JSON.stringify(modelSummary));

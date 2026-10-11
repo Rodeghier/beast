@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const email = config.NLR_EMAIL || process.env.NLR_EMAIL;
   if (!key || !email) return Response.json({ error: "The climate data connection is not configured. Please contact the site owner." }, { status: 503 });
   const url = new URL("https://developer.nlr.gov/api/climate/ncdb/v2/climate/sup3rcc-conus-ecearth3cc-ssp245-r1i1p1f1-v0-2-2-download.csv");
-  url.search = new URLSearchParams({ api_key: key, names: String(year), leap_day: "false", interval: "60", utc: "false", full_name: config.NLR_FULL_NAME || process.env.NLR_FULL_NAME || "", email, affiliation: config.NLR_AFFILIATION || process.env.NLR_AFFILIATION || "", mailing_list: "false", reason: "Academic", attributes: "temperature_2m,relativehumidity_2m", wkt: `POINT(${lon} ${lat})` }).toString();
+  url.search = new URLSearchParams({ api_key: key, names: String(year), leap_day: "false", interval: "60", utc: "false", full_name: config.NLR_FULL_NAME || process.env.NLR_FULL_NAME || "", email, affiliation: config.NLR_AFFILIATION || process.env.NLR_AFFILIATION || "", mailing_list: "false", reason: "Academic", attributes: "temperature_2m,relativehumidity_2m,dhi,dni,ghi", wkt: `POINT(${lon} ${lat})` }).toString();
   const started = Date.now();
   let phase = "preparing";
   const signal = AbortSignal.timeout(150000);

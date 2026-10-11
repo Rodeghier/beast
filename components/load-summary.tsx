@@ -12,7 +12,7 @@ const NAMES = { heating: "Heating", sensibleCooling: "Sensible cooling", totalCo
 export function LoadSummary({ rows }: { rows: SchoolRow[] }) {
   const summary = useMemo(() => summarizeLoads(rows), [rows]);
   const peaks = [{ label: "Peak sensible cooling", peak: summary.sensible, className: "cool-label" }, { label: "Peak total cooling", peak: summary.total, className: "total-label" }, { label: "Peak heating", peak: summary.heating, className: "heat-label" }];
-  return <section className="load-summary" aria-label="School load results">
+  return <section className="load-summary" aria-label="Building load results">
     <div className="peak-grid">{peaks.map(({ label, peak, className }) => <div className={`peak-card ${className}`} key={label}><h3>{label}</h3><div><strong>{formatLoad(peak?.value ?? null)}</strong><span>BTU/hr</span></div><p>{peak ? peak.value === 0 ? "No load in available hours" : `${peak.timestamp} · local` : "No valid hours"}</p></div>)}</div>
     <div className="chart-heading"><div><h3>Daily peak hourly loads</h3><p>Each point is that day’s largest load in each category. Peaks can occur at different hours.</p></div><span>{summary.completeHours.toLocaleString()} complete hours</span></div>
     <div className="chart-legend">{Object.entries(NAMES).map(([key, name]) => <span key={key}><i style={{ background: COLORS[key as keyof typeof COLORS] }}/>{name}</span>)}</div>

@@ -8,17 +8,50 @@ import ts from "typescript";
 // Exercise the actual TypeScript implementation without another dependency.
 const temp = mkdtempSync(join(tmpdir(), "school-model-"));
 async function moduleFrom(file) {
-  const output = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
+  const output = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8").replace('from "./solar"', 'from "./solar.mjs"'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
   const target = join(temp, file.split("/").pop().replace(/\.ts$/, ".mjs"));
   const { writeFileSync } = await import("node:fs"); writeFileSync(target, output);
   return import(pathToFileURL(target).href);
 }
 try {
+  const solar = await moduleFrom("lib/solar.ts");
   const m = await moduleFrom("lib/school.ts");
   const { parseClimateCsv, parseCsv } = await moduleFrom("lib/csv.ts");
   const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} != ${expected}`);
-  const row = (temperature, humidity = 50, rest = {}) => ({ year: 2025, month: 1, day: 7, hour: 12, minute: 0, temperature, humidity, ...rest });
-  const bare = { ...m.DEFAULT_SCHOOL, people: 0, infiltrationAch: 0, ventilationArea: 0, ventilationPerson: 0, lightingW: 0, equipmentW: 0, solarPeak: 0 };
+  const row = (temperature, humidity = 50, rest = {}) => ({ year: 2025, month: 1, day: 7, hour: 12, minute: 0, temperature, humidity, dhi: 0, dni: 0, ghi: 0, ...rest });
+  const bare = { ...m.DEFAULT_SCHOOL, people: 0, infiltrationAch: 0, ventilationArea: 0, ventilationPerson: 0, lightingW: 0, equipmentW: 0, windowPercent: 0, solarAbsorptance: 0 };
+  // Independent radiation geometry and hand-computed glazing/sol-air examples.
+  const site = { latitude: 0, longitude: 0, utcOffset: 0 };
+  const southSun = { east: 0, north: -0.6, up: 0.8 };
+  close(solar.wallIrradiance(100, 800, 740, 0.2, 180, southSun), 480 + 50 + 74);
+  close(solar.wallIrradiance(100, 800, 740, 0.2, 0, southSun), 50 + 74);
+  close(solar.wallIrradiance(100, 800, 740, 0.2, 180, { ...southSun, up: -0.1 }), 124);
+  const sun = solar.sunVector(row(20, 50, { month: 3, day: 20, hour: 11 }), site);
+  close(sun.east ** 2 + sun.north ** 2 + sun.up ** 2, 1);
+  assert.ok(sun.up > 0.98 && sun.east > 0);
+  assert.ok(solar.sunVector(row(20, 50, { hour: 0 }), site).up < 0);
+  const diffuse = row(20, 50, { dhi: 100, dni: 0, ghi: 100 });
+  const geometry = { ...m.DEFAULT_SCHOOL, stories: 1, aspectRatio: 1, ceilingFt: 10, windowPercent: 20, shgc: 0.5, shadeFactor: 1, roofU: 0, wallU: 0, groundReflectance: 0 };
+  const glazing = solar.solarGains(diffuse, geometry, 10000, site);
+  close(glazing.windows, 4 * 100 * 10 * 0.2 * 0.5 * 50 * 0.316998331);
+  close(glazing.total, glazing.windows);
+  close(solar.solarGains(diffuse, { ...geometry, shadeFactor: 0.4 }, 10000, site).total, glazing.total * 0.4);
+  const roof = solar.solarGains(diffuse, { ...geometry, windowPercent: 0, roofU: 0.04, solarAbsorptance: 0.6, outdoorFilm: 3 }, 10000, site);
+  close(roof.opaque, 10000 * 0.04 * 0.6 / 3 * 100 * 0.316998331);
+  close(solar.solarGains(diffuse, { ...geometry, rotationDeg: 90 }, 10000, site).total, glazing.total);
+  assert.equal(solar.solarGains(row(20), geometry, 10000).total, 0);
+  assert.equal(solar.solarGains(diffuse, geometry, 10000).total, null);
+  assert.equal(solar.solarGains({ ...diffuse, ghi: null }, geometry, 10000, site).total, null);
+  assert.equal(solar.solarLocation({ Latitude: "", Longitude: "0", "Time Zone": "0" }), null);
+  assert.deepEqual(solar.solarLocation({ Latitude: "43", Longitude: "-89", "Local Time Zone": "-6" }), { latitude: 43, longitude: -89, utcOffset: -6 });
+  const withSolar = m.simulateSchool([diffuse], { ...bare, ...geometry, heatingF: 60, coolingF: 65 }, site)[0];
+  const withoutSolar = m.simulateSchool([row(20)], { ...bare, ...geometry, heatingF: 60, coolingF: 65 }, site)[0];
+  close(withSolar.sensibleCooling - withoutSolar.sensibleCooling, -withSolar.solarGain);
+  assert.equal(m.simulateSchool([{ ...diffuse, dni: null }], bare, site)[0].heating, null);
+  const csvHead = "Year,Month,Day,Hour,Minute,Temperature,Relative Humidity,DHI,DNI,GHI\n";
+  assert.deepEqual(parseClimateCsv(csvHead + "2025,1,1,0,0,20,50,100,800,740", 2025).rows[0], row(20, 50, { day: 1, hour: 0, dhi: 100, dni: 800, ghi: 740 }));
+  assert.equal(parseClimateCsv(csvHead + "2025,1,1,0,0,20,50,100,-999,740", 2025).rows[0].dni, null);
+  assert.throws(() => parseClimateCsv("DHI Units\nkWh/m2\n" + csvHead + "2025,1,1,0,0,20,50,1,1,1", 2025), /Unsupported DHI Units/);
   close(m.fahrenheit(0), 32); close(m.fahrenheit(100), 212); close(m.fahrenheit(-40), -40);
   // PsychroLib's published 25°C / 80% example, independent of this code.
   close(m.dewPointF(25, 80), 21.309397163661785 * 1.8 + 32, 0.0001);
@@ -59,7 +92,7 @@ try {
   const fixture = process.argv[2];
   if (fixture) {
     const raw = parseClimateCsv(readFileSync(fixture, "utf8"), 2025);
-    const annual = m.simulateSchool(raw.rows, m.DEFAULT_SCHOOL);
+    const annual = m.simulateSchool(raw.rows, m.DEFAULT_SCHOOL, solar.solarLocation(raw.metadata));
     assert.equal(annual.length, 8760);
     for (const r of annual) {
       assert.ok(r.sensibleCooling <= 0 && r.totalCooling <= r.sensibleCooling && r.heating >= 0);
@@ -74,7 +107,7 @@ try {
     assert.equal(csv[2][2], "Air_temperature_F"); assert.equal(csv[2][5], "Latent_cooling_BTU_hr");
     assert.equal(csv[3][0], "2025-01-01"); assert.equal(csv.at(-1)[1], "23:00");
     assert.ok(Number(csv[3][7]) >= 0);
-    const changed = m.simulateSchool(raw.rows, { ...m.DEFAULT_SCHOOL, envelopeUa: 0.2 });
+    const changed = m.simulateSchool(raw.rows, { ...m.DEFAULT_SCHOOL, envelopeUa: 0.2 }, solar.solarLocation(raw.metadata));
     assert.ok(m.summarizeLoads(changed).heating.value > summary.heating.value);
     console.log(JSON.stringify({ records: annual.length, peaks: { sensible: summary.sensible, total: summary.total, heating: summary.heating } }));
   }

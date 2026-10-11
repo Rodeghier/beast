@@ -1,0 +1,4 @@
+Source commit: bb14f1f2849a38a978cbea92ab0f9b3e565b0852
+Export date: 2026-10-11
+Existing NLR runtime credentials included in .env at user request.
+Original Site deployment identity detached.
