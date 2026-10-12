@@ -120,7 +120,15 @@ export function parseGasPrices(payload: unknown, state: string): GasContext["pri
     if (r.duoarea !== `S${state}` || r.process !== "PCS" || r.units !== "$/MCF" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(period) || value === null || value < 0) continue;
     byPeriod.set(period, value);
   }
-  return [...byPeriod].sort(([a], [b]) => b.localeCompare(a)).slice(0, 12).map(([period, dollarsPerMcf]) => ({ period, dollarsPerMcf }));
+  // Twelve records need not cover twelve calendar months when EIA withholds a
+  // value. Keep the newest valid observation for each month, retaining its year.
+  const calendarMonths = new Set<string>();
+  return [...byPeriod].sort(([a], [b]) => b.localeCompare(a)).filter(([period]) => {
+    const month = period.slice(5);
+    if (calendarMonths.has(month)) return false;
+    calendarMonths.add(month);
+    return true;
+  }).map(([period, dollarsPerMcf]) => ({ period, dollarsPerMcf }));
 }
 
 export type GeoGeometry = { type: string; coordinates: number[][][] | number[][][][] };

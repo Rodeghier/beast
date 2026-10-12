@@ -93,6 +93,17 @@ assert.equal(annualPerformance(result, rows, undefined, region, gas, EPA_NATURAL
 assert.equal(annualPerformance(result, rows, tariff, undefined, gas, EPA_NATURAL_GAS).co2, null);
 assert.equal(annualPerformance(result, rows, tariff, region, undefined, EPA_NATURAL_GAS).cost, null);
 assert.equal(annualPerformance(result, rows, tariff, region, { ...gas, prices: gas.prices.slice(1) }, EPA_NATURAL_GAS).cost, null);
+assert.match(annualPerformance(result, rows, tariff, region, { ...gas, prices: gas.prices.slice(1) }, EPA_NATURAL_GAS).gasReason, /January/);
+assert.match(annualPerformance(result, rows, tariff, region, gas, undefined).gasReason, /heat-content conversion/);
+const gasHistory = Array.from({ length: 36 }, (_, i) => {
+  const period = new Date(Date.UTC(2026, 11 - i, 1)).toISOString().slice(0, 7);
+  return { period, value: period === "2026-06" || period === "2025-06" ? "W" : 10.26, duoarea: "SWI", process: "PCS", units: "$/MCF" };
+});
+const coveredGas = { ...gas, prices: load("lib/location-energy.ts").parseGasPrices({ response: { data: gasHistory } }, "WI") };
+const coveredPerformance = annualPerformance(result, rows, tariff, region, coveredGas, EPA_NATURAL_GAS);
+assert.equal(coveredPerformance.gasReason, null);
+assert.equal(coveredPerformance.months[5].gasPeriod, "2024-06");
+near(coveredPerformance.cost - coveredPerformance.electricBill.total, 876);
 assert.equal(annualPerformance(result, rows, tariff, region, { ...gas, status: "error" }, EPA_NATURAL_GAS).cost, null);
 const electricOnly = { ...result, rows: result.rows.map(r => ({ ...r, gasTherms: 0 })) };
 assert.notEqual(annualPerformance(electricOnly, rows, tariff, region, undefined, undefined).cost, null);

@@ -60,6 +60,16 @@ try {
   const gasRow = (period, value, rest = {}) => ({ period, value, duoarea: "SWI", process: "PCS", units: "$/MCF", ...rest });
   const gasPayload = { response: { data: [gasRow("2026-02", "8.5"), gasRow("2026-01", "7.5"), gasRow("2026-03", "NA"), gasRow("2026-04", null), gasRow("2026-05", 99, { duoarea: "SMN" }), gasRow("2026-06", 99, { units: "$/therm" }), gasRow("2026-07", 99, { process: "PR1" }), gasRow("2026-13", 99)] } };
   assert.deepEqual(m.parseGasPrices(gasPayload, "WI"), [{ period: "2026-02", dollarsPerMcf: 8.5 }, { period: "2026-01", dollarsPerMcf: 7.5 }]);
+  const history = Array.from({ length: 36 }, (_, i) => {
+    const d = new Date(Date.UTC(2026, 11 - i, 1));
+    const period = d.toISOString().slice(0, 7);
+    return gasRow(period, period === "2026-06" || period === "2025-06" ? "W" : 10 + i);
+  });
+  const covered = m.parseGasPrices({ response: { data: history.reverse() } }, "WI");
+  assert.equal(covered.length, 12);
+  assert.equal(new Set(covered.map(p => p.period.slice(5))).size, 12);
+  assert.deepEqual(covered.find(p => p.period.endsWith("-06")), { period: "2024-06", dollarsPerMcf: 40 });
+  assert.equal(covered.find(p => p.period.endsWith("-12")).period, "2026-12");
 
   // Polygon holes and disjoint islands must not resolve as land in a region.
   const polygon = { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], [[2, 2], [4, 2], [4, 4], [2, 4], [2, 2]]] };
@@ -111,6 +121,7 @@ try {
     assert.equal(u.hostname, "api.eia.gov");
     assert.equal(u.searchParams.get("api_key"), "fixture-eia-key");
     assert.equal(u.searchParams.get("facets[duoarea][]"), "SWI");
+    assert.equal(u.searchParams.get("length"), "60");
     return Response.json(gasPayload);
   };
   const partial = await (await GET(request())).json();

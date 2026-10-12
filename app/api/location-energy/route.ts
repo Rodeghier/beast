@@ -31,9 +31,12 @@ async function electricity(latitude: number, longitude: number, key: string | un
 async function gas(state: string, key: string | undefined): Promise<GasContext> {
   if (!key) return { status: "missing_key", message: "Natural gas price lookup requires a separate EIA API key. EIA provides state commercial average delivered prices, not utility tariff structures.", prices: [], sourceUrl: GAS_SOURCE, state };
   const url = new URL("https://api.eia.gov/v2/natural-gas/pri/sum/data/");
-  url.search = new URLSearchParams({ api_key: key, frequency: "monthly", "data[0]": "value", "facets[duoarea][]": `S${state}`, "facets[process][]": "PCS", "sort[0][column]": "period", "sort[0][direction]": "desc", length: "24" }).toString();
+  url.search = new URLSearchParams({ api_key: key, frequency: "monthly", "data[0]": "value", "facets[duoarea][]": `S${state}`, "facets[process][]": "PCS", "sort[0][column]": "period", "sort[0][direction]": "desc", length: "60" }).toString();
   const prices = parseGasPrices(await providerJson(url), state);
-  return { status: prices.length ? "ok" : "error", message: prices.length ? "Latest 12 available monthly state commercial average delivered prices ($/Mcf). These include reported delivery, commodity, tax and other charges; they are not a utility tariff and should not have fixed charges added again. Actual gas tariff details require the local utility's published schedule." : "EIA returned no valid commercial natural gas prices for this state.", prices, sourceUrl: GAS_SOURCE, state };
+  const coverage = new Set(prices.map(price => Number(price.period.slice(5))));
+  const missing = Array.from({ length: 12 }, (_, i) => i + 1).filter(month => !coverage.has(month));
+  const coverageNote = missing.length ? ` Missing calendar months: ${missing.join(", ")}; EIA may withhold or omit prices.` : " All 12 calendar months are covered.";
+  return { status: prices.length ? "ok" : "error", message: prices.length ? `Newest available price for each calendar month from the latest 60 EIA monthly records; source years may differ and are shown below.${coverageNote} State commercial average delivered prices ($/Mcf) include reported delivery, commodity, tax and other charges; they are not a utility tariff and should not have fixed charges added again. Actual gas tariff details require the local utility's published schedule.` : "EIA returned no valid commercial natural gas prices for this state.", prices, sourceUrl: GAS_SOURCE, state };
 }
 
 export async function GET(request: Request) {

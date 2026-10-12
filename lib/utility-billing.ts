@@ -150,8 +150,13 @@ export function annualPerformance(result: RtuResult, rows: ClimateRow[], tariff:
     return { month: month + 1, electricity, gasTherms, energy: electricity * 3412.141633 / 1e6 + gasTherms * 0.1, electricCost, gasCost, cost: electricCost === null || gasCost === null ? null : electricCost + gasCost, electricCo2, gasCo2, co2: electricCo2 === null || gasCo2 === null ? null : electricCo2 + gasCo2, gasPeriod: price?.period ?? null };
   });
   const total = (key: "energy" | "cost" | "co2") => months.every(m => m[key] !== null) ? months.reduce((sum, m) => sum + m[key]!, 0) : null;
+  const missingGasMonths = months.filter(m => m.gasTherms > 0 && m.gasPeriod === null).map(m => new Date(Date.UTC(2000, m.month - 1, 1)).toLocaleString("en-US", { month: "long", timeZone: "UTC" }));
+  const gasIssues = [
+    ...(missingGasMonths.length ? [`EIA has no valid ${gas?.state || "state"} commercial gas price for: ${missingGasMonths.join(", ")}. Refresh utility data to retrieve the latest available monthly history.`] : []),
+    ...(thermsPerMcf === null ? ["EPA natural gas heat-content conversion is missing or invalid. Refresh utility data; if this persists, redeploy the current API and website together."] : []),
+  ];
   return { months, energy: total("energy"), cost: total("cost"), co2: total("co2"), electricBill, reason: null,
-    gasReason: months.some(m => m.gasCost === null) ? gas?.status !== "ok" ? gas?.message || "Waiting for API gas prices." : "The API lacks a monthly gas price or heat-content conversion required for this scenario." : null,
+    gasReason: months.some(m => m.gasCost === null) ? gas?.status !== "ok" ? gas?.message || "Waiting for API gas prices." : gasIssues.join(" ") : null,
     emissionsReason: factor === null ? "Select an applicable EPA eGRID subregion; no assumed grid factor is used." : months.some(m => m.gasCo2 === null) ? "EPA natural gas combustion data are unavailable." : null,
     gasBenchmark: months.some(m => m.gasTherms > 0),
   };
