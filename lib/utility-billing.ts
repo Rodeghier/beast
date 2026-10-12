@@ -1,5 +1,6 @@
 import type { ClimateRow } from "./csv";
 import type { ElectricTariff, EmissionRegion, GasCombustion, GasContext, RateTier } from "./location-energy";
+import { ENERGY_TIER_UNITS } from "./location-energy";
 import type { RtuResult } from "./rtu";
 
 export type BillingHour = Pick<ClimateRow, "year" | "month" | "day" | "hour" | "minute"> & { electricity: number; gasTherms: number };
@@ -41,13 +42,31 @@ function periodicCharge(value: number | null, unit: string | null, days: number)
   throw new Error("Unsupported fixed or minimum charge units.");
 }
 
+/** URDB units describe cumulative tier limits; prices remain dollars/kWh.
+ * Demand-based limits use this calendar month's peak hourly-average import kW.
+ * See https://samrepo.nlr.gov/help/electricity_purchases.html (Billing Demand).
+ */
+function energyTierCharge(quantity: number, tiers: RateTier[], days: number, peak: number): number {
+  const converted = tiers.map(tier => {
+    const unit = tier.unit || "kWh";
+    if (!ENERGY_TIER_UNITS.includes(unit)) throw new Error(`Unsupported energy tier units: ${unit}.`);
+    const scale = (unit.includes("/kW") ? peak : 1) * (unit.endsWith(" daily") ? days : 1);
+    if (tier.max !== null && (!Number.isFinite(tier.max) || tier.max <= 0)) throw new Error("Invalid energy tier limit.");
+    return { ...tier, max: tier.max === null ? null : tier.max * scale };
+  });
+  // A zero-load month has zero demand and therefore zero demand-based allowances.
+  const applicable = converted.filter(tier => tier.max !== 0);
+  if (!applicable.length && quantity === 0) return 0;
+  return tierCharge(quantity, applicable);
+}
+
 export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | undefined): ElectricityBill {
   const fail = (reason: string): ElectricityBill => ({ months: [], total: null, reason, warnings: [] });
   if (!tariff) return fail("Select the building’s applicable electricity tariff below.");
   if (tariff.unsupportedClauses.length) return fail(`Unsupported tariff terms: ${tariff.unsupportedClauses.join("; ")}.`);
   if (tariff.serviceType !== "Bundled" && tariff.serviceType !== "Delivery with Standard Offer") return fail("A bundled electricity tariff is required; this tariff omits or does not identify supply/delivery charges.");
   if (!tariff.energyRates || !tariff.energyWeekdaySchedule || !tariff.energyWeekendSchedule) return fail("The API did not provide a complete energy rate schedule.");
-  if (tariff.energyRates.some(period => period.some(tier => tier.unit && tier.unit !== "kWh"))) return fail("Unsupported energy tier units.");
+  if (tariff.energyRates.some(period => period.some(tier => tier.unit && !ENERGY_TIER_UNITS.includes(tier.unit)))) return fail("Unsupported energy tier units.");
   if (tariff.demandRates && (tariff.demandRateUnits !== "kW" || !tariff.demandWeekdaySchedule || !tariff.demandWeekendSchedule)) return fail("Missing or unsupported time-of-use demand schedule/units.");
   if (tariff.flatDemandRates && (tariff.flatDemandUnits !== "kW" || !tariff.flatDemandMonths)) return fail("Missing or unsupported monthly demand schedule/units.");
   if (!hours.length) return fail("Hourly energy data are unavailable.");
@@ -70,14 +89,14 @@ export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | u
           demand.set(d, Math.max(demand.get(d) ?? 0, row.electricity));
         }
       }
-      const energyCharge = [...energy].reduce((sum, [p, quantity]) => sum + tierCharge(quantity, tariff.energyRates![p]), 0) + kwh * (tariff.fuelAdjustmentsMonthly?.[month] ?? 0);
+      const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      const energyCharge = [...energy].reduce((sum, [p, quantity]) => sum + energyTierCharge(quantity, tariff.energyRates![p], days, peak), 0) + kwh * (tariff.fuelAdjustmentsMonthly?.[month] ?? 0);
       let demandCharge = [...demand].reduce((sum, [p, quantity]) => sum + tierCharge(quantity, tariff.demandRates![p]), 0);
       if (tariff.flatDemandRates) {
         const tiers = tariff.flatDemandRates[tariff.flatDemandMonths![month]];
         if (!tiers) throw new Error("Invalid monthly demand period.");
         demandCharge += tierCharge(peak, tiers);
       }
-      const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
       const fixed = periodicCharge(tariff.fixedCharge, tariff.fixedChargeUnits, days);
       const minimum = tariff.minimumChargeUnits === "$/year" ? 0 : Math.max(0, periodicCharge(tariff.minimumCharge, tariff.minimumChargeUnits, days) - energyCharge - demandCharge - fixed);
       return { energy: energyCharge, demand: demandCharge, fixed, minimum, total: energyCharge + demandCharge + fixed + minimum };
@@ -89,6 +108,8 @@ export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | u
     if (months.some(m => !Number.isFinite(m.total))) throw new Error("Incomplete or invalid tariff charges.");
     const warnings = ["Calendar-month estimate for HVAC treated as a separate meter. Uses local standard-time weekday/weekend schedules; holidays and daylight-saving shifts are not modeled. Taxes and riders not returned in the tariff are excluded.", "Confirm tariff eligibility using the building’s full meter load, voltage, phase, and utility service territory."];
     if (tariff.demandRates || tariff.flatDemandRates) warnings.push(`Demand charges use peak hourly-average kW. The tariff’s ${tariff.demandWindowMinutes ?? "unspecified"}-minute billing demand may differ from this estimate.`);
+    if (tariff.energyRates.some(period => period.some(tier => tier.unit?.includes("/kW")))) warnings.push("Demand-based energy tier limits use the calendar month’s peak hourly-average HVAC kW; actual utility billing demand may differ.");
+    if (tariff.energyRates.some(period => period.some(tier => tier.unit?.endsWith(" daily")))) warnings.push("Daily energy tier limits are multiplied by the number of calendar days in the billing month.");
     if (tariff.notes.length) warnings.push("Review the tariff’s published notes for additional conditions.");
     return { months, total: months.reduce((sum, m) => sum + m.total, 0), reason: null, warnings };
   } catch (error) { return fail(error instanceof Error ? error.message : "Unable to apply the tariff."); }

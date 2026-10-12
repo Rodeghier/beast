@@ -59,7 +59,7 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
     const controller = new AbortController();
     setLoading(true); setApplied(null); setError(""); setData(null); setTariffId(""); setRegionCode("");
     const params = new URLSearchParams({ latitude: String(place.latitude), longitude: String(place.longitude), state: place.stateCode, ...(zip ? { zip } : {}) });
-    void fetch(`/api/location-energy?${params}`, { signal: controller.signal }).then(async response => {
+    void fetch(`/api/location-energy?${params}`, { signal: controller.signal, cache: "no-store" }).then(async response => {
       if (!response.ok) throw new Error("Location energy data could not be loaded. Please retry.");
       return response.json() as Promise<LocationEnergyContext>;
     }).then(next => {

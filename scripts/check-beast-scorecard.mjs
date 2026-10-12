@@ -54,10 +54,36 @@ const seasonal = { ...tariff, flatDemandRates: [tariff.flatDemandRates[0], [{ ma
 near(electricityBill([{ ...hours[0], month: 2, day: 3 }], seasonal).months[1].demand, 110);
 
 const rows = Array.from({ length: 8760 }, (_, i) => { const d = new Date(Date.UTC(2025, 0, 1, i)); return { year: 2025, month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours(), minute: 0 }; });
+// Daily and demand-based limits affect tier allowances, never the $/kWh price.
+const unitTariff = (unit, max) => parseElectricTariffs({ items: [{ ...raw,
+  energyratestructure: [[{ max, rate: .1, unit, sell: .9 }, { rate: .2, unit, sell: .9 }]],
+  energyweekdayschedule: schedule(), energyweekendschedule: schedule(), dgrules: "Net Metering",
+  demandratestructure: undefined, flatdemandstructure: undefined, fueladjustmentsmonthly: undefined,
+  fixedchargefirstmeter: 0,
+}] }, 100)[0];
+for (const [unit, max, expected] of [["kWh", 100, 20], ["kWh daily", 2, 23.8], ["kWh/kW", 1, 18], ["kWh/kW daily", .02, 22.56]]) {
+  const selected = unitTariff(unit, max);
+  assert.deepEqual(selected.unsupportedClauses, []);
+  assert.ok(selected.notes.some(note => note.includes("no export compensation")));
+  const computed = electricityBill(hours, selected);
+  assert.equal(computed.reason, null);
+  near(computed.months[0].energy, expected);
+  near(electricityBill([hour(6, 12, 0)], selected).total, 0);
+  assert.equal(electricityBill([hour(6, 12, -1)], selected).total, null);
+}
+const dailyFebruary = electricityBill([{ ...hour(3, 12, 150), month: 2 }], unitTariff("kWh daily", 2));
+near(dailyFebruary.months[1].energy, 24.4); // 56 kWh allowance in February 2025.
+assert.equal(electricityBill(hours, unitTariff("MWh", 1)).total, null);
+const mixed = unitTariff("kWh/kW", 1);
+mixed.energyRates[0][1].unit = "kWh";
+near(electricityBill(hours, mixed).months[0].energy, 18);
 const result = { equipment: {}, error: null, rows: rows.map(() => ({ electricity: 1, gasTherms: .1 })), summary: { fullYear: true, completeHours: 8760, electricity: 8760, gasTherms: 876, unmetHeatingHours: 0, unmetCoolingHours: 0 } };
 const gas = { status: "ok", state: "WI", prices: Array.from({ length: 12 }, (_, i) => ({ period: `2026-${String(i + 1).padStart(2, "0")}`, dollarsPerMcf: 10.26 })), sourceUrl: "https://www.eia.gov/", message: "API benchmark" };
 const region = { kgCo2PerKwh: .5, year: 2023, code: "TEST" };
 const performance = annualPerformance(result, rows, tariff, region, gas, EPA_NATURAL_GAS);
+const demandTierPerformance = annualPerformance(result, rows, unitTariff("kWh/kW", 100), region, gas, EPA_NATURAL_GAS);
+near(demandTierPerformance.cost, (8760 * .2 - 12 * 100 * .1) + 876);
+near(demandTierPerformance.cost, demandTierPerformance.months.reduce((sum, month) => sum + month.cost, 0));
 assert.equal(performance.reason, null);
 near(performance.co2, (8760 * .5 + 876 * 5.306) / 1000);
 near(performance.cost - performance.electricBill.total, 876);

@@ -1,6 +1,7 @@
 /** Public provider data only. API credentials never belong in these types. */
 export type ProviderStatus = "ok" | "missing_key" | "error";
 export type RateTier = { max: number | null; rate: number | null; adjustment: number | null; sell: number | null; unit: string | null };
+export const ENERGY_TIER_UNITS = ["kWh", "kWh daily", "kWh/kW", "kWh/kW daily"];
 export type ElectricTariff = {
   id: string; name: string; utility: string; url: string | null; sourceUrl: string | null;
   description: string; approved: boolean | null; isDefault: boolean | null;
@@ -88,16 +89,17 @@ export function parseElectricTariffs(payload: unknown, effectiveOn = Date.now() 
     if ([r.coincidentratestructure, r.coincidentrateschedule, r.coincidentschedule].some(meaningful)) unsupportedClauses.push("Coincident peak demand");
     if (meaningful(r.demandreactivepowercharge)) unsupportedClauses.push("Reactive power charge");
     if ([r.demandrateunit, r.flatdemandunit].some(v => typeof v === "string" && v !== "kW")) unsupportedClauses.push("Demand units other than monthly kW");
-    if (energyRates?.some(p => p.some(t => t.unit && t.unit !== "kWh"))) unsupportedClauses.push("Energy tier units other than kWh");
+    const unsupportedEnergyUnits = [...new Set(energyRates?.flat().map(t => t.unit).filter(unit => unit && !ENERGY_TIER_UNITS.includes(unit)))];
+    if (unsupportedEnergyUnits.length) unsupportedClauses.push(`Energy tier units: ${unsupportedEnergyUnits.join(", ")}`);
     if ([r.energyattrs, r.demandattrs, r.fixedattrs].some(meaningful)) unsupportedClauses.push("Additional tariff attributes");
     if (meaningful(r.fixedchargeeaaddl)) unsupportedClauses.push("Additional-meter fixed charges");
     if (r.fixedchargefirstmeter !== undefined && !["$/day", "$/month", "$/year"].includes(String(r.fixedchargeunits)) || r.mincharge !== undefined && !["$/day", "$/month", "$/year"].includes(String(r.minchargeunits))) unsupportedClauses.push("Missing or unsupported fixed/minimum-charge units");
     if (r.fueladjustmentsmonthly !== undefined && !numericMonths(r.fueladjustmentsmonthly)) unsupportedClauses.push("Invalid monthly fuel adjustments");
-    if (meaningful(r.dgrules)) unsupportedClauses.push("Distributed-generation export compensation");
     if (r.energyratestructure && !energyRates || r.demandratestructure && !demandRates || r.flatdemandstructure && !flatDemandRates) unsupportedClauses.push("Invalid or unsupported rate structure");
     if (energyRates && (!energyWeekdaySchedule || !energyWeekendSchedule) || demandRates && (!demandWeekdaySchedule || !demandWeekendSchedule) || flatDemandRates && !flatDemandMonths) unsupportedClauses.push("Missing or invalid period schedule");
     if ([energyRates, demandRates, flatDemandRates].some(s => s?.some(p => p.some(t => t.rate === null && t.adjustment === null)))) unsupportedClauses.push("Missing tier price");
     const notes = [r.basicinformationcomments, r.energycomments, r.demandcomments].map(v => text(v)).filter(Boolean);
+    if (meaningful(r.dgrules)) notes.push("This tariff includes distributed-generation export terms. BEAST models electricity consumption only; no export compensation is applied.");
     if (!energyRates) notes.push("No energy price structure supplied; check whether this is a delivery-only tariff.");
     if (effectiveDate === null) notes.push("Tariff effective date was not supplied.");
     out.push({ id, name: text(r.name, 300) || id, utility: text(r.utility, 300), url: publicUrl(r.uri), sourceUrl: publicUrl(r.source) || publicUrl(r.sourceparent), description: text(r.description), approved: bool(r.approved), isDefault: bool(r.is_default), effectiveDate, endDate, serviceType: optionalText(r.servicetype), sector,
