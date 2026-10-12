@@ -5,11 +5,12 @@ import { PerformanceGraphs } from "./performance-graphs";
 const number = (value: number, digits = 0) => value.toLocaleString(undefined, { maximumFractionDigits: digits });
 const money = (value: number) => value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
-export function AnnualScorecard({ results, performance, location, year, loading, children }: { results: RtuResult[]; performance: AnnualPerformance[]; location: string; year: number; loading: boolean; children?: React.ReactNode }) {
+export function AnnualScorecard({ results, performance, location, year, loading, ready = true, children }: { results: RtuResult[]; performance: AnnualPerformance[]; location: string; year: number; loading: boolean; ready?: boolean; children?: React.ReactNode }) {
   return <section className="annual-scorecard" aria-label="Annual performance scorecard">
     <span className="eyebrow">BEAST RESULTS · {year}</span><h2>Annual performance scorecard</h2><p>{location} · Modeled HVAC energy, API utility rates, and EPA CO₂</p>
     {children}
     {loading && <p role="status">Retrieving utility tariffs and EPA emissions data…</p>}
+    {!ready ? <p className="results-prompt" role="status">Choose your utility tariff structure above, then click <strong>Load results</strong> to view the scorecards and graphs.</p> : <>
     {results.map((result, index) => {
       const s = result.summary, p = performance[index];
       if (!p) return null;
@@ -30,5 +31,6 @@ export function AnnualScorecard({ results, performance, location, year, loading,
         {!!p.months.length && <div className="rate-scroll"><table><caption>Monthly scorecard data · scenario {String.fromCharCode(65 + index)}</caption><thead><tr><th>Month</th><th>Energy (MMBtu)</th><th>Electric energy ($)</th><th>Demand ($)</th><th>Fixed ($)</th><th>Minimum top-up ($)</th><th>Gas benchmark ($)</th><th>Gas price month</th><th>Total cost ($)</th><th>CO₂ (t)</th></tr></thead><tbody>{p.months.map((month, i) => { const bill = p.electricBill.months[i]; const n = (value: number | null | undefined) => value == null ? "Unavailable" : number(value, 2); return <tr key={month.month}><th>{month.month}</th><td>{n(month.energy)}</td><td>{n(bill?.energy)}</td><td>{n(bill?.demand)}</td><td>{n(bill?.fixed)}</td><td>{n(bill?.minimum)}</td><td>{n(month.gasCost)}</td><td>{month.gasTherms ? month.gasPeriod || "Unavailable" : "Not used"}</td><td>{n(month.cost)}</td><td>{n(month.co2)}</td></tr>; })}</tbody></table></div>}
       </div>)}
     </details>
+    </>}
   </section>;
 }

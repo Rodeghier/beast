@@ -53,10 +53,11 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
   const [data, setData] = useState<LocationEnergyContext | null>(null), [error, setError] = useState("");
   const [zipDraft, setZipDraft] = useState(""), [zip, setZip] = useState(""), [retry, setRetry] = useState(0);
   const [tariffId, setTariffId] = useState(""), [regionCode, setRegionCode] = useState("");
+  const [applied, setApplied] = useState<{ tariffId: string; regionCode: string } | null>(null);
   const [loading, setLoading] = useState(true), [zipError, setZipError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setError(""); setData(null); setTariffId(""); setRegionCode("");
+    setLoading(true); setApplied(null); setError(""); setData(null); setTariffId(""); setRegionCode("");
     const params = new URLSearchParams({ latitude: String(place.latitude), longitude: String(place.longitude), state: place.stateCode, ...(zip ? { zip } : {}) });
     void fetch(`/api/location-energy?${params}`, { signal: controller.signal }).then(async response => {
       if (!response.ok) throw new Error("Location energy data could not be loaded. Please retry.");
@@ -72,7 +73,8 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
   }, [place.latitude, place.longitude, place.stateCode, zip, retry]);
   const region = data?.emissions.regions.find(r => r.code === regionCode);
   const tariff = data?.electricity.tariffs.find(r => r.id === tariffId);
-  const performance = useMemo(() => results.map(result => annualPerformance(result, rows, tariff, region, data?.gas, data?.emissions.naturalGas)), [results, rows, tariff, region, data]);
+  const ready = !!applied && !!data && !loading && applied.tariffId === tariffId && applied.regionCode === regionCode;
+  const performance = useMemo(() => ready ? results.map(result => annualPerformance(result, rows, tariff, region, data?.gas, data?.emissions.naturalGas)) : [], [ready, results, rows, tariff, region, data]);
   function exportEmissions() {
     if (!region) return;
     const quote = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
@@ -81,12 +83,14 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
     const url = URL.createObjectURL(new Blob([lines.map(line => line.map(quote).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a"); a.href = url; a.download = `electricity-co2-${place.stateCode}-${year}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return <><AnnualScorecard results={results} performance={performance} location={`${place.name}, ${place.state}`} year={year} loading={loading}>
+  return <><AnnualScorecard results={results} performance={performance} location={`${place.name}, ${place.state}`} year={year} loading={loading} ready={ready}>
       {error && <p role="alert" className="energy-status">{error}</p>}
       {data && <div className="scorecard-sources">
-        <h3>Utility and EPA sources</h3><p>Choose the tariff that serves your building. A single candidate is preselected; verify eligibility in the tariff details below.</p>
-        <div className="source-select-grid">{!!data.electricity.tariffs.length && <label className="energy-select-label" htmlFor="electric-tariff">Utility and tariff<select id="electric-tariff" value={tariffId} onChange={event => setTariffId(event.target.value)}><option value="">Select an eligible tariff</option>{data.electricity.tariffs.map(r => <option key={r.id} value={r.id}>{r.utility} · {r.name}</option>)}</select></label>}{!!data.emissions.regions.length && <label className="energy-select-label" htmlFor="emission-region">Applicable eGRID subregion<select id="emission-region" value={regionCode} onChange={event => setRegionCode(event.target.value)}><option value="">Select the applicable subregion</option>{data.emissions.regions.map(r => <option key={r.code} value={r.code}>{r.code} · {r.name}</option>)}</select></label>}</div>
+        <h3>Utility and EPA sources</h3><p>Choose the utility tariff structure that serves your building, then select Load results to calculate total utility cost and update the scorecards and graphs. A single candidate is preselected; verify eligibility in the tariff details below.</p>
+        <div className="source-select-grid">{!!data.electricity.tariffs.length && <label className="energy-select-label" htmlFor="electric-tariff">Utility and tariff<select id="electric-tariff" value={tariffId} onChange={event => { setTariffId(event.target.value); setApplied(null); }}><option value="">Select an eligible tariff</option>{data.electricity.tariffs.map(r => <option key={r.id} value={r.id}>{r.utility} · {r.name}</option>)}</select></label>}{!!data.emissions.regions.length && <label className="energy-select-label" htmlFor="emission-region">Applicable eGRID subregion<select id="emission-region" value={regionCode} onChange={event => { setRegionCode(event.target.value); setApplied(null); }}><option value="">Select the applicable subregion</option>{data.emissions.regions.map(r => <option key={r.code} value={r.code}>{r.code} · {r.name}</option>)}</select></label>}</div>
         {data.electricity.tariffs.length === 0 && <p role="status">{data.electricity.message}</p>}
+        <div className="load-results-actions"><button type="button" className="button primary" disabled={loading || !tariff} aria-describedby="load-results-help" onClick={() => setApplied({ tariffId, regionCode })}>Load results</button><p id="load-results-help">{!tariff ? "Select a utility tariff structure to enable Load results." : ready ? "Results loaded using the selected tariff structure." : "Your tariff is selected. Click Load results to calculate total utility cost."}{!region && " Select the applicable EPA subregion to include CO₂ results."}</p></div>
+        {ready && performance.some(p => p.cost === null) && <div className="energy-status" role="alert"><strong>Some total utility costs could not be calculated.</strong>{performance.map((p, i) => p.cost === null && <p key={i}>Scenario {String.fromCharCode(65 + i)}: {[p.electricBill.reason, p.gasReason].filter(Boolean).join(" ") || p.reason || "Required source data are unavailable."}</p>)}<p>Review the tariff details or refresh the API data below, then select Load results again.</p></div>}
         <p>{tariff ? `${tariff.utility} · ${tariff.name}` : "Electricity cost requires a tariff selection."} {region ? `EPA eGRID ${region.year} · ${region.code} · ${n(region.kgCo2PerKwh, 6)} kg CO₂/kWh.` : data.emissions.message}</p>
         <p>Natural gas: EPA {data.emissions.naturalGas.year} · {data.emissions.naturalGas.kgCo2PerTherm} kg CO₂/therm; {data.emissions.naturalGas.thermsPerMcf} therms/Mcf for EIA price conversion. <Source href={data.emissions.naturalGas.sourceUrl}>EPA combustion factors</Source> · <Source href={data.emissions.sourceUrl}>EPA eGRID</Source></p>
         <p>EPA annual factors stay constant for all weather years. CO₂ excludes upstream emissions, methane, and nitrous oxide. Gas pricing uses the newest API price for each calendar month; source months appear in the breakdown.</p>

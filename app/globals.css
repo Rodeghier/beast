@@ -425,3 +425,7 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .billing-breakdown h4 { font-weight: 650; margin: 18px 0 8px; }
 @media (max-width: 900px) { .annual-graphs { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .source-select-grid { grid-template-columns: 1fr; } }
+
+.load-results-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin: 20px 0; }
+.load-results-actions p { flex: 1; min-width: 220px; margin: 0; }
+.results-prompt { padding: 20px; border: 1px dashed var(--border); border-radius: 10px; background: white; }

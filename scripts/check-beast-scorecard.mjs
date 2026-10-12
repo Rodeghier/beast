@@ -79,6 +79,9 @@ assert.equal(annualPerformance(missing, rows, tariff, region, gas, EPA_NATURAL_G
 // Render the real scorecard and graph legends, using the exact calculated totals.
 const { AnnualScorecard } = load("components/annual-scorecard.tsx");
 const render = (metrics, results = metrics.map(() => result)) => renderToStaticMarkup(createElement(AnnualScorecard, { performance: metrics, results, location: "Test City, WI", year: 2025, loading: false }));
+const pendingHtml = renderToStaticMarkup(createElement(AnnualScorecard, { performance: [], results: [result], location: "Test City, WI", year: 2025, loading: false, ready: false }));
+assert.match(pendingHtml, /Load results/);
+assert.doesNotMatch(pendingHtml, /scorecard-scenario|Compare annual performance|Annual utility cost/);
 const html = render([performance, performance, performance]);
 assert.match(html, /Equipment scenario C/); assert.match(html, /Compare annual performance/); assert.match(html, /Monthly performance/); assert.match(html, /EPA/); assert.match(html, /Gas benchmark/);
 assert.match(html, /9<small>metric tons CO₂/); // 9.028056 t CO2, displayed to one decimal.
