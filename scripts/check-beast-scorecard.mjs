@@ -82,6 +82,15 @@ const result = { equipment: {}, error: null, rows: rows.map(() => ({ electricity
 const gas = { status: "ok", state: "WI", prices: Array.from({ length: 12 }, (_, i) => ({ period: `2026-${String(i + 1).padStart(2, "0")}`, dollarsPerMcf: 10.26 })), sourceUrl: "https://www.eia.gov/", message: "API benchmark" };
 const region = { kgCo2ePerKwh: .5, year: 2023, code: "TEST" };
 const performance = annualPerformance(result, rows, tariff, region, gas, EPA_NATURAL_GAS);
+const manual = annualPerformance(result, rows, tariff, region, gas, EPA_NATURAL_GAS, .15);
+near(manual.electricBill.total, 8760 * .15);
+near(manual.cost, 8760 * .15 + 876);
+near(manual.co2e, performance.co2e);
+near(manual.energy, performance.energy);
+near(annualPerformance(result, rows, undefined, region, gas, EPA_NATURAL_GAS, .15).cost, manual.cost);
+near(electricityBill(hours, undefined, 0).total, 0);
+for (const invalidRate of [-1, NaN, Infinity]) assert.equal(electricityBill(hours, tariff, invalidRate).total, null);
+assert.ok(manual.electricBill.months.every(m => m.demand === 0 && m.fixed === 0 && m.minimum === 0));
 const demandTierPerformance = annualPerformance(result, rows, unitTariff("kWh/kW", 100), region, gas, EPA_NATURAL_GAS);
 near(demandTierPerformance.cost, (8760 * .2 - 12 * 100 * .1) + 876);
 near(demandTierPerformance.cost, demandTierPerformance.months.reduce((sum, month) => sum + month.cost, 0));
@@ -132,6 +141,15 @@ const pendingHtml = renderToStaticMarkup(createElement(AnnualScorecard, { perfor
 assert.match(pendingHtml, /Load results/);
 assert.doesNotMatch(pendingHtml, /scorecard-scenario|Compare annual performance|Annual utility cost/);
 const html = render([performance, performance, performance]);
+const noTariff = annualPerformance(result, rows, undefined, region, gas, EPA_NATURAL_GAS);
+near(noTariff.energy, performance.energy);
+near(noTariff.co2e, performance.co2e);
+assert.equal(noTariff.cost, null);
+const noTariffHtml = render([noTariff]);
+assert.match(noTariffHtml, /Annual energy consumption/);
+assert.match(noTariffHtml, /Annual CO₂e emissions/);
+assert.match(noTariffHtml, /No electricity tariff selected or available/);
+assert.match(noTariffHtml, /Compare annual performance/);
 assert.match(html, /Equipment scenario C/); assert.match(html, /Compare annual performance/); assert.match(html, /Monthly performance/); assert.match(html, /EPA/); assert.match(html, /Gas benchmark/);
 assert.match(html, /9<small>metric tons CO₂e/); // 9.028056 t CO2, displayed to one decimal.
 assert.doesNotMatch(render([performance]), /Equipment scenario B/);

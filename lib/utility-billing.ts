@@ -61,9 +61,20 @@ function energyTierCharge(quantity: number, tiers: RateTier[], days: number, pea
   return tierCharge(quantity, applicable);
 }
 
-export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | undefined): ElectricityBill {
+export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | undefined, manualRate?: number): ElectricityBill {
   const fail = (reason: string): ElectricityBill => ({ months: [], total: null, reason, warnings: [] });
-  if (!tariff) return fail("Select the building’s applicable electricity tariff below.");
+  if (manualRate !== undefined) {
+    if (!Number.isFinite(manualRate) || manualRate < 0) return fail("Enter a valid nonnegative electricity rate in $/kWh.");
+    if (!hours.length || hours.some(h => !Number.isFinite(h.electricity) || h.electricity < 0)) return fail("Invalid hourly electricity data.");
+    const months = Array.from({ length: 12 }, (_, m) => {
+      const energy = hours.filter(h => h.month === m + 1).reduce((sum, h) => sum + h.electricity * manualRate, 0);
+      return { energy, demand: 0, fixed: 0, minimum: 0, total: energy };
+    });
+    const total = months.reduce((sum, m) => sum + m.total, 0);
+    if (!Number.isFinite(total)) return fail("Electricity cost exceeds the supported numeric range.");
+    return { months, total, reason: null, warnings: [`Manual electricity rate: $${manualRate}/kWh × modeled consumption. Replaces API tariff pricing; no separate demand, fixed, minimum, tax or rider charges are added.`] };
+  }
+  if (!tariff) return fail("No electricity tariff selected or available. Energy and emissions can still be calculated; total utility cost requires an applicable tariff.");
   if (tariff.unsupportedClauses.length) return fail(`Unsupported tariff terms: ${tariff.unsupportedClauses.join("; ")}.`);
   if (tariff.serviceType !== "Bundled" && tariff.serviceType !== "Delivery with Standard Offer") return fail("A bundled electricity tariff is required; this tariff omits or does not identify supply/delivery charges.");
   if (!tariff.energyRates || !tariff.energyWeekdaySchedule || !tariff.energyWeekendSchedule) return fail("The API did not provide a complete energy rate schedule.");
@@ -117,7 +128,7 @@ export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | u
 }
 
 /** One source of totals for both scorecards and graphs; never fill missing API data with prices. */
-export function annualPerformance(result: RtuResult, rows: ClimateRow[], tariff: ElectricTariff | undefined, region: EmissionRegion | undefined, gas: GasContext | undefined, combustion: GasCombustion | undefined): AnnualPerformance {
+export function annualPerformance(result: RtuResult, rows: ClimateRow[], tariff: ElectricTariff | undefined, region: EmissionRegion | undefined, gas: GasContext | undefined, combustion: GasCombustion | undefined, manualRate?: number): AnnualPerformance {
   const dates = new Set(rows.map(row => `${row.year}-${row.month}-${row.day}-${row.hour}`));
   const validCalendar = rows.every(row => {
     const date = new Date(Date.UTC(row.year, row.month - 1, row.day, row.hour));
@@ -134,7 +145,7 @@ export function annualPerformance(result: RtuResult, rows: ClimateRow[], tariff:
     const reason = result.error || "A complete year of valid hourly energy data is required.";
     return { months: [], energy: null, cost: null, co2e: null, electricBill: { months: [], total: null, reason, warnings: [] }, gasReason: null, emissionsReason: null, reason, gasBenchmark: false };
   }
-  const electricBill = electricityBill(hours, tariff);
+  const electricBill = electricityBill(hours, tariff, manualRate);
   const factor = region && typeof region.kgCo2ePerKwh === "number" && Number.isFinite(region.kgCo2ePerKwh) && region.kgCo2ePerKwh >= 0 ? region.kgCo2ePerKwh : null;
   const thermsPerMcf = combustion && Number.isFinite(combustion.thermsPerMcf) && combustion.thermsPerMcf > 0 ? combustion.thermsPerMcf : null;
   // Apply the newest available price for each calendar month, with source year retained.
