@@ -1,3 +1,4 @@
+import { energyEmissions } from "./emissions";
 import type { ClimateRow } from "./csv";
 import type { ElectricTariff, EmissionRegion, GasCombustion, GasContext, RateTier } from "./location-energy";
 import { ENERGY_TIER_UNITS } from "./location-energy";
@@ -9,10 +10,10 @@ export type ElectricityBill = { months: ElectricMonth[]; total: number | null; r
 export type MonthlyPerformance = {
   month: number; energy: number; electricity: number; gasTherms: number;
   electricCost: number | null; gasCost: number | null; cost: number | null;
-  electricCo2: number | null; gasCo2: number | null; co2: number | null; gasPeriod: string | null;
+  electricCo2e: number | null; gasCo2e: number | null; co2e: number | null; gasPeriod: string | null;
 };
 export type AnnualPerformance = {
-  months: MonthlyPerformance[]; energy: number | null; cost: number | null; co2: number | null;
+  months: MonthlyPerformance[]; energy: number | null; cost: number | null; co2e: number | null;
   electricBill: ElectricityBill; gasReason: string | null; emissionsReason: string | null;
   reason: string | null; gasBenchmark: boolean;
 };
@@ -131,11 +132,10 @@ export function annualPerformance(result: RtuResult, rows: ClimateRow[], tariff:
   });
   if (invalid || hours.length !== 8760) {
     const reason = result.error || "A complete year of valid hourly energy data is required.";
-    return { months: [], energy: null, cost: null, co2: null, electricBill: { months: [], total: null, reason, warnings: [] }, gasReason: null, emissionsReason: null, reason, gasBenchmark: false };
+    return { months: [], energy: null, cost: null, co2e: null, electricBill: { months: [], total: null, reason, warnings: [] }, gasReason: null, emissionsReason: null, reason, gasBenchmark: false };
   }
   const electricBill = electricityBill(hours, tariff);
-  const factor = region && Number.isFinite(region.kgCo2PerKwh) && region.kgCo2PerKwh >= 0 ? region.kgCo2PerKwh : null;
-  const gasFactor = combustion && Number.isFinite(combustion.kgCo2PerTherm) && combustion.kgCo2PerTherm >= 0 ? combustion.kgCo2PerTherm : null;
+  const factor = region && typeof region.kgCo2ePerKwh === "number" && Number.isFinite(region.kgCo2ePerKwh) && region.kgCo2ePerKwh >= 0 ? region.kgCo2ePerKwh : null;
   const thermsPerMcf = combustion && Number.isFinite(combustion.thermsPerMcf) && combustion.thermsPerMcf > 0 ? combustion.thermsPerMcf : null;
   // Apply the newest available price for each calendar month, with source year retained.
   const prices = [...(gas?.status === "ok" ? gas.prices : [])].sort((a, b) => b.period.localeCompare(a.period));
@@ -145,19 +145,20 @@ export function annualPerformance(result: RtuResult, rows: ClimateRow[], tariff:
     const price = prices.find(p => Number(p.period.slice(5)) === month + 1 && Number.isFinite(p.dollarsPerMcf) && p.dollarsPerMcf >= 0);
     const gasCost = gasTherms === 0 ? 0 : price && thermsPerMcf !== null ? gasTherms / thermsPerMcf * price.dollarsPerMcf : null;
     const electricCost = electricBill.months[month]?.total ?? null;
-    const electricCo2 = factor === null ? null : electricity * factor / 1000;
-    const gasCo2 = gasTherms === 0 ? 0 : gasFactor === null ? null : gasTherms * gasFactor / 1000;
-    return { month: month + 1, electricity, gasTherms, energy: electricity * 3412.141633 / 1e6 + gasTherms * 0.1, electricCost, gasCost, cost: electricCost === null || gasCost === null ? null : electricCost + gasCost, electricCo2, gasCo2, co2: electricCo2 === null || gasCo2 === null ? null : electricCo2 + gasCo2, gasPeriod: price?.period ?? null };
+    const emissions = energyEmissions(electricity, gasTherms, region, combustion);
+    const electricCo2e = emissions.electricCo2e === null ? null : emissions.electricCo2e / 1000;
+    const gasCo2e = emissions.gasCo2e === null ? null : emissions.gasCo2e / 1000;
+    return { month: month + 1, electricity, gasTherms, energy: electricity * 3412.141633 / 1e6 + gasTherms * 0.1, electricCost, gasCost, cost: electricCost === null || gasCost === null ? null : electricCost + gasCost, electricCo2e, gasCo2e, co2e: electricCo2e === null || gasCo2e === null ? null : electricCo2e + gasCo2e, gasPeriod: price?.period ?? null };
   });
-  const total = (key: "energy" | "cost" | "co2") => months.every(m => m[key] !== null) ? months.reduce((sum, m) => sum + m[key]!, 0) : null;
+  const total = (key: "energy" | "cost" | "co2e") => months.every(m => m[key] !== null) ? months.reduce((sum, m) => sum + m[key]!, 0) : null;
   const missingGasMonths = months.filter(m => m.gasTherms > 0 && m.gasPeriod === null).map(m => new Date(Date.UTC(2000, m.month - 1, 1)).toLocaleString("en-US", { month: "long", timeZone: "UTC" }));
   const gasIssues = [
     ...(missingGasMonths.length ? [`EIA has no valid ${gas?.state || "state"} commercial gas price for: ${missingGasMonths.join(", ")}. Refresh utility data to retrieve the latest available monthly history.`] : []),
     ...(thermsPerMcf === null ? ["EPA natural gas heat-content conversion is missing or invalid. Refresh utility data; if this persists, redeploy the current API and website together."] : []),
   ];
-  return { months, energy: total("energy"), cost: total("cost"), co2: total("co2"), electricBill, reason: null,
+  return { months, energy: total("energy"), cost: total("cost"), co2e: total("co2e"), electricBill, reason: null,
     gasReason: months.some(m => m.gasCost === null) ? gas?.status !== "ok" ? gas?.message || "Waiting for API gas prices." : gasIssues.join(" ") : null,
-    emissionsReason: factor === null ? "Select an applicable EPA eGRID subregion; no assumed grid factor is used." : months.some(m => m.gasCo2 === null) ? "EPA natural gas combustion data are unavailable." : null,
+    emissionsReason: factor === null ? "Select an applicable EPA eGRID subregion with CO₂e factors; refresh utility data if needed." : months.some(m => m.gasCo2e === null) ? "EPA natural gas combustion data are unavailable." : null,
     gasBenchmark: months.some(m => m.gasTherms > 0),
   };
 }

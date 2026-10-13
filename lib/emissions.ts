@@ -1,8 +1,16 @@
 import type { RtuResult } from "./rtu";
-import type { EmissionRegion } from "./location-energy";
+import type { EmissionRegion, GasCombustion } from "./location-energy";
 
-/** Inventory-style electricity CO2 only, using a fixed annual eGRID factor. */
-export function electricityCo2(result: RtuResult | null | undefined, region: EmissionRegion | null | undefined): number | null {
-  if (!result?.equipment || result.error || !region || !result.summary.completeHours || !Number.isFinite(region.kgCo2PerKwh) || region.kgCo2PerKwh < 0) return null;
-  return result.summary.electricity * region.kgCo2PerKwh;
+/** kg CO2e: electricity generation plus on-site gas combustion; no price dependency. */
+export function energyEmissions(electricity: number | null, gasTherms: number | null, region: EmissionRegion | null | undefined, gas: GasCombustion | null | undefined) {
+  const valid = (n: number | null | undefined): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
+  const electricFactor = region?.kgCo2ePerKwh, gasFactor = gas?.kgCo2ePerTherm;
+  const electricCo2e = valid(electricity) && valid(electricFactor) ? electricity * electricFactor : null;
+  const gasCo2e = gasTherms === 0 ? 0 : valid(gasTherms) && valid(gasFactor) ? gasTherms * gasFactor : null;
+  return { electricCo2e, gasCo2e, co2e: electricCo2e === null || gasCo2e === null ? null : electricCo2e + gasCo2e };
+}
+
+export function totalCo2e(result: RtuResult | null | undefined, region: EmissionRegion | null | undefined, gas: GasCombustion | null | undefined): number | null {
+  if (!result?.equipment || result.error || !result.summary.completeHours) return null;
+  return energyEmissions(result.summary.electricity, result.summary.gasTherms, region, gas).co2e;
 }

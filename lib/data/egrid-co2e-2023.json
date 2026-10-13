@@ -1,0 +1,15 @@
+{
+  "sourceUrl": "https://www.epa.gov/egrid/summary-data",
+  "dataset": "eGRID2023 revision 2, subregion total output CO2e (lb/MWh)",
+  "retrievedDate": "2026-10-12",
+  "gwp": { "basis": "IPCC AR5, 100-year", "CH4": 28, "N2O": 265 },
+  "rates": {
+    "AKGD": 905.109, "AKMS": 522.400, "AZNM": 706.189, "CAMX": 429.983,
+    "ERCT": 736.629, "FRCC": 784.785, "HIMS": 1133.294, "HIOA": 1498.947,
+    "MROE": 1404.963, "MROW": 926.552, "NEWE": 543.178, "NWPP": 635.267,
+    "NYCW": 865.744, "NYLI": 1189.333, "NYUP": 242.776, "PRMS": 1548.530,
+    "RFCE": 599.170, "RFCM": 975.978, "RFCW": 916.054, "RMPA": 1042.539,
+    "SPNO": 867.740, "SPSO": 875.567, "SRMV": 741.741, "SRMW": 1248.582,
+    "SRSO": 846.007, "SRTV": 903.306, "SRVC": 596.326
+  }
+}

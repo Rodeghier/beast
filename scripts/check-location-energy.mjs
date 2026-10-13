@@ -11,7 +11,7 @@ const temp = mkdtempSync(join(tmpdir(), "location-energy-"));
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const emit = (name, source) => writeFileSync(join(temp, `${name}.mjs`), ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText);
 const egrid = JSON.parse(read("lib/data/egrid-2023.json")), zip = JSON.parse(read("lib/data/egrid-zip-2023.json"));
-emit("location-energy", read("lib/location-energy.ts"));
+emit("location-energy", read("lib/location-energy.ts").replace('import egridCo2e from "./data/egrid-co2e-2023.json";', `const egridCo2e = ${read("lib/data/egrid-co2e-2023.json")};`));
 emit("climate", read("lib/climate.ts"));
 emit("emissions", read("lib/emissions.ts"));
 globalThis.__locationEnergyEnv = { NLR_API_KEY: "DO_NOT_TRANSMIT_THIS_SENTINEL" };
@@ -23,13 +23,13 @@ const fetchOriginal = globalThis.fetch;
 try {
   const m = await import(pathToFileURL(join(temp, "location-energy.mjs")).href);
   const { GET } = await import(pathToFileURL(join(temp, "route.mjs")).href);
-  const { electricityCo2 } = await import(pathToFileURL(join(temp, "emissions.mjs")).href);
-  const region = { kgCo2PerKwh: 0.5 };
-  const result = { equipment: {}, error: null, summary: { completeHours: 8760, electricity: 1000 } };
-  assert.equal(electricityCo2(result, region), 500);
-  assert.equal(electricityCo2({ ...result, equipment: null }, region), null);
-  assert.equal(electricityCo2(result, null), null);
-  assert.equal(electricityCo2({ ...result, summary: { completeHours: 0, electricity: 0 } }, region), null);
+  const { totalCo2e } = await import(pathToFileURL(join(temp, "emissions.mjs")).href);
+  const region = { kgCo2ePerKwh: 0.5 };
+  const result = { equipment: {}, error: null, summary: { completeHours: 8760, electricity: 1000, gasTherms: 0 } };
+  assert.equal(totalCo2e(result, region), 500);
+  assert.equal(totalCo2e({ ...result, equipment: null }, region), null);
+  assert.equal(totalCo2e(result, null), null);
+  assert.equal(totalCo2e({ ...result, summary: { completeHours: 0, electricity: 0 } }, region), null);
   for (const v of [null, undefined, "", "  ", true, false, {}, [], "Infinity", NaN]) assert.equal(m.finiteNumber(v), null);
   assert.equal(m.finiteNumber("0"), 0);
   assert.equal(m.publicUrl("javascript:alert(1)"), null);
@@ -129,6 +129,14 @@ try {
   assert.equal(partial.electricity.status, "error");
   assert.equal(partial.gas.status, "ok");
   assert.equal(partial.emissions.status, "ok");
+  assert.equal(partial.emissions.naturalGas.kgCo2ePerTherm, 5.31145);
+  const co2eRates = JSON.parse(read("lib/data/egrid-co2e-2023.json")).rates;
+  for (const region of egrid.regions) {
+    assert.ok(co2eRates[region.code] > region.lbCo2PerMwh, `Missing CO2e or wrong factor for ${region.code}`);
+  }
+  for (const region of partial.emissions.regions) {
+    assert.equal(region.kgCo2ePerKwh, co2eRates[region.code] * .45359237 / 1000);
+  }
   assert.ok(!JSON.stringify(partial).includes("imaginary sensitive URL"));
   assert.ok(!JSON.stringify(partial).includes("fixture-eia-key"));
   // Switching location must change both upstream requests and emissions geometry.

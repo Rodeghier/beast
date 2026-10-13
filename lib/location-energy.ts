@@ -1,3 +1,4 @@
+import egridCo2e from "./data/egrid-co2e-2023.json";
 /** Public provider data only. API credentials never belong in these types. */
 export type ProviderStatus = "ok" | "missing_key" | "error";
 export type RateTier = { max: number | null; rate: number | null; adjustment: number | null; sell: number | null; unit: string | null };
@@ -16,12 +17,12 @@ export type ElectricTariff = {
   eligibility: { minKw: number | null; maxKw: number | null; minKwh: number | null; maxKwh: number | null; demandUnits: string | null; voltageMinimum: number | null; voltageMaximum: number | null; voltageCategory: string | null; phaseWiring: string | null };
   unsupportedClauses: string[]; notes: string[];
 };
-export type EmissionRegion = { code: string; name: string; year: number; kgCo2PerKwh: number; lbCo2PerMwh: number };
+export type EmissionRegion = { code: string; name: string; year: number; kgCo2PerKwh: number; lbCo2PerMwh: number; kgCo2ePerKwh?: number; lbCo2ePerMwh?: number };
 export type ElectricityContext = { status: ProviderStatus; message: string; tariffs: ElectricTariff[]; sourceUrl: string };
 export type GasContext = { status: ProviderStatus; message: string; prices: { period: string; dollarsPerMcf: number }[]; sourceUrl: string; state: string };
-export type GasCombustion = { kgCo2PerTherm: number; thermsPerMcf: number; sourceUrl: string; year: number };
+export type GasCombustion = { kgCo2PerTherm: number; kgCh4PerTherm: number; kgN2oPerTherm: number; kgCo2ePerTherm: number; gwpCh4: number; gwpN2o: number; thermsPerMcf: number; sourceUrl: string; year: number };
 // EPA 2025 Hub, Table 1: 53.06 kg CO2/MMBtu; HHV 0.001026 MMBtu/scf.
-export const EPA_NATURAL_GAS: GasCombustion = { kgCo2PerTherm: 5.306, thermsPerMcf: 10.26, year: 2025, sourceUrl: "https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf" };
+export const EPA_NATURAL_GAS: GasCombustion = { kgCo2PerTherm: 5.306, kgCh4PerTherm: 0.0001, kgN2oPerTherm: 0.00001, gwpCh4: 28, gwpN2o: 265, kgCo2ePerTherm: 5.306 + 0.0001 * 28 + 0.00001 * 265, thermsPerMcf: 10.26, year: 2025, sourceUrl: "https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf" };
 export type EmissionsContext = { naturalGas: GasCombustion; status: ProviderStatus; message: string; regions: EmissionRegion[]; utilities: { id: string; name: string; subregion: string }[]; method: "zip" | "coordinates"; sourceUrl: string };
 export type LocationEnergyContext = { electricity: ElectricityContext; gas: GasContext; emissions: EmissionsContext; retrievedAt: string };
 export const ELECTRICITY_SOURCE = "https://apps.openei.org/services/doc/rest/util_rates/?version=8";
@@ -162,6 +163,9 @@ export function resolveEmissions(latitude: number, longitude: number, state: str
   }
   if (!regions.length) message = "No EPA subregion could be resolved from these coordinates. Enter a US building ZIP code to look up electricity-provider candidates.";
   if (regions.length > 1) message += " Multiple subregions match; select the applicable provider/subregion.";
-  message += " Factors are annual average electricity CO₂ from eGRID2023, not hourly or future-year projections; natural gas combustion is separate.";
-  return { status: regions.length ? "ok" : "error", message, regions: regions.map(({ geometry: _, ...region }) => region), utilities, method: zip ? "zip" : "coordinates", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE };
+  message += " Factors are annual average electricity CO₂e from eGRID2023 (CO₂, CH₄, N₂O; AR5 100-year GWP), not hourly or future-year projections. Results also include on-site natural gas combustion.";
+  return { status: regions.length ? "ok" : "error", message, regions: regions.map(({ geometry: _, ...region }) => {
+    const lbCo2ePerMwh = (egridCo2e.rates as Record<string, number>)[region.code];
+    return { ...region, lbCo2ePerMwh, kgCo2ePerKwh: Number.isFinite(lbCo2ePerMwh) ? lbCo2ePerMwh * 0.45359237 / 1000 : undefined };
+  }), utilities, method: zip ? "zip" : "coordinates", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE };
 }
