@@ -1,0 +1,124 @@
+{
+  "version": "26.2.0",
+  "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f",
+  "retrieved": "2026-10-18",
+  "repository": "https://github.com/NatLabRockies/EnergyPlus",
+  "excludedProfiles": [
+    {
+      "name": "Carrier 50TFQ006 Cooling",
+      "type": "Coil:Cooling:DX:SingleSpeed",
+      "dataset": "RooftopPackagedHeatPump.idf",
+      "reason": "Unusable Total Cooling Capacity Function of Flow Fraction Curve Name for Carrier 50TFQ006 Cooling: Carrier 50TFQ006 Cooling CapFFF"
+    },
+    {
+      "name": "Lennox KHA060S4 Cooling",
+      "type": "Coil:Cooling:DX:SingleSpeed",
+      "dataset": "RooftopPackagedHeatPump.idf",
+      "reason": "Conflicting source rated COP: equipment object states 385 W/W while the same dataset summary states 3.85 W/W. Excluded pending authoritative correction; original data preserved without guessing a replacement."
+    }
+  ],
+  "release": "https://github.com/NatLabRockies/EnergyPlus/releases/tag/v26.2.0",
+  "scope": "Complete object dictionary coverage; all curves, tables and embedded fit coefficients in the bundled equipment/performance datasets listed below. Does not claim to include all example-model, third-party or user-defined equipment coefficients.",
+  "counts": {
+    "dictionaryObjects": 878,
+    "equipmentTypes": 300,
+    "profiles": 37,
+    "heatingProfiles": 12,
+    "coolingProfiles": 25,
+    "datasetEquipment": 2275,
+    "curveObjects": 4002,
+    "curveExportRows": 5486
+  },
+  "sources": [
+    {
+      "file": "Energy+.idd.in",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "sha256": "dff0b756e5a0dd0210c7e883e020b523ad2696176d44cf5174fbeae706dcea14"
+    },
+    {
+      "file": "AirCooledChiller.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/AirCooledChiller.idf",
+      "sha256": "cd24159c0231a029a0cff5cb31bf76c734cac2e1217bd392fdbca1a750f22e81"
+    },
+    {
+      "file": "Boilers.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/Boilers.idf",
+      "sha256": "0c2775fd6b4d899d8e3146b6891578b2deaf1803572eb8cab62d7cac8ac9de35"
+    },
+    {
+      "file": "California_Title_24-2008.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/California_Title_24-2008.idf",
+      "sha256": "47d2875827185291f2e64444165da901e08e93cc761142fe18b973e65310c262"
+    },
+    {
+      "file": "Chillers.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/Chillers.idf",
+      "sha256": "6536996325fd7076a09a4362056edee041a94419622bb280199dcfb8611bece1"
+    },
+    {
+      "file": "CodeCompliantEquipment.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/CodeCompliantEquipment.idf",
+      "sha256": "444c69786858edbbd08cd37890df547df75f1305debc31d73086c81c1c531255"
+    },
+    {
+      "file": "DXCoolingCoil.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "sha256": "6808674b57724405eb17d0dcf35576533c93dc6cc94d5446addc96d0a9d8dadc"
+    },
+    {
+      "file": "ElectricGenerators.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/ElectricGenerators.idf",
+      "sha256": "d75c9c24ccad1bba5b0c55cec1c7beeabcdac36775faf12025ca9441442895d7"
+    },
+    {
+      "file": "ElectronicEnthalpyEconomizerCurves.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/ElectronicEnthalpyEconomizerCurves.idf",
+      "sha256": "865fed310ec269a44565c6a5922d0d38181f2c0d145813424879de55efa257ff"
+    },
+    {
+      "file": "ExhaustFiredChiller.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/ExhaustFiredChiller.idf",
+      "sha256": "c2e2e5cb05609ddf9efb85ac43d9b6de807f0d4339f5ca8b5d5f898fe27cd3af"
+    },
+    {
+      "file": "PerfCurves.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/PerfCurves.idf",
+      "sha256": "92ed74036aa0de580836c4eb64d8824cf453cdaa5360d3cec3e80d85f71b401e"
+    },
+    {
+      "file": "RefrigerationCasesDataSet.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RefrigerationCasesDataSet.idf",
+      "sha256": "dee4fab7f74b3cbaebc19f9db094f924aa58c3825cc32221da0c661ab348ed0b"
+    },
+    {
+      "file": "RefrigerationCompressorCurves.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RefrigerationCompressorCurves.idf",
+      "sha256": "5656175c033fe70e3d3d2df3b8778dc02e2a237ca541d0c36b2ae5ae0c2cadc4"
+    },
+    {
+      "file": "ResidentialACsAndHPsPerfCurves.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/ResidentialACsAndHPsPerfCurves.idf",
+      "sha256": "1ae1d69ac1993651fc7656f8dde903376bfc28fa30d7640a2456f6002bb04d2a"
+    },
+    {
+      "file": "RooftopPackagedHeatPump.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "sha256": "7b8f5ac45889053c8eae3d167d5edfaa80a884c3863533e9dfc7661c63ebcf78"
+    },
+    {
+      "file": "SandiaPVdata.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/SandiaPVdata.idf",
+      "sha256": "60d6f49680ff6b7642b22f8b703fc9da746e93f54c41d447fb869840d1b9a893"
+    },
+    {
+      "file": "SolarCollectors.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/SolarCollectors.idf",
+      "sha256": "bd503e227d79b5e66b896e46def4c5d5470f6e5dcf21e9f10411efab77736ff8"
+    },
+    {
+      "file": "WaterToAirHeatPumps.idf",
+      "url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/WaterToAirHeatPumps.idf",
+      "sha256": "023a2e92d5cd2739d16421af3a410b5c5db0d4a62a63379be9d9a7029681b6b7"
+    }
+  ]
+}

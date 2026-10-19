@@ -8,9 +8,9 @@ import ts from "typescript";
 
 const temp = mkdtempSync(join(tmpdir(), "rtu-model-"));
 const source = readFileSync(new URL("../lib/data/rtu/comstock-standard.json", import.meta.url), "utf8");
-for (const name of ["csv", "solar", "school", "equipment-catalog", "rtu-curves", "rtu", "equipment-comparison"]) {
-  let code = readFileSync(new URL(`../lib/${name}.ts`, import.meta.url), "utf8").replace('import source from "./data/rtu/comstock-standard.json";', `const source = ${source};`).replace(/from "\.\/(csv|solar|school|rtu-curves|rtu|equipment-catalog)"/g, 'from "./$1.mjs"');
-  code = code.replace(/import (\w+) from "(\.\/data\/rtu\/[^"]+\.json)";/g, (_, variable, path) => `const ${variable} = ${readFileSync(new URL(`../lib/${path.slice(2)}`, import.meta.url), "utf8")};`);
+for (const name of ["csv", "solar", "school", "energyplus", "equipment-catalog", "rtu-curves", "rtu", "equipment-comparison"]) {
+  let code = readFileSync(new URL(`../lib/${name}.ts`, import.meta.url), "utf8").replace('import source from "./data/rtu/comstock-standard.json";', `const source = ${source};`).replace(/from "\.\/(csv|solar|school|rtu-curves|rtu|equipment-catalog|energyplus)"/g, 'from "./$1.mjs"');
+  code = code.replace(/import (\w+) from "(\.\/data\/[^\"]+\.json)";/g, (_, variable, path) => `const ${variable} = ${readFileSync(new URL(`../lib/${path.slice(2)}`, import.meta.url), "utf8")};`);
   writeFileSync(join(temp, name + ".mjs"), ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText);
 }
 try {

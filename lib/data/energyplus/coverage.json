@@ -1,0 +1,3028 @@
+{
+  "counts": {
+    "dictionaryObjects": 878,
+    "equipmentTypes": 300,
+    "profiles": 37,
+    "heatingProfiles": 12,
+    "coolingProfiles": 25,
+    "datasetEquipment": 2275,
+    "curveObjects": 4002,
+    "curveExportRows": 5486
+  },
+  "excludedProfiles": [
+    {
+      "name": "Carrier 50TFQ006 Cooling",
+      "type": "Coil:Cooling:DX:SingleSpeed",
+      "dataset": "RooftopPackagedHeatPump.idf",
+      "reason": "Unusable Total Cooling Capacity Function of Flow Fraction Curve Name for Carrier 50TFQ006 Cooling: Carrier 50TFQ006 Cooling CapFFF"
+    },
+    {
+      "name": "Lennox KHA060S4 Cooling",
+      "type": "Coil:Cooling:DX:SingleSpeed",
+      "dataset": "RooftopPackagedHeatPump.idf",
+      "reason": "Conflicting source rated COP: equipment object states 385 W/W while the same dataset summary states 3.85 W/W. Excluded pending authoritative correction; original data preserved without guessing a replacement."
+    }
+  ],
+  "equipmentTypes": [
+    {
+      "object_type": "Exterior:Lights",
+      "group": "Exterior Equipment",
+      "status": "not-integrated",
+      "reason": "Requires the exterior equipment component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Exterior:FuelEquipment",
+      "group": "Exterior Equipment",
+      "status": "not-integrated",
+      "reason": "Requires the exterior equipment component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Exterior:WaterEquipment",
+      "group": "Exterior Equipment",
+      "status": "not-integrated",
+      "reason": "Requires the exterior equipment component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Thermostat",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:IdealLoadsAirSystem",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:BaseboardHeat",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:FanCoil",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:PTAC",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:PTHP",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:WaterToAirHeatPump",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:VRF",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:Unitary",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:VAV",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:VAV:FanPowered",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:VAV:HeatAndCool",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:ConstantVolume",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Zone:DualDuct",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:VRF",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:Unitary",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:UnitaryHeatPump:AirToAir",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:UnitarySystem",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:VAV",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:PackagedVAV",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:ConstantVolume",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:DualDuct",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:System:DedicatedOutdoorAir",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:ChilledWaterLoop",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:Chiller",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:Chiller:ObjectReference",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:Tower",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:Tower:ObjectReference",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:HotWaterLoop",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:Boiler",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:Boiler:ObjectReference",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HVACTemplate:Plant:MixedWaterLoop",
+      "group": "HVAC Templates",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:IdealLoadsAirSystem",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:FourPipeFanCoil",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:WindowAirConditioner",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:PackagedTerminalAirConditioner",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:PackagedTerminalHeatPump",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:WaterToAirHeatPump",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:Dehumidifier:DX",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:EnergyRecoveryVentilator",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:EnergyRecoveryVentilator:Controller",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:UnitVentilator",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:UnitHeater",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:EvaporativeCoolerUnit",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:HybridUnitaryHVAC",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:OutdoorAirUnit",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:OutdoorAirUnit:EquipmentList",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:TerminalUnit:VariableRefrigerantFlow",
+      "group": "Zone HVAC Forced Air Units",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:Baseboard:RadiantConvective:Water:Design",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:Baseboard:RadiantConvective:Water",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:Baseboard:RadiantConvective:Steam:Design",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:Baseboard:RadiantConvective:Steam",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:Baseboard:RadiantConvective:Electric",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:CoolingPanel:RadiantConvective:Water",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:Baseboard:Convective:Water",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:Baseboard:Convective:Electric",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:LowTemperatureRadiant:VariableFlow",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:LowTemperatureRadiant:VariableFlow:Design",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:LowTemperatureRadiant:ConstantFlow",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:LowTemperatureRadiant:ConstantFlow:Design",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:LowTemperatureRadiant:Electric",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:LowTemperatureRadiant:SurfaceGroup",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:HighTemperatureRadiant",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:VentilatedSlab",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:VentilatedSlab:SlabGroup",
+      "group": "Zone HVAC Radiative/Convective Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:ConstantVolume:Reheat",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:ConstantVolume:NoReheat",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:VAV:NoReheat",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:VAV:Reheat",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:VAV:Reheat:VariableSpeedFan",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:VAV:HeatAndCool:NoReheat",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:VAV:HeatAndCool:Reheat",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:SeriesPIU:Reheat",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:ParallelPIU:Reheat",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:ConstantVolume:FourPipeInduction",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:ConstantVolume:FourPipeBeam",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:ConstantVolume:CooledBeam",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:Mixer",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:DualDuct:ConstantVolume",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:DualDuct:VAV",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:DualDuct:VAV:OutdoorAir",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:AirDistributionUnit",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:ExhaustControl",
+      "group": "Zone HVAC Air Loop Terminal Units",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Fan:SystemModel",
+      "group": "Fans",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Fan:ConstantVolume",
+      "group": "Fans",
+      "status": "existing-simplification",
+      "reason": "CAV fan electricity and heat already modeled with editable W/CFM; no pressure-rise/motor-efficiency object import.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Fan:VariableVolume",
+      "group": "Fans",
+      "status": "not-integrated",
+      "reason": "Requires pressure/efficiency or variable-flow fan controls; the current supply fan is constant-volume W/CFM.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Fan:OnOff",
+      "group": "Fans",
+      "status": "not-integrated",
+      "reason": "Requires pressure/efficiency or variable-flow fan controls; the current supply fan is constant-volume W/CFM.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Fan:ZoneExhaust",
+      "group": "Fans",
+      "status": "not-integrated",
+      "reason": "Requires pressure/efficiency or variable-flow fan controls; the current supply fan is constant-volume W/CFM.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "FanPerformance:NightVentilation",
+      "group": "Fans",
+      "status": "not-integrated",
+      "reason": "Requires the fans component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Fan:ComponentModel",
+      "group": "Fans",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:Water",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:Water:DetailedGeometry",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoilSystem:Cooling:Water",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires the coils component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:CurveFit:Performance",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:CurveFit:OperatingMode",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:CurveFit:Speed",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:DX:ASHRAE205:Performance",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires the coils component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:SingleSpeed",
+      "group": "Coils",
+      "status": "adapted",
+      "reason": "Selectable numeric single-speed dataset profiles use source curves, rated COP, airflow and SHR in BEAST CAV screening. Capacity scales to nominal tons; defrost, crankcase and transient latent degradation are excluded. Incomplete profiles are reported individually.",
+      "selectable_profiles": 25,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:TwoSpeed",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:MultiSpeed",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:VariableSpeed",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:TwoStageWithHumidityControlMode",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoilPerformance:DX:Cooling",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires the coils component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:VariableRefrigerantFlow",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:DX:VariableRefrigerantFlow",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:VariableRefrigerantFlow:FluidTemperatureControl",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:DX:VariableRefrigerantFlow:FluidTemperatureControl",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:Water",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:Steam",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:Electric",
+      "group": "Coils",
+      "status": "existing-simplification",
+      "reason": "Primary electric heat and reheat at COP 1 already modeled; no EnergyPlus object import or availability-node controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:Electric:MultiStage",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires the coils component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:Fuel",
+      "group": "Coils",
+      "status": "existing-simplification",
+      "reason": "Natural-gas primary furnace at fixed 0.80 efficiency already modeled; other fuels, PLF, pilot and parasitic terms are not implemented.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:Gas:MultiStage",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires the coils component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:Desuperheater",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires the coils component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:DX:SingleSpeed",
+      "group": "Coils",
+      "status": "adapted",
+      "reason": "Selectable numeric single-speed dataset profiles use source curves, rated COP, airflow and SHR in BEAST CAV screening. Capacity scales to nominal tons; defrost, crankcase and transient latent degradation are excluded. Incomplete profiles are reported individually.",
+      "selectable_profiles": 12,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:DX:MultiSpeed",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:DX:VariableSpeed",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:WaterToAirHeatPump:ParameterEstimation",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:WaterToAirHeatPump:ParameterEstimation",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:WaterToAirHeatPump:EquationFit",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:WaterToAirHeatPump:VariableSpeedEquationFit",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:WaterToAirHeatPump:EquationFit",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Heating:WaterToAirHeatPump:VariableSpeedEquationFit",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:WaterHeating:AirToWaterHeatPump:Pumped",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:WaterHeating:AirToWaterHeatPump:Wrapped",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:WaterHeating:AirToWaterHeatPump:VariableSpeed",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:WaterHeating:Desuperheater",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires the coils component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoilSystem:Cooling:DX",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoilSystem:Heating:DX",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoilSystem:Cooling:Water:HeatExchangerAssisted",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoilSystem:Cooling:DX:HeatExchangerAssisted",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoilSystem:IntegratedHeatPump:AirSource",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:Cooling:DX:SingleSpeed:ThermalStorage",
+      "group": "Coils",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "EvaporativeCooler:Direct:CelDekPad",
+      "group": "Evaporative Coolers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "EvaporativeCooler:Indirect:CelDekPad",
+      "group": "Evaporative Coolers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "EvaporativeCooler:Indirect:WetCoil",
+      "group": "Evaporative Coolers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "EvaporativeCooler:Indirect:ResearchSpecial",
+      "group": "Evaporative Coolers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "EvaporativeCooler:Direct:ResearchSpecial",
+      "group": "Evaporative Coolers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Humidifier:Steam:Electric",
+      "group": "Humidifiers and Dehumidifiers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Humidifier:Steam:Gas",
+      "group": "Humidifiers and Dehumidifiers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Dehumidifier:Desiccant:NoFans",
+      "group": "Humidifiers and Dehumidifiers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Dehumidifier:Desiccant:System",
+      "group": "Humidifiers and Dehumidifiers",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatExchanger:AirToAir:FlatPlate",
+      "group": "Heat Recovery",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatExchanger:AirToAir:SensibleAndLatent",
+      "group": "Heat Recovery",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatExchanger:Desiccant:BalancedFlow",
+      "group": "Heat Recovery",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatExchanger:Desiccant:BalancedFlow:PerformanceDataType1",
+      "group": "Heat Recovery",
+      "status": "not-integrated",
+      "reason": "Requires coupled outlet-air temperature/humidity, effectiveness or regeneration controls and water use beyond the current DX/reheat air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:UnitarySystem",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "UnitarySystemPerformance:Multispeed",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:Unitary:Furnace:HeatOnly",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:Unitary:Furnace:HeatCool",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:UnitaryHeatOnly",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:UnitaryHeatCool",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:UnitaryHeatPump:AirToAir",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:UnitaryHeatPump:WaterToAir",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:UnitaryHeatCool:VAVChangeoverBypass",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires system topology, zone/terminal air paths, equipment sequencing and controls beyond the single-zone CAV screening system.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirLoopHVAC:UnitaryHeatPump:AirToAir:MultiSpeed",
+      "group": "Unitary Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirConditioner:VariableRefrigerantFlow",
+      "group": "Variable Refrigerant Flow Equipment",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirConditioner:VariableRefrigerantFlow:FluidTemperatureControl",
+      "group": "Variable Refrigerant Flow Equipment",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirConditioner:VariableRefrigerantFlow:FluidTemperatureControl:HR",
+      "group": "Variable Refrigerant Flow Equipment",
+      "status": "not-integrated",
+      "reason": "Requires coupled outdoor/indoor unit sizing, refrigerant piping, zonal dispatch and heat-recovery controls.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneTerminalUnitList",
+      "group": "Variable Refrigerant Flow Equipment",
+      "status": "not-integrated",
+      "reason": "Requires the variable refrigerant flow equipment component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Pump:VariableSpeed",
+      "group": "Pumps",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Pump:ConstantSpeed",
+      "group": "Pumps",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Pump:VariableSpeed:Condensate",
+      "group": "Pumps",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeaderedPumps:ConstantSpeed",
+      "group": "Pumps",
+      "status": "not-integrated",
+      "reason": "Requires the pumps component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeaderedPumps:VariableSpeed",
+      "group": "Pumps",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "LoadProfile:Plant",
+      "group": "Non-Zone Equipment",
+      "status": "not-integrated",
+      "reason": "Requires the non-zone equipment component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollectorPerformance:FlatPlate",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollector:FlatPlate:Water",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollector:FlatPlate:PhotovoltaicThermal",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollectorPerformance:PhotovoltaicThermal:Simple",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollectorPerformance:PhotovoltaicThermal:BIPVT",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollector:IntegralCollectorStorage",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollectorPerformance:IntegralCollectorStorage",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollector:UnglazedTranspired",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "SolarCollector:UnglazedTranspired:Multisystem",
+      "group": "Solar Collectors",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Boiler:HotWater",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Boiler:Steam",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:Electric:ASHRAE205",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:Electric:EIR",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:Electric:ReformulatedEIR",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:Electric",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:Absorption:Indirect",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:Absorption",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:ConstantCOP",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:EngineDriven",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Chiller:CombustionTurbine",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ChillerHeater:Absorption:DirectFired",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ChillerHeater:Absorption:DoubleEffect",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:PlantLoop:EIR:Cooling",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:PlantLoop:EIR:Heating",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:AirToWater:FuelFired:Heating",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:AirToWater:FuelFired:Cooling",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:AirToWater",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:WaterToWater:EquationFit:Heating",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:WaterToWater:EquationFit:Cooling",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:WaterToWater:ParameterEstimation:Cooling",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatPump:WaterToWater:ParameterEstimation:Heating",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "DistrictCooling",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "DistrictHeating:Water",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "DistrictHeating:Steam",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "PlantComponent:TemperatureSource",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CentralHeatPumpSystem",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires the plant heating and cooling equipment component physics, operating inputs and controls absent from the current single-zone DX/furnace/resistance air path.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ChillerHeaterPerformance:Electric:EIR",
+      "group": "Plant Heating and Cooling Equipment",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoolingTower:SingleSpeed",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoolingTower:TwoSpeed",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoolingTower:VariableSpeed:Merkel",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoolingTower:VariableSpeed",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoolingTowerPerformance:CoolTools",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "CoolingTowerPerformance:YorkCalc",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "EvaporativeFluidCooler:SingleSpeed",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "EvaporativeFluidCooler:TwoSpeed",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "FluidCooler:SingleSpeed",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "FluidCooler:TwoSpeed",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:System",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:Vertical:Sizing:Rectangle",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:Vertical:Properties",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:Vertical:Array",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:Vertical:Single",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:ResponseFactors",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:Pond",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:Surface",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:HorizontalTrench",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "GroundHeatExchanger:Slinky",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires source-water temperatures/flow and a water or ground heat-balance model; outdoor dry bulb cannot substitute for loop temperature.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "HeatExchanger:FluidToFluid",
+      "group": "Condenser Equipment and Heat Exchangers",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterHeater:Mixed",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterHeater:Stratified",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterHeater:Sizing",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterHeater:HeatPump:PumpedCondenser",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterHeater:HeatPump:WrappedCondenser",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ThermalStorage:Ice:Simple",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ThermalStorage:Ice:Detailed",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ThermalStorage:ChilledWater:Mixed",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ThermalStorage:ChilledWater:Stratified",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ThermalStorage:HotWater:Stratified",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ThermalStorage:PCM",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ThermalStorage:Sizing",
+      "group": "Water Heaters and Thermal Storage",
+      "status": "not-integrated",
+      "reason": "Requires stage/speed or mode dispatch and its associated ratings and controls; using a single-speed curve would not reproduce this equipment.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:ForcedAir:UserDefined",
+      "group": "User Defined HVAC and Plant Component Models",
+      "status": "not-integrated",
+      "reason": "Requires user-supplied component physics and EMS/plugin programs; no universal performance curve exists.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "AirTerminal:SingleDuct:UserDefined",
+      "group": "User Defined HVAC and Plant Component Models",
+      "status": "not-integrated",
+      "reason": "Requires user-supplied component physics and EMS/plugin programs; no universal performance curve exists.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Coil:UserDefined",
+      "group": "User Defined HVAC and Plant Component Models",
+      "status": "not-integrated",
+      "reason": "Requires user-supplied component physics and EMS/plugin programs; no universal performance curve exists.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "PlantComponent:UserDefined",
+      "group": "User Defined HVAC and Plant Component Models",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "PlantEquipmentOperation:UserDefined",
+      "group": "User Defined HVAC and Plant Component Models",
+      "status": "not-integrated",
+      "reason": "Requires user-supplied component physics and EMS/plugin programs; no universal performance curve exists.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:Case",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:CompressorRack",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:CaseAndWalkInList",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:Condenser:AirCooled",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:Condenser:EvaporativeCooled",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:Condenser:WaterCooled",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:Condenser:Cascade",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:GasCooler:AirCooled",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:TransferLoadList",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:Subcooler",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:Compressor",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:CompressorList",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:System",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:TranscriticalSystem",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:SecondarySystem",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:WalkIn",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires evaporating/condensing temperatures, refrigerated case/process loads, refrigerant circuits and defrost schedules; building HVAC loads are insufficient.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Refrigeration:AirChiller",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ZoneHVAC:RefrigerationChillerSet",
+      "group": "Refrigeration",
+      "status": "not-integrated",
+      "reason": "Requires a solved water/steam/condenser plant: fluid temperatures and flow, dispatch, pumps, distribution and heat rejection; BEAST has no plant-loop solver.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:InternalCombustionEngine",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:CombustionTurbine",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:MicroTurbine",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:Photovoltaic",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "PhotovoltaicPerformance:Simple",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "PhotovoltaicPerformance:EquivalentOne-Diode",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "PhotovoltaicPerformance:Sandia",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:PVWatts",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Inverter:PVWatts",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell:PowerModule",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell:AirSupply",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell:WaterSupply",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell:AuxiliaryHeater",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell:ExhaustGasToWaterHeatExchanger",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell:ElectricalStorage",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell:Inverter",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelCell:StackCooler",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:MicroCHP",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:MicroCHP:NonNormalizedParameters",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:FuelSupply",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "Generator:WindTurbine",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Generators",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Inverter:Simple",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Inverter:FunctionOfPower",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Inverter:LookUpTable",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Storage:Simple",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Storage:Battery",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Storage:LiIonNMCBattery",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Transformer",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Distribution",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "ElectricLoadCenter:Storage:Converter",
+      "group": "Electric Load Center-Generator Specifications",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterUse:Equipment",
+      "group": "Water Systems",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterUse:Connections",
+      "group": "Water Systems",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterUse:Storage",
+      "group": "Water Systems",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterUse:Well",
+      "group": "Water Systems",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    },
+    {
+      "object_type": "WaterUse:RainCollector",
+      "group": "Water Systems",
+      "status": "not-integrated",
+      "reason": "Requires generation, storage, domestic/process water loads and dispatch/thermal state inputs not present in the HVAC comparison.",
+      "selectable_profiles": 0,
+      "source_url": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/idd/Energy+.idd.in",
+      "energyplus_version": "26.2.0",
+      "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f"
+    }
+  ]
+}

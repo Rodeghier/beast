@@ -1,0 +1,3715 @@
+{
+  "version": "26.2.0",
+  "commit": "4bd7a1f26fb749a83257855aba6760e26c8a3c8f",
+  "profiles": [
+    {
+      "id": "energyplus-cooling-lennox-kca060s4",
+      "name": "Lennox KCA060S4",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 18101.22,
+      "basisCapacityW": 18101.22,
+      "basisRatingName": "Lennox KCA060S4",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.07,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 388.61959953123016,
+      "shr": 0.72,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox KCA060S4 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.9600147,
+            -0.0106038,
+            0.0013516,
+            0.0039357,
+            -0.0000568,
+            -0.0004915
+          ],
+          "minX": 17.22,
+          "maxX": 29.44,
+          "minY": 18.33,
+          "maxY": 35,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Lennox KCA060S4 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7491909,
+            0.3721683,
+            -0.1213592
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Lennox KCA060S4 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.2484029,
+            0.0610633,
+            -0.0017081,
+            -0.0102658,
+            0.0007028,
+            -0.0004237
+          ],
+          "minX": 17.22,
+          "maxX": 29.44,
+          "minY": 18.33,
+          "maxY": 35,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Lennox KCA060S4 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.2094575,
+            -0.3165036,
+            0.1070461
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Lennox KCA060S4 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-lennox-sca060h4b",
+      "name": "Lennox SCA060H4B",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 18452.7,
+      "basisCapacityW": 18452.7,
+      "basisRatingName": "Lennox SCA060H4B",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.48,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 381.217321444921,
+      "shr": 0.73,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox SCA060H4B CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.0671319,
+            -0.0218036,
+            0.0016875,
+            0.00545,
+            -0.0000643,
+            -0.0005786
+          ],
+          "minX": 17.22,
+          "maxX": 21.67,
+          "minY": 29.44,
+          "maxY": 46.11,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Lennox SCA060H4B CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.8174603,
+            0.2420635,
+            -0.0595238
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Lennox SCA060H4B EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.4618717,
+            0.0448432,
+            -0.0012979,
+            -0.0158459,
+            0.000768,
+            -0.0003382
+          ],
+          "minX": 17.22,
+          "maxX": 21.67,
+          "minY": 29.44,
+          "maxY": 46.11,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Lennox SCA060H4B EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9342105,
+            0.0986842,
+            -0.0328947
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Lennox SCA060H4B PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-lennox-tca060s2",
+      "name": "Lennox TCA060S2",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 18452.7,
+      "basisCapacityW": 18452.7,
+      "basisRatingName": "Lennox TCA060S2",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.07,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 381.217321444921,
+      "shr": 0.75,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox TCA060S2 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.9274018,
+            -0.0049893,
+            0.0010446,
+            0.00035,
+            -0.00003,
+            -0.0002957
+          ],
+          "minX": 17.22,
+          "maxX": 21.67,
+          "minY": 29.44,
+          "maxY": 46.11,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Lennox TCA060S2 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7539683,
+            0.3650794,
+            -0.1190476
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Lennox TCA060S2 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.5480534,
+            0.0256216,
+            -0.0006559,
+            -0.0031147,
+            0.0006074,
+            -0.0006367
+          ],
+          "minX": 17.22,
+          "maxX": 21.67,
+          "minY": 29.44,
+          "maxY": 46.11,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Lennox TCA060S2 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.0120192,
+            -0.0420673,
+            0.0300481
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Lennox TCA060S2 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-centurion-50pg06",
+      "name": "Carrier Centurion 50PG06",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 18276.96,
+      "basisCapacityW": 18276.96,
+      "basisRatingName": "Carrier Centurion 50PG06",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.15,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 384.88287261266066,
+      "shr": 0.74,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier Centurion 50PG06 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.9953455,
+            -0.0118418,
+            0.0012277,
+            0.0030246,
+            -0.0000702,
+            -0.0003685
+          ],
+          "minX": 12.22,
+          "maxX": 26.67,
+          "minY": 15.56,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Carrier Centurion 50PG06 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7705358,
+            0.2848007,
+            -0.0580891
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Carrier Centurion 50PG06 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.3802131,
+            0.0199468,
+            -0.0006682,
+            0.0058933,
+            0.0004646,
+            -0.0004072
+          ],
+          "minX": 12.22,
+          "maxX": 26.67,
+          "minY": 15.56,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Carrier Centurion 50PG06 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.3439758,
+            -0.5111244,
+            0.1732549
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Carrier Centurion 50PG06 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-centurion-50pg12",
+      "name": "Carrier Centurion 50PG12",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 36788.24,
+      "basisCapacityW": 36788.24,
+      "basisRatingName": "Carrier Centurion 50PG12",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.05,
+      "airflowM3s": 1.888,
+      "cfmPerTon": 382.43138934761186,
+      "shr": 0.76,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier Centurion 50PG12 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.0013476,
+            -0.0187754,
+            0.0015312,
+            0.0054931,
+            -0.0000901,
+            -0.0004408
+          ],
+          "minX": 12.22,
+          "maxX": 26.67,
+          "minY": 15.56,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Carrier Centurion 50PG12 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.6460191,
+            0.5455414,
+            -0.1910828
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Carrier Centurion 50PG12 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.3037085,
+            0.0310288,
+            -0.0009543,
+            0.0053687,
+            0.0004729,
+            -0.0004469
+          ],
+          "minX": 12.22,
+          "maxX": 26.67,
+          "minY": 15.56,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Carrier Centurion 50PG12 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.3637624,
+            -0.5775338,
+            0.2130374
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Carrier Centurion 50PG12 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-centurion-50pg24",
+      "name": "Carrier Centurion 50PG24",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 73810.8,
+      "basisCapacityW": 73810.8,
+      "basisRatingName": "Carrier Centurion 50PG24",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.95,
+      "airflowM3s": 3.776,
+      "cfmPerTon": 381.217321444921,
+      "shr": 0.71,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier Centurion 50PG24 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.5781158,
+            0.0405917,
+            0.0000113,
+            -0.0095022,
+            1e-7,
+            -0.0000573
+          ],
+          "minX": 12.22,
+          "maxX": 26.67,
+          "minY": 15.56,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Carrier Centurion 50PG24 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.8328798,
+            0.2403628,
+            -0.0725624
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Carrier Centurion 50PG24 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.5909553,
+            -0.0496529,
+            0.0016569,
+            0.0397786,
+            0.0003938,
+            -0.0016575
+          ],
+          "minX": 12.22,
+          "maxX": 26.67,
+          "minY": 15.56,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Carrier Centurion 50PG24 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.0440554,
+            -0.070172,
+            0.0258826
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Carrier Centurion 50PG24 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-comfort-50es060",
+      "name": "Carrier Comfort 50ES060",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 17500.95,
+      "basisCapacityW": 17500.95,
+      "basisRatingName": "Carrier Comfort 50ES060",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.9,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 401.94897233731274,
+      "shr": 0.78,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier Comfort 50ES060 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.6380187,
+            -0.0747347,
+            0.0029747,
+            0.0015201,
+            -0.0000519,
+            -0.0004509
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Carrier Comfort 50ES060 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.8185792,
+            0.2831771,
+            -0.1017563
+          ],
+          "minX": 0.875,
+          "maxX": 1.125,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Carrier Comfort 50ES060 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            -0.2209648,
+            0.1033303,
+            -0.0030061,
+            -0.0070657,
+            0.0006322,
+            -0.0002496
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Carrier Comfort 50ES060 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.0380778,
+            -0.2013868,
+            0.163309
+          ],
+          "minX": 0.875,
+          "maxX": 1.125,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Carrier Comfort 50ES060 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-weathermaster-50hj006",
+      "name": "Carrier Weathermaster 50HJ006",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 18687,
+      "basisCapacityW": 18687,
+      "basisRatingName": "Carrier Weathermaster 50HJ006",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.9,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 376.4375698307216,
+      "shr": 0.73,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier Weathermaster 50HJ006 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.3116765,
+            0.0622847,
+            -0.0008633,
+            -0.0066556,
+            -0.0000462,
+            0.0001349
+          ],
+          "minX": 16.67,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Carrier Weathermaster 50HJ006 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.6583072,
+            0.5294956,
+            -0.1869478
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Carrier Weathermaster 50HJ006 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.0505234,
+            -0.065323,
+            0.0021068,
+            0.0235557,
+            0.0004542,
+            -0.0014092
+          ],
+          "minX": 16.67,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Carrier Weathermaster 50HJ006 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.3293472,
+            -0.5218591,
+            0.191822
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Carrier Weathermaster 50HJ006 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-weathermaster-50hj012",
+      "name": "Carrier Weathermaster 50HJ012",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 36846.82,
+      "basisCapacityW": 36846.82,
+      "basisRatingName": "Carrier Weathermaster 50HJ012",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.71,
+      "airflowM3s": 1.888,
+      "cfmPerTon": 381.82339031844236,
+      "shr": 0.73,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier Weathermaster 50HJ012 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.5878544,
+            0.0247382,
+            0.0001631,
+            -0.003496,
+            -0.0000889,
+            0.000145
+          ],
+          "minX": 16.67,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Carrier Weathermaster 50HJ012 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7232943,
+            0.4292712,
+            -0.1525863
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Carrier Weathermaster 50HJ012 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.6445678,
+            -0.0198276,
+            0.0010284,
+            0.0222812,
+            0.0004996,
+            -0.0015296
+          ],
+          "minX": 16.67,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Carrier Weathermaster 50HJ012 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.2158796,
+            -0.3411366,
+            0.1251095
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Carrier Weathermaster 50HJ012 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-weathermaster-50hj024",
+      "name": "Carrier Weathermaster 50HJ024",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 73517.9,
+      "basisCapacityW": 73517.9,
+      "basisRatingName": "Carrier Weathermaster 50HJ024",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.73,
+      "airflowM3s": 3.776,
+      "cfmPerTon": 382.7361155542634,
+      "shr": 0.76,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier Weathermaster 50HJ024 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.134512,
+            -0.0239764,
+            0.0012836,
+            0.0023642,
+            -0.0000802,
+            -0.000198
+          ],
+          "minX": 12.22,
+          "maxX": 26.67,
+          "minY": 15.56,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Carrier Weathermaster 50HJ024 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7578828,
+            0.3524189,
+            -0.1092772
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Carrier Weathermaster 50HJ024 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.343921,
+            0.0215041,
+            -0.0006539,
+            0.0073217,
+            0.000316,
+            -0.0002297
+          ],
+          "minX": 12.22,
+          "maxX": 26.67,
+          "minY": 15.56,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Carrier Weathermaster 50HJ024 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.2167653,
+            -0.3411749,
+            0.123357
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Carrier Weathermaster 50HJ024 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-goodman-cpc060",
+      "name": "Goodman CPC060",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 17427.55,
+      "basisCapacityW": 17427.55,
+      "basisRatingName": "Goodman CPC060",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.95,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 403.6418697652105,
+      "shr": 0.72,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Goodman CPC060 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.304587,
+            -0.0618386,
+            0.0024674,
+            0.0081572,
+            -0.0001826,
+            -0.000161
+          ],
+          "minX": 15,
+          "maxX": 21.67,
+          "minY": 18.33,
+          "maxY": 46.11,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "Goodman CPC060 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            -0.9361345,
+            3.4420168,
+            -1.5058824
+          ],
+          "minX": 0.875,
+          "maxX": 1.125,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "Goodman CPC060 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.1618862,
+            0.0531671,
+            -0.0015621,
+            0.0077612,
+            0.0001864,
+            -0.0001388
+          ],
+          "minX": 15,
+          "maxX": 21.67,
+          "minY": 18.33,
+          "maxY": 46.11,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "Goodman CPC060 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            2.2905751,
+            -2.2915498,
+            1.0009747
+          ],
+          "minX": 0.875,
+          "maxX": 1.125,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "Goodman CPC060 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-affinity-dnp060",
+      "name": "York Affinity DNP060",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 17200,
+      "basisCapacityW": 17200,
+      "basisRatingName": "York Affinity DNP060",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.88,
+      "airflowM3s": 0.8496,
+      "cfmPerTon": 368.0837198072108,
+      "shr": 0.71,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Affinity DNP060 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.9829911,
+            -0.0197231,
+            0.0016341,
+            0.0058106,
+            -0.0000309,
+            -0.0005776
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Affinity DNP060 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9268752,
+            0.0902018,
+            -0.0175149
+          ],
+          "minX": 0.833,
+          "maxX": 1.167,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Affinity DNP060 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.2246908,
+            0.0390385,
+            -0.0010832,
+            0.0080036,
+            0.0003449,
+            -0.0004327
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Affinity DNP060 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            2.0004106,
+            -2.4070885,
+            1.3922562
+          ],
+          "minX": 0.833,
+          "maxX": 1.167,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Affinity DNP060 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-affinity-dnz060",
+      "name": "York Affinity DNZ060",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 17395.3,
+      "basisCapacityW": 17395.3,
+      "basisRatingName": "York Affinity DNZ060",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.24,
+      "airflowM3s": 0.826,
+      "cfmPerTon": 353.8414260747649,
+      "shr": 0.68,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Affinity DNZ060 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.234314,
+            -0.0398816,
+            0.0019354,
+            0.0062114,
+            -0.0001247,
+            -0.0003619
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Affinity DNZ060 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.2527302,
+            -0.7182445,
+            0.4623738
+          ],
+          "minX": 0.714,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Affinity DNZ060 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            -0.1272387,
+            0.0848124,
+            -0.0021062,
+            -0.0085792,
+            0.0007783,
+            -0.0005585
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Affinity DNZ060 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.6529892,
+            0.8193151,
+            -0.4617716
+          ],
+          "minX": 0.714,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Affinity DNZ060 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-lattitude-sj060",
+      "name": "York Lattitude SJ060",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 17427.55,
+      "basisCapacityW": 17427.55,
+      "basisRatingName": "York Lattitude SJ060",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.25,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 403.6418697652105,
+      "shr": 0.7,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Lattitude SJ060 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.8277321,
+            -0.0496772,
+            0.00216,
+            0.0350767,
+            -0.000486,
+            -0.0004331
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Lattitude SJ060 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.3022329,
+            -0.7346939,
+            0.4379352
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Lattitude SJ060 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.1643011,
+            0.0818978,
+            -0.002164,
+            -0.0183702,
+            0.0007849,
+            -0.0003855
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Lattitude SJ060 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7757255,
+            0.5279901,
+            -0.3030465
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Lattitude SJ060 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-lattitude-nm060",
+      "name": "York Lattitude NM060",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 17100,
+      "basisCapacityW": 17100,
+      "basisRatingName": "York Lattitude NM060",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.85,
+      "airflowM3s": 0.8024,
+      "cfmPerTon": 349.6675752814439,
+      "shr": 0.7,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Lattitude NM060 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.1028912,
+            -0.0119627,
+            0.001464,
+            -0.0041312,
+            -0.0000388,
+            -0.000352
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Lattitude NM060 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7060647,
+            0.3967112,
+            -0.1059134
+          ],
+          "minX": 0.824,
+          "maxX": 1.47,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Lattitude NM060 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.02812,
+            0.0456536,
+            -0.0006039,
+            0.014503,
+            0.0006477,
+            -0.0014811
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Lattitude NM060 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.4662994,
+            0.2484568,
+            -0.0381443
+          ],
+          "minX": 0.824,
+          "maxX": 1.47,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Lattitude NM060 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-predator-zf120",
+      "name": "York Predator ZF120",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 36905.4,
+      "basisCapacityW": 36905.4,
+      "basisRatingName": "York Predator ZF120",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.06,
+      "airflowM3s": 1.888,
+      "cfmPerTon": 381.217321444921,
+      "shr": 0.734,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Predator ZF120 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.2083456,
+            -0.0287633,
+            0.0022322,
+            0.0019731,
+            -0.0000541,
+            -0.0007392
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Predator ZF120 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.6735828,
+            0.4697959,
+            -0.1469388
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Predator ZF120 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.4822073,
+            0.040153,
+            -0.001582,
+            -0.0116025,
+            0.0006758,
+            -0.0001198
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Predator ZF120 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.3074459,
+            -0.442133,
+            0.1377204
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Predator ZF120 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-sunline-zr060",
+      "name": "York Sunline ZR060",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 18687,
+      "basisCapacityW": 18687,
+      "basisRatingName": "York Sunline ZR060",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.98,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 376.4375698307216,
+      "shr": 0.685,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Sunline ZR060 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.149151,
+            -0.0161007,
+            0.0015936,
+            -0.0027657,
+            -0.0000236,
+            -0.0004692
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Sunline ZR060 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.3148231,
+            1.0463502,
+            -0.3708016
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Sunline ZR060 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.1210878,
+            0.0560928,
+            -0.0012307,
+            0.0092825,
+            0.0005999,
+            -0.0010492
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Sunline ZR060 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.9711221,
+            -1.6315991,
+            0.6688369
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Sunline ZR060 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-sunline-dr060",
+      "name": "York Sunline DR060",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 17398.26,
+      "basisCapacityW": 17398.26,
+      "basisRatingName": "York Sunline DR060",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.05,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 404.3214015324921,
+      "shr": 0.69,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Sunline DR060 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.4767927,
+            -0.0614116,
+            0.0027182,
+            -0.0010838,
+            -0.0000353,
+            -0.0003531
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Sunline DR060 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9156325,
+            0.007696,
+            0.0769601
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Sunline DR060 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            -0.2918107,
+            0.0950527,
+            -0.0026508,
+            0.0070978,
+            0.000509,
+            -0.0006143
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Sunline DR060 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9336732,
+            0.2228647,
+            -0.1628839
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Sunline DR060 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-sunline-zf240",
+      "name": "York Sunline ZF240",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 81807,
+      "basisCapacityW": 81807,
+      "basisRatingName": "York Sunline ZF240",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.59,
+      "airflowM3s": 3.776,
+      "cfmPerTon": 343.9553518611705,
+      "shr": 0.7,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Sunline ZF240 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.0477109,
+            -0.0126686,
+            0.0012838,
+            0.0012381,
+            -0.0000551,
+            -0.0003875
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Sunline ZF240 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.6042146,
+            0.6557209,
+            -0.2667894
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Sunline ZF240 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.4544209,
+            0.0213827,
+            -0.0007051,
+            0.0028662,
+            0.0004214,
+            -0.0003177
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Sunline ZF240 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.4410769,
+            -0.7566253,
+            0.3239453
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Sunline ZF240 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-york-sunline-dj240",
+      "name": "York Sunline DJ240",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "DXCoolingCoil.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/DXCoolingCoil.idf",
+      "capacityW": 73518,
+      "basisCapacityW": 73518,
+      "basisRatingName": "York Sunline DJ240",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.096,
+      "airflowM3s": 3.776,
+      "cfmPerTon": 382.7355949523488,
+      "shr": 0.75,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "York Sunline DJ240 CapFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.3804089,
+            -0.0801861,
+            0.0033588,
+            0.0118882,
+            -0.0001339,
+            -0.0005357
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "capacityFlow": {
+          "name": "York Sunline DJ240 CapFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7894654,
+            0.1996615,
+            0.0111454
+          ],
+          "minX": 0.75,
+          "maxX": 1.175,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirTemperature": {
+          "name": "York Sunline DJ240 EIRFT",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            -0.1635113,
+            0.1222397,
+            -0.0037107,
+            -0.0070372,
+            0.0005052,
+            -0.0002069
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "eirFlow": {
+          "name": "York Sunline DJ240 EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.5272381,
+            -0.965285,
+            0.4418485
+          ],
+          "minX": 0.75,
+          "maxX": 1.175,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        },
+        "partLoad": {
+          "name": "York Sunline DJ240 PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-jci-j05xp-cooling",
+      "name": "JCI J05XP Cooling",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 17789.3,
+      "basisCapacityW": 17789.3,
+      "basisRatingName": "JCI J05XP Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.8,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 395.4337083205463,
+      "shr": 0.73,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "JCI J05XP Cooling CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.2677486847,
+            -0.0212987715,
+            0.0016851965,
+            -0.0051869146,
+            0.0000249729,
+            -0.0004993062
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": 0.7265,
+          "maxOutput": 1.3674
+        },
+        "capacityFlow": {
+          "name": "JCI J05XP Cooling CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7230407155,
+            0.4200517769,
+            -0.1430924924
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9275,
+          "maxOutput": 1.0198
+        },
+        "eirTemperature": {
+          "name": "JCI J05XP Cooling EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            -0.0244858231,
+            0.0546088991,
+            -0.0013068298,
+            0.0081197574,
+            0.0005905554,
+            -0.0007673769
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": 0.6068,
+          "maxOutput": 1.9036
+        },
+        "eirFlow": {
+          "name": "JCI J05XP Cooling EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.3099053414,
+            -0.4816501891,
+            0.1717448477
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9806,
+          "maxOutput": 1.0782
+        },
+        "partLoad": {
+          "name": "JCI J05XP Cooling PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-jci-j05xp-heating",
+      "name": "JCI J05XP Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 16857.4,
+      "basisCapacityW": 17789.3,
+      "basisRatingName": "JCI J05XP Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 0.9476145773020862,
+      "cop": 3.2,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 395.4337083205463,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "JCI J05XP Heating CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.8772069061,
+            -0.00399089,
+            0.0000821453,
+            0.0204534912,
+            -3.623e-7,
+            8.06e-8
+          ],
+          "minX": 12.78,
+          "maxX": 26.67,
+          "minY": -23.33,
+          "maxY": 15.56,
+          "minOutput": 0.3512,
+          "maxOutput": 1.1579
+        },
+        "capacityFlow": {
+          "name": "JCI J05XP Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7510431154,
+            0.3240611961,
+            -0.0751043115
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9518,
+          "maxOutput": 1.0388
+        },
+        "eirTemperature": {
+          "name": "JCI J05XP Heating EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.392000059,
+            0.0464608433,
+            -0.0004837286,
+            -0.007005982,
+            0.0010916981,
+            -0.0009929269
+          ],
+          "minX": 12.78,
+          "maxX": 26.67,
+          "minY": -23.33,
+          "maxY": 15.56,
+          "minOutput": 0.7539,
+          "maxOutput": 2.7557
+        },
+        "eirFlow": {
+          "name": "JCI J05XP Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.102501344,
+            -0.1819810978,
+            0.0794797538
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9992,
+          "maxOutput": 1.0107
+        },
+        "partLoad": {
+          "name": "JCI J05XP Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-jci-j10xp-cooling",
+      "name": "JCI J10XP Cooling",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 17789.3,
+      "basisCapacityW": 17789.3,
+      "basisRatingName": "JCI J10XP Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.8,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 395.4337083205463,
+      "shr": 0.73,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "JCI J10XP Cooling CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.3587782644,
+            -0.0293676065,
+            0.0016140268,
+            -0.0045082608,
+            -0.0000733937,
+            -0.0002208294
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": 0.6886,
+          "maxOutput": 1.3344
+        },
+        "capacityFlow": {
+          "name": "JCI J10XP Cooling CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.5876206167,
+            0.6063073664,
+            -0.1939279831
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.888,
+          "maxOutput": 1.0371
+        },
+        "eirTemperature": {
+          "name": "JCI J10XP Cooling EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            -0.1355655442,
+            0.0735278965,
+            -0.0015240393,
+            0.0005175925,
+            0.0008293829,
+            -0.0011050307
+          ],
+          "minX": 13.89,
+          "maxX": 25,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": 0.5764,
+          "maxOutput": 2.0426
+        },
+        "eirFlow": {
+          "name": "JCI J10XP Cooling EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.4204535096,
+            -0.6181635177,
+            0.1977100081
+          ],
+          "minX": 0.625,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9643,
+          "maxOutput": 1.1138
+        },
+        "partLoad": {
+          "name": "JCI J10XP Cooling PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-jci-j10xp-heating",
+      "name": "JCI J10XP Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 16857.4,
+      "basisCapacityW": 17789.3,
+      "basisRatingName": "JCI J10XP Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 0.9476145773020862,
+      "cop": 3.2,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 395.4337083205463,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "JCI J10XP Heating CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.8356641862,
+            0.000533039,
+            -0.000128972,
+            0.0252655211,
+            3.899e-7,
+            -5.8e-8
+          ],
+          "minX": 12.78,
+          "maxX": 26.67,
+          "minY": -23.33,
+          "maxY": 15.56,
+          "minOutput": 0.169,
+          "maxOutput": 1.215
+        },
+        "capacityFlow": {
+          "name": "JCI J10XP Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            -0.1432077788,
+            2.1604833381,
+            -1.0172755593
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9049,
+          "maxOutput": 1
+        },
+        "eirTemperature": {
+          "name": "JCI J10XP Heating EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.7939784606,
+            -0.0319847331,
+            0.0020135529,
+            0.0235929371,
+            0.0034869871,
+            -0.0036919217
+          ],
+          "minX": 12.78,
+          "maxX": 26.67,
+          "minY": -23.33,
+          "maxY": 15.56,
+          "minOutput": 0.7176,
+          "maxOutput": 5.9413
+        },
+        "eirFlow": {
+          "name": "JCI J10XP Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            2.4239231707,
+            -2.4508074211,
+            1.0268842504
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9649,
+          "maxOutput": 1.1634
+        },
+        "partLoad": {
+          "name": "JCI J10XP Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-carrier-50tfq006-heating",
+      "name": "Carrier 50TFQ006 Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 14888.069,
+      "basisCapacityW": 17789.3,
+      "basisRatingName": "Carrier 50TFQ006 Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 0.8369114580112764,
+      "cop": 2.92,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 395.4337083205463,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier 50TFQ006 Heating CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.8422242976,
+            -0.0022456353,
+            0.0000042519,
+            0.0235890493,
+            0.0001897141,
+            -0.0000367281
+          ],
+          "minX": 12.78,
+          "maxX": 26.67,
+          "minY": -17.78,
+          "maxY": 15.56,
+          "minOutput": 0.4429,
+          "maxOutput": 1.2362
+        },
+        "capacityFlow": {
+          "name": "Carrier 50TFQ006 Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9488192861,
+            0.0669286259,
+            -0.015747912
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9902,
+          "maxOutput": 1.0079
+        },
+        "eirTemperature": {
+          "name": "Carrier 50TFQ006 Heating EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.7759454142,
+            0.0138731058,
+            0.000178397,
+            -0.0124920283,
+            0.0005441089,
+            -0.0004661905
+          ],
+          "minX": 12.78,
+          "maxX": 26.67,
+          "minY": -17.78,
+          "maxY": 15.56,
+          "minOutput": 0.7835,
+          "maxOutput": 1.9114
+        },
+        "eirFlow": {
+          "name": "Carrier 50TFQ006 Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.5141058504,
+            -0.7896670856,
+            0.2755612352
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9576,
+          "maxOutput": 1.0769
+        },
+        "partLoad": {
+          "name": "Carrier 50TFQ006 Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-50hjq012-cooling",
+      "name": "Carrier 50HJQ012 Cooling",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 34992.558,
+      "basisCapacityW": 34992.558,
+      "basisRatingName": "Carrier 50HJQ012 Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 3.41,
+      "airflowM3s": 1.888,
+      "cfmPerTon": 402.05628107706184,
+      "shr": 0.75,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier 50HJQ012 Cooling CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.9016695435,
+            -0.0100984925,
+            0.0011939698,
+            -0.0022167983,
+            -0.0001007897,
+            0.0000651256
+          ],
+          "minX": 16.67,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": 0.7437,
+          "maxOutput": 1.1826
+        },
+        "capacityFlow": {
+          "name": "Carrier 50HJQ012 Cooling CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7185929648,
+            0.4422110553,
+            -0.1608040201
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9598,
+          "maxOutput": 1.0201
+        },
+        "eirTemperature": {
+          "name": "Carrier 50HJQ012 Cooling EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.3420143985,
+            0.0183309439,
+            0.0000395191,
+            0.0203634277,
+            0.0005375361,
+            -0.0015936873
+          ],
+          "minX": 16.67,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": 0.7064,
+          "maxOutput": 1.7769
+        },
+        "eirFlow": {
+          "name": "Carrier 50HJQ012 Cooling EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.2131941137,
+            -0.3390327807,
+            0.125838667
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.986,
+          "maxOutput": 1.0297
+        },
+        "partLoad": {
+          "name": "Carrier 50HJQ012 Cooling PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-carrier-50hjq012-heating",
+      "name": "Carrier 50HJQ012 Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 31476.156,
+      "basisCapacityW": 34992.558,
+      "basisRatingName": "Carrier 50HJQ012 Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 0.8995100043843609,
+      "cop": 3.54,
+      "airflowM3s": 1.888,
+      "cfmPerTon": 402.05628107706184,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier 50HJQ012 Heating CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.8315833373,
+            -0.0005884494,
+            -0.0000522898,
+            0.0237989677,
+            0.0000626989,
+            0.0000083281
+          ],
+          "minX": 12.78,
+          "maxX": 26.67,
+          "minY": -17.78,
+          "maxY": 15.56,
+          "minOutput": 0.2821,
+          "maxOutput": 1.2104
+        },
+        "capacityFlow": {
+          "name": "Carrier 50HJQ012 Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9273753122,
+            0.05027863,
+            0.0223460578
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9777,
+          "maxOutput": 1.0251
+        },
+        "eirTemperature": {
+          "name": "Carrier 50HJQ012 Heating EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.8120699062,
+            0.006056182,
+            0.0004384377,
+            -0.0153158908,
+            0.0012912017,
+            -0.0008045447
+          ],
+          "minX": 12.78,
+          "maxX": 26.67,
+          "minY": -17.78,
+          "maxY": 15.56,
+          "minOutput": 0.7827,
+          "maxOutput": 2.926
+        },
+        "eirFlow": {
+          "name": "Carrier 50HJQ012 Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.0243032687,
+            -0.1374417005,
+            0.1131384318
+          ],
+          "minX": 0.75,
+          "maxX": 1.25,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9849,
+          "maxOutput": 1.0293
+        },
+        "partLoad": {
+          "name": "Carrier 50HJQ012 Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-carrier-50ez060-cooling",
+      "name": "Carrier 50EZ060 Cooling",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 17716.3372,
+      "basisCapacityW": 17716.3372,
+      "basisRatingName": "Carrier 50EZ060 Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.05,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 397.0622588639086,
+      "shr": 0.75,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier 50EZ060 Cooling CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            1.5925938003,
+            -0.0627877976,
+            0.0027564091,
+            0.0000704,
+            -0.0000564877,
+            -0.0005100941
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": 0.7064,
+          "maxOutput": 1.2447
+        },
+        "capacityFlow": {
+          "name": "Carrier 50EZ060 Cooling CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7571598857,
+            0.3751780512,
+            -0.1323379369
+          ],
+          "minX": 0.875,
+          "maxX": 1.125,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9841,
+          "maxOutput": 1.0117
+        },
+        "eirTemperature": {
+          "name": "Carrier 50EZ060 Cooling EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            -0.1136633245,
+            0.102662298,
+            -0.0028732875,
+            -0.0180276065,
+            0.0009137924,
+            -0.0004182267
+          ],
+          "minX": 13.89,
+          "maxX": 22.22,
+          "minY": 23.89,
+          "maxY": 51.67,
+          "minOutput": 0.6324,
+          "maxOutput": 2.0053
+        },
+        "eirFlow": {
+          "name": "Carrier 50EZ060 Cooling EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9887558412,
+            -0.0409636114,
+            0.0522077702
+          ],
+          "minX": 0.875,
+          "maxX": 1.125,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9929,
+          "maxOutput": 1.0087
+        },
+        "partLoad": {
+          "name": "Carrier 50EZ060 Cooling PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-carrier-50ez060-heating",
+      "name": "Carrier 50EZ060 Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 17303.1085,
+      "basisCapacityW": 17716.3372,
+      "basisRatingName": "Carrier 50EZ060 Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 0.9766752746160192,
+      "cop": 4.5,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 397.0622588639086,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Carrier 50EZ060 Heating CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.8236855295,
+            -0.0007774239,
+            -0.0000576211,
+            0.0238675778,
+            0.0002866082,
+            -0.0000022314
+          ],
+          "minX": 18.33,
+          "maxX": 23.89,
+          "minY": -23.33,
+          "maxY": 15.56,
+          "minOutput": 0.3425,
+          "maxOutput": 1.19
+        },
+        "capacityFlow": {
+          "name": "Carrier 50EZ060 Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7426251918,
+            0.4660387748,
+            -0.2086639666
+          ],
+          "minX": 0.875,
+          "maxX": 1.125,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9907,
+          "maxOutput": 1.0028
+        },
+        "eirTemperature": {
+          "name": "Carrier 50EZ060 Heating EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.6932423824,
+            0.0146398474,
+            0.0004670338,
+            -0.0044246906,
+            0.0005574856,
+            -0.0012067286
+          ],
+          "minX": 18.33,
+          "maxX": 23.89,
+          "minY": -23.33,
+          "maxY": 15.56,
+          "minOutput": 0.8505,
+          "maxOutput": 2.4664
+        },
+        "eirFlow": {
+          "name": "Carrier 50EZ060 Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.7678434868,
+            -1.3737025624,
+            0.6058590756
+          ],
+          "minX": 0.875,
+          "maxX": 1.125,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9892,
+          "maxOutput": 1.0297
+        },
+        "partLoad": {
+          "name": "Carrier 50EZ060 Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-lennox-lha120h-heating",
+      "name": "Lennox LHA120H Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 32559.84,
+      "basisCapacityW": 36340.68,
+      "basisRatingName": "Lennox LHA120H Stage 1&2",
+      "basisRatingType": "CoilPerformance:DX:Cooling",
+      "capacityRatio": 0.895961220318387,
+      "cop": 3.69,
+      "airflowM3s": 1.888,
+      "cfmPerTon": 387.14129000484826,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox LHA120H Heating CAPFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            0.7820076913,
+            0.0249973476,
+            0.0001366717,
+            3.283e-7
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.2003,
+          "maxOutput": 1.2714
+        },
+        "capacityFlow": {
+          "name": "Lennox LHA120H Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.112512058,
+            -0.337536174,
+            0.225024116
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9865,
+          "maxOutput": 1.0315
+        },
+        "eirTemperature": {
+          "name": "Lennox LHA120H Heating EIRFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            1.2281320233,
+            -0.0277623563,
+            0.000892888,
+            -0.0000320297
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.8339,
+          "maxOutput": 3.1425
+        },
+        "eirFlow": {
+          "name": "Lennox LHA120H Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.7830201273,
+            -1.115907055,
+            0.3328869277
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9233,
+          "maxOutput": 1.1033
+        },
+        "partLoad": {
+          "name": "Lennox LHA120H Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-lennox-lha240h-heating",
+      "name": "Lennox LHA240H Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 61977.83,
+      "basisCapacityW": 67171.644,
+      "basisRatingName": "Lennox LHA240H Stage 1&2",
+      "basisRatingType": "CoilPerformance:DX:Cooling",
+      "capacityRatio": 0.9226784742681005,
+      "cop": 3.6,
+      "airflowM3s": 3.54,
+      "cfmPerTon": 392.7153138138186,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox LHA240H Heating CAPFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            0.7160389146,
+            0.0329377708,
+            0.0002084138,
+            -0.0000086288
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.1491,
+          "maxOutput": 1.3341
+        },
+        "capacityFlow": {
+          "name": "Lennox LHA240H Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9006988394,
+            0.0933903772,
+            0.0059107834
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9792,
+          "maxOutput": 1.0213
+        },
+        "eirTemperature": {
+          "name": "Lennox LHA240H Heating EIRFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            1.4235221072,
+            -0.0715849278,
+            0.0018175586,
+            0.0000092666
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.7668,
+          "maxOutput": 4.3561
+        },
+        "eirFlow": {
+          "name": "Lennox LHA240H Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.6306145179,
+            -0.9275604035,
+            0.2969458856
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9451,
+          "maxOutput": 1.0786
+        },
+        "partLoad": {
+          "name": "Lennox LHA240H Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-cooling-lennox-tha060s2-cooling",
+      "name": "Lennox THA060S2 Cooling",
+      "mode": "cooling",
+      "objectType": "Coil:Cooling:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 18903,
+      "basisCapacityW": 18903,
+      "basisRatingName": "Lennox THA060S2 Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 1,
+      "cop": 4.1,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 372.13610894708216,
+      "shr": 0.74,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox THA060S2 Cooling CAPFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.9069481694,
+            -0.0083947674,
+            0.0012950581,
+            0.0028313953,
+            -0.0000376744,
+            -0.0004206977
+          ],
+          "minX": 17.22,
+          "maxX": 21.67,
+          "minY": 29.44,
+          "maxY": 46.11,
+          "minOutput": 0.8636,
+          "maxOutput": 1.1132
+        },
+        "capacityFlow": {
+          "name": "Lennox THA060S2 Cooling CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.7209302325,
+            0.4147286822,
+            -0.1356589147
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9659,
+          "maxOutput": 1.0233
+        },
+        "eirTemperature": {
+          "name": "Lennox THA060S2 Cooling EIRFTemp",
+          "type": "Curve:Biquadratic",
+          "coefficients": [
+            0.5557077827,
+            0.0184221651,
+            -0.000610872,
+            0.0020349895,
+            0.000447407,
+            -0.0004441259
+          ],
+          "minX": 17.22,
+          "maxX": 21.67,
+          "minY": 29.44,
+          "maxY": 46.11,
+          "minOutput": 0.8341,
+          "maxOutput": 1.3838
+        },
+        "eirFlow": {
+          "name": "Lennox THA060S2 Cooling EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.231348411,
+            -0.3559117927,
+            0.1245633817
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9836,
+          "maxOutput": 1.0263
+        },
+        "partLoad": {
+          "name": "Lennox THA060S2 Cooling PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-lennox-tha060s2-cooling",
+      "name": "Lennox THA060S2 Cooling",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 16443.2,
+      "basisCapacityW": 18903,
+      "basisRatingName": "Lennox THA060S2 Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 0.8698725070094694,
+      "cop": 4.2,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 372.13610894708216,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox THA060S2 Heating CAPFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            0.7414834834,
+            0.0291699781,
+            0.0002487638,
+            -0.0000031828
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.1857,
+          "maxOutput": 1.3192
+        },
+        "capacityFlow": {
+          "name": "Lennox THA060S2 Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.9465305077,
+            0.0311905372,
+            0.0222789551
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9857,
+          "maxOutput": 1.016
+        },
+        "eirTemperature": {
+          "name": "Lennox THA060S2 Heating EIRFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            1.3263423013,
+            -0.0437543499,
+            0.0010379137,
+            -0.0000120602
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.8067,
+          "maxOutput": 3.3981
+        },
+        "eirFlow": {
+          "name": "Lennox THA060S2 Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.6799014849,
+            -1.0029958831,
+            0.3230943982
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9416,
+          "maxOutput": 1.0843
+        },
+        "partLoad": {
+          "name": "Lennox THA060S2 Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-lennox-tha120s-heating",
+      "name": "Lennox THA120S Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 32559.84,
+      "basisCapacityW": 36340.68,
+      "basisRatingName": "Lennox THA120S Stage 1&2",
+      "basisRatingType": "CoilPerformance:DX:Cooling",
+      "capacityRatio": 0.895961220318387,
+      "cop": 3.53,
+      "airflowM3s": 1.888,
+      "cfmPerTon": 387.14129000484826,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox THA120S Heating CAPFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            0.7814977148,
+            0.025055832,
+            0.0001369914,
+            3.29e-7
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.1984,
+          "maxOutput": 1.272
+        },
+        "capacityFlow": {
+          "name": "Lennox THA120S Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.112775294,
+            -0.3383258819,
+            0.2255505879
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9865,
+          "maxOutput": 1.0316
+        },
+        "eirTemperature": {
+          "name": "Lennox THA120S Heating EIRFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            1.1758490511,
+            -0.0184100999,
+            0.0007416818,
+            -0.0000381972
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.8677,
+          "maxOutput": 2.8557
+        },
+        "eirFlow": {
+          "name": "Lennox THA120S Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.7466820454,
+            -1.0568984156,
+            0.3102163702
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9251,
+          "maxOutput": 1.0997
+        },
+        "partLoad": {
+          "name": "Lennox THA120S Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-lennox-kha060s4-cooling",
+      "name": "Lennox KHA060S4 Cooling",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 16684.2,
+      "basisCapacityW": 18023.8,
+      "basisRatingName": "Lennox KHA060S4 Cooling",
+      "basisRatingType": "Coil:Cooling:DX:SingleSpeed",
+      "capacityRatio": 0.9256760505553768,
+      "cop": 4.1,
+      "airflowM3s": 0.944,
+      "cfmPerTon": 390.28888843788184,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox KHA060S4 Heating CAPFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            0.7724556263,
+            0.0257435779,
+            0.0001847388,
+            3.205e-7
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.1988,
+          "maxOutput": 1.2861
+        },
+        "capacityFlow": {
+          "name": "Lennox KHA060S4 Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.6416673525,
+            0.5893138929,
+            -0.2309812454
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9653,
+          "maxOutput": 1.0162
+        },
+        "eirTemperature": {
+          "name": "Lennox KHA060S4 Heating EIRFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            1.2584013173,
+            -0.0293122649,
+            0.0008308523,
+            -0.0000312404
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.8238,
+          "maxOutput": 3.1604
+        },
+        "eirFlow": {
+          "name": "Lennox KHA060S4 Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.9976716654,
+            -1.5917610592,
+            0.5940893938
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.943,
+          "maxOutput": 1.1045
+        },
+        "partLoad": {
+          "name": "Lennox KHA060S4 Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-lennox-kha120s4-heating",
+      "name": "Lennox KHA120S4 Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 32563.43,
+      "basisCapacityW": 36340.68,
+      "basisRatingName": "Lennox KHA120S4 Stage 1&2",
+      "basisRatingType": "CoilPerformance:DX:Cooling",
+      "capacityRatio": 0.8960600076828502,
+      "cop": 3.68,
+      "airflowM3s": 1.888,
+      "cfmPerTon": 387.14129000484826,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox KHA120S4 Heating CAPFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            0.7927005462,
+            0.0238144989,
+            0.0001174681,
+            0.0000011885
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.2134,
+          "maxOutput": 1.2592
+        },
+        "capacityFlow": {
+          "name": "Lennox KHA120S4 Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.8447504466,
+            0.1642495275,
+            -0.0089999741
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9704,
+          "maxOutput": 1.0289
+        },
+        "eirTemperature": {
+          "name": "Lennox KHA120S4 Heating EIRFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            1.1822697855,
+            -0.0202393917,
+            0.0007261699,
+            -0.0000337703
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.8605,
+          "maxOutput": 2.8186
+        },
+        "eirFlow": {
+          "name": "Lennox KHA120S4 Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.8214138154,
+            -1.2056460982,
+            0.3842322828
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9279,
+          "maxOutput": 1.1028
+        },
+        "partLoad": {
+          "name": "Lennox KHA120S4 Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    },
+    {
+      "id": "energyplus-heating-lennox-kha240s4-heating",
+      "name": "Lennox KHA240S4 Heating",
+      "mode": "heating",
+      "objectType": "Coil:Heating:DX:SingleSpeed",
+      "file": "RooftopPackagedHeatPump.idf",
+      "source": "https://github.com/NatLabRockies/EnergyPlus/blob/4bd7a1f26fb749a83257855aba6760e26c8a3c8f/datasets/RooftopPackagedHeatPump.idf",
+      "capacityW": 61025.4,
+      "basisCapacityW": 66966.5,
+      "basisRatingName": "Lennox KHA240S4 Stage 1&2",
+      "basisRatingType": "CoilPerformance:DX:Cooling",
+      "capacityRatio": 0.9112825069251044,
+      "cop": 3.78,
+      "airflowM3s": 3.776,
+      "cfmPerTon": 420.1795744096941,
+      "shr": null,
+      "minimumOutdoorC": null,
+      "curves": {
+        "capacityTemperature": {
+          "name": "Lennox KHA240S4 Heating CAPFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            0.7583629503,
+            0.0254356641,
+            0.0000392753,
+            -0.0000042152
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.1884,
+          "maxOutput": 1.2031
+        },
+        "capacityFlow": {
+          "name": "Lennox KHA240S4 Heating CAPFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.8655320572,
+            0.140470976,
+            -0.0060030332
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9741,
+          "maxOutput": 1.0255
+        },
+        "eirTemperature": {
+          "name": "Lennox KHA240S4 Heating EIRFTemp",
+          "type": "Curve:Cubic",
+          "coefficients": [
+            1.2542569573,
+            -0.0251830707,
+            0.0009262455,
+            -0.0000397581
+          ],
+          "minX": -26.11,
+          "maxX": 18.33,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.8845,
+          "maxOutput": 3.2734
+        },
+        "eirFlow": {
+          "name": "Lennox KHA240S4 Heating EIRFFF",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            1.7343289092,
+            -1.0841967809,
+            0.3498678717
+          ],
+          "minX": 0.8,
+          "maxX": 1.2,
+          "minY": null,
+          "maxY": null,
+          "minOutput": 0.9371,
+          "maxOutput": 1.0909
+        },
+        "partLoad": {
+          "name": "Lennox KHA240S4 Heating PLFFPLR",
+          "type": "Curve:Quadratic",
+          "coefficients": [
+            0.85,
+            0.15,
+            0
+          ],
+          "minX": 0,
+          "maxX": 1,
+          "minY": null,
+          "maxY": null,
+          "minOutput": null,
+          "maxOutput": null
+        }
+      }
+    }
+  ]
+}
