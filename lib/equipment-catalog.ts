@@ -1,9 +1,6 @@
-import { ENERGYPLUS_PROFILES, ENERGYPLUS_VERSION, energyPlusProfile, type EnergyPlusId } from "./energyplus";
-
-export type ComstockFamily = "standard" | "lab" | "variable" | "cold";
-export type PerformanceFamily = ComstockFamily | EnergyPlusId;
+export type PerformanceFamily = "standard" | "lab" | "variable" | "cold";
 export type HeatingType = PerformanceFamily | "gas" | "resistance";
-export type CoolingType = "standard" | "lab" | "variable" | EnergyPlusId;
+export type CoolingType = "standard" | "lab" | "variable";
 export type SystemChoice = { heating: HeatingType; cooling: CoolingType; lockoutF: number };
 export const DEFAULT_SYSTEM: SystemChoice = { heating: "standard", cooling: "standard", lockoutF: 0 };
 export const ALTERNATIVE_SYSTEM: SystemChoice = { heating: "gas", cooling: "standard", lockoutF: 0 };
@@ -15,24 +12,18 @@ export const FAMILIES = {
   variable: { name: "High-performance HP · CAV", file: "performance_maps_hprtu_variable_speed.json", description: "Highest-stage curves from NLR's variable-speed family, operated with full-output cycling and CAV fans. Modulation savings are not included.", coolingReferenceCfm: 365, heatingReferenceCfm: 411 },
   cold: { name: "Cold-climate HP · concept", file: "performance_map_CCHP_spec_2027.json", description: "Hypothetical 2027 challenge specification, not a product. High heating stage; boost allowed at 17°F and below. Full-output cycling with CAV fans.", coolingReferenceCfm: 365, heatingReferenceCfm: 411 },
 } as const;
-export const familySource = (family: PerformanceFamily) => energyPlusProfile(family)?.source ?? base + "resources/" + FAMILIES[family as ComstockFamily].file;
-export function referenceCfm(family: PerformanceFamily, mode: "cooling" | "heating") {
-  return energyPlusProfile(family)?.cfmPerTon ?? FAMILIES[family as ComstockFamily][mode === "cooling" ? "coolingReferenceCfm" : "heatingReferenceCfm"];
-}
-const energyPlusDescription = (mode: string) => `EnergyPlus ${ENERGYPLUS_VERSION} single-speed ${mode} curve profile, scaled to installed nominal cooling tons. Source rated COP, airflow${mode === "cooling" ? " and SHR" : " and heating/cooling capacity ratio"} retained. CAV cycling; defrost, crankcase and transient latent effects excluded. This is a screening adaptation, not a current product selection.`;
+export const familySource = (family: PerformanceFamily) => base + "resources/" + FAMILIES[family].file;
 export const FURNACE_SOURCE = `https://github.com/NatLabRockies/ComStock/blob/${COMSTOCK_COMMIT}/documentation/reference_doc/tables/furnace_eff_table.tex`;
 export const RESISTANCE_SOURCE = "https://docs.nlr.gov/docs/fy24osti/86601.pdf";
 export const HEATING_OPTIONS: { id: HeatingType; name: string; description: string; source: string }[] = [
   ...Object.entries(FAMILIES).map(([id, f]) => ({ id: id as PerformanceFamily, name: f.name, description: f.description, source: familySource(id as PerformanceFamily) })),
   { id: "gas", name: "Gas furnace · 80%", description: "ComStock baseline gas-coil efficiency: 80%. Heating bank sized separately to the year's peak coil heat need with no margin, in 10,000 BTU/hr per-unit output increments. Gas is reported in therms.", source: FURNACE_SOURCE },
   { id: "resistance", name: "Electric resistance · COP 1", description: "ComStock electric-coil model: COP 1. Heating bank sized separately to peak coil heat need with no margin, in 10,000 BTU/hr per-unit output increments.", source: RESISTANCE_SOURCE },
-  ...ENERGYPLUS_PROFILES.filter(p => p.mode === "heating").map(p => ({ id: p.id as EnergyPlusId, name: `EnergyPlus · ${p.name.replace(/ (heating|cooling)$/i, "")} Heating`, description: energyPlusDescription("heating"), source: p.source })),
 ];
 export const COOLING_OPTIONS: { id: CoolingType; name: string; description: string }[] = [
   { id: "standard", name: "Standard DX cooling", description: "Highest cooling stage from the standard HP-RTU family." },
   { id: "lab", name: "Lab-data DX cooling", description: "Highest cooling stage from the laboratory-informed HP-RTU family." },
   { id: "variable", name: "High-performance DX · CAV", description: "Highest cooling stage from the variable-speed family; also used by the cold-climate concept. Full-output cycling." },
-  ...ENERGYPLUS_PROFILES.filter(p => p.mode === "cooling").map(p => ({ id: p.id as EnergyPlusId, name: `EnergyPlus · ${p.name.replace(/ (heating|cooling)$/i, "")} Cooling`, description: energyPlusDescription("cooling") })),
 ];
 export function isHeatPump(type: HeatingType): type is PerformanceFamily { return type !== "gas" && type !== "resistance"; }
 export const heatingName = (id: HeatingType) => HEATING_OPTIONS.find(o => o.id === id)!.name;

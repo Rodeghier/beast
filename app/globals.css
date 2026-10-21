@@ -429,13 +429,3 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .load-results-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin: 20px 0; }
 .load-results-actions p { flex: 1; min-width: 220px; margin: 0; }
 .results-prompt { padding: 20px; border: 1px dashed var(--border); border-radius: 10px; background: white; }
-.energyplus-downloads { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
-.energyplus-filters { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 18px; }
-.energyplus-filters input, .energyplus-filters select { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: white; }
-.energyplus-table { max-height: 440px; margin-top: 12px; }
-.energyplus-table table { width: 100%; border-collapse: collapse; text-align: left; }
-.energyplus-table th, .energyplus-table td { padding: 12px; font-size: .8125rem; border-bottom: 1px solid var(--border); vertical-align: top; white-space: normal; }
-.energyplus-table thead th { position: sticky; top: 0; background: #f0f5f8; z-index: 1; }
-.energyplus-table tbody th { min-width: 240px; max-width: 340px; overflow-wrap: anywhere; font-weight: 500; }
-.energyplus-table td:last-child { min-width: 290px; }
-@media (max-width: 600px) { .energyplus-filters { grid-template-columns: 1fr; } .energyplus-downloads .button { width: 100%; justify-content: center; } }

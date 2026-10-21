@@ -2,8 +2,7 @@ import source from "./data/rtu/comstock-standard.json";
 import lab from "./data/rtu/comstock-lab.json";
 import variable from "./data/rtu/comstock-variable.json";
 import cold from "./data/rtu/comstock-cold.json";
-import { referenceCfm, type PerformanceFamily } from "./equipment-catalog";
-import { energyPlusProfile, energyPlusFactors, evaluateEnergyPlusCurve } from "./energyplus";
+import { FAMILIES, type PerformanceFamily } from "./equipment-catalog";
 import { celsius, fahrenheit, humidityRatio } from "./school";
 
 export const CURVE_COMMIT = "f25ac375311acb2448b4ee1665a8680e92abd24b";
@@ -64,9 +63,7 @@ export function polynomial(name: string, x: number, y = 0, family: PerformanceFa
   return { value, bounded: Math.abs(x - originalX) > 0.01 || Math.abs(y - originalY) > 0.01 };
 }
 
-export function ratedCop(tons: number, mode: "cooling" | "heating", family: PerformanceFamily = "standard") {
-  const profile = energyPlusProfile(family);
-  if (profile) return profile.cop;
+export function ratedCop(tons: number, mode: "cooling" | "heating") {
   const kw = tons * 12000 / BTU_PER_KWH;
   // Pinned ComStock measure.rb: get_rated_cop_cooling / get_rated_cop_heating.
   return mode === "cooling" ? clamp(3.881009 - 0.01034 * kw, 3.02, 3.97) : clamp(3.957724 - 0.008502 * kw, 3.46, 3.99);
@@ -96,12 +93,10 @@ export function mixedAir(returnF: number, returnW: number, outsideF: number, out
 }
 
 export function coolingFactors(enteringWbC: number, outdoorC: number, cfmPerTon: number, family: PerformanceFamily = "standard") {
-  const profile = energyPlusProfile(family);
-  if (profile) return energyPlusFactors(profile, enteringWbC, outdoorC, cfmPerTon);
   const advanced = family === "variable" || family === "cold";
   const capT = advanced ? polynomial("cool_cap_ft4", enteringWbC, outdoorC, family) : lookup("c_cap_high_T", enteringWbC, outdoorC, family);
   const eirT = advanced ? polynomial("cool_eir_ft4", enteringWbC, outdoorC, family) : lookup("c_eir_high_T", enteringWbC, outdoorC, family);
-  const ff = cfmPerTon / referenceCfm(family, "cooling");
+  const ff = cfmPerTon / FAMILIES[family].coolingReferenceCfm;
   const capF = polynomial(advanced ? "cool_cap_ff1" : "c_cap_high_ff", ff, 0, family), eirF = polynomial(advanced ? "cool_eir_ff1" : "c_eir_high_ff", ff, 0, family);
   return { capacity: capT.value * capF.value, eir: eirT.value * eirF.value, bounded: capT.bounded || eirT.bounded || capF.bounded || eirF.bounded };
 }
@@ -123,14 +118,13 @@ export function ratedBypassFactor(family: PerformanceFamily = "standard") {
   // Highest-stage source SHR at 80 F DB / 67 F WB, 95 F outdoors.
   const db = celsius(80), wb = celsius(67), ws = humidityRatio(wb, 100)!;
   const w = ((2501 - 2.326 * wb) * ws - 1.006 * (db - wb)) / (2501 + 1.86 * db - 4.186 * wb);
-  const hin = enthalpy(db, w), cfm = referenceCfm(family, "cooling");
-  const ratedShr = energyPlusProfile(family)?.shr ?? RATED_SHR;
+  const hin = enthalpy(db, w), cfm = FAMILIES[family].coolingReferenceCfm;
   // Invert the ADP sensible/total enthalpy ratio, then infer the rated BF.
   let lo = -30, hi = wb;
   for (let i = 0; i < 40; i++) {
     const t = (lo + hi) / 2, wa = humidityRatio(t, 100)!, ha = enthalpy(t, wa);
     const shr = (enthalpy(db, wa) - ha) / (hin - ha);
-    if (shr > ratedShr) hi = t; else lo = t;
+    if (shr > RATED_SHR) hi = t; else lo = t;
   }
   const adp = (lo + hi) / 2, mass = massPerTon(db, w, cfm);
   // Calibrate to NOMINAL rated capacity, not the curve's rounded value at rating.
@@ -172,12 +166,7 @@ export function coolingOperatingPoint(db: number, w: number, outdoorC: number, c
 }
 
 export function heatingFactors(enteringDbC: number, enteringWbC: number, outdoorC: number, outsideW: number, cfmPerTon: number, family: PerformanceFamily = "standard", lockoutF = HEATING_LOCKOUT_F) {
-  const profile = energyPlusProfile(family);
-  if (outdoorC < Math.max(celsius(lockoutF), profile?.minimumOutdoorC ?? -Infinity)) return { capacity: 0, powerFactor: 0, bounded: false, lockout: true };
-  if (profile) {
-    const f = energyPlusFactors(profile, enteringDbC, outdoorC, cfmPerTon);
-    return { capacity: f.capacity, powerFactor: f.capacity * f.eir, bounded: f.bounded, lockout: false };
-  }
+  if (outdoorC < celsius(lockoutF)) return { capacity: 0, powerFactor: 0, bounded: false, lockout: true };
   const boost = family === "cold" && outdoorC <= -8.33333;
   const stage = boost ? "boost" : "high";
   const capFraction = family === "cold" ? (boost ? 1.388985813 : 1.350190651) : 1;
@@ -187,7 +176,7 @@ export function heatingFactors(enteringDbC: number, enteringWbC: number, outdoor
   // and coefficients follow this EnergyPlus order (55–75°F, −15–65°F).
   const capT = family === "variable" ? polynomial("heat_cap_ft4", enteringDbC, outdoorC, family) : lookup(family === "cold" ? `h_cap_${stage}` : "h_cap_T", enteringDbC, outdoorC, family);
   const eirT = family === "variable" ? polynomial("heat_eir_ft4", enteringDbC, outdoorC, family) : lookup(family === "cold" ? `h_eir_${stage}` : "h_eir_T", enteringDbC, outdoorC, family);
-  const ff = cfmPerTon / referenceCfm(family, "heating");
+  const ff = cfmPerTon / FAMILIES[family].heatingReferenceCfm;
   const capF = polynomial(family === "variable" ? "heat_cap_ff1" : "h_cap_allstages_ff", ff, 0, family), eirF = polynomial(family === "variable" ? "heat_eir_ff1" : "h_eir_allstages_ff", ff, 0, family);
   const cap = capT.value * capF.value * capFraction, powerFactor = cap * eirT.value * eirF.value / copFraction;
   const bounded = capT.bounded || eirT.bounded || capF.bounded || eirF.bounded;
@@ -198,8 +187,7 @@ export function heatingFactors(enteringDbC: number, enteringWbC: number, outdoor
 export function runtimeFraction(plr: number, mode: "cooling" | "heating", family: PerformanceFamily = "standard") {
   if (plr <= 0) return 0;
   const ratio = clamp(plr, 0, 1);
-  const profile = energyPlusProfile(family);
-  const plf = profile ? evaluateEnergyPlusCurve(profile.curves.partLoad, ratio).value : mode === "cooling" ? polynomial("cool_plf_plr1", ratio, 0, family).value : lookup("heat_plf_plr1", Math.max(0.02, ratio), 0, family).value;
+  const plf = mode === "cooling" ? polynomial("cool_plf_plr1", ratio, 0, family).value : lookup("heat_plf_plr1", Math.max(0.02, ratio), 0, family).value;
   return Math.min(1, ratio / Math.max(ratio, plf));
 }
 
@@ -210,7 +198,7 @@ export function heatingOperatingPoint(count: number, tonsEach: number, enteringD
   const f = heatingFactors(enteringDbC, enteringWbC, outdoorC, outsideW, cfmPerTon, family, lockoutF);
   const ratedBtu = count * tonsEach * 12000, ratedKw = ratedBtu / BTU_PER_KWH;
   const capacityBtu = ratedBtu * f.capacity;
-  const compressorKw = ratedKw * f.powerFactor / ratedCop(tonsEach, "heating", family);
+  const compressorKw = ratedKw * f.powerFactor / ratedCop(tonsEach, "heating");
   const inputKw = compressorKw;
   return { capacityBtu, compressorKw, inputKw,
     cop: inputKw > 0 && capacityBtu > 0 ? capacityBtu / (BTU_PER_KWH * inputKw) : null,

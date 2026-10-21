@@ -33,11 +33,3 @@ The complete MIT license is preserved at `public/references/epa-power-profiler-l
 Source: https://github.com/NatLabRockies/ComStock
 
 The complete redistribution license is included at `public/references/comstock-license.txt` and is served at `/references/comstock-license.txt`. Climate Table is an independent screening tool, not the ComStock software or an NLR-endorsed equipment selection. PsychroLib's wet-bulb humidity-ratio formulas are also used in `lib/rtu-curves.ts` under the MIT terms above.
-
-# EnergyPlus equipment and performance data
-
-`docs/energyplus/upstream/` preserves unmodified equipment/performance datasets and the input dictionary from EnergyPlus 26.2.0, commit `4bd7a1f26fb749a83257855aba6760e26c8a3c8f`. Derived catalogs and CSV exports identify their source files. SHA-256 hashes and source URLs are in `docs/energyplus/manifest.json`.
-
-Source: https://github.com/NatLabRockies/EnergyPlus/releases/tag/v26.2.0
-
-The complete EnergyPlus license is preserved in `docs/energyplus/upstream/LICENSE.txt` and served at `public/references/energyplus-license.txt`. Original dataset-specific attribution and notices are retained in the source files. BEAST's CAV screening adaptation does not run the EnergyPlus engine, establish product availability or imply endorsement by DOE or the source contributors.

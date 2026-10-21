@@ -2,10 +2,9 @@ import { parseCsv } from "./csv";
 import type { SolarLocation } from "./solar";
 import { celsius, humidityRatio, schoolCsv, type SchoolAssumptions, type SchoolRow } from "./school";
 import { BTU_PER_KWH, CURVE_COMMIT, CURVE_REPORT, RATED_SHR, SHR_SOURCE, clamp, coolingOperatingPoint, heatingOperatingPoint, mixedAir, ratedCop, runtimeFraction } from "./rtu-curves";
-import { DEFAULT_SYSTEM, FURNACE_SOURCE, RESISTANCE_SOURCE, familySource, heatingName, coolingName, isHeatPump, validateSystem, type SystemChoice } from "./equipment-catalog";
-import { ENERGYPLUS_VERSION, ENERGYPLUS_COMMIT, energyPlusProfile } from "./energyplus";
+import { DEFAULT_SYSTEM, FAMILIES, FURNACE_SOURCE, RESISTANCE_SOURCE, familySource, heatingName, coolingName, isHeatPump, validateSystem, type SystemChoice } from "./equipment-catalog";
 
-export const RTU_VERSION = "cav-equipment-5.0";
+export const RTU_VERSION = "cav-equipment-4.0";
 export const UNIT_SIZES = [5, 7.5, 10, 12.5, 15, 17.5, 20, 25];
 export const DEFAULT_RTU = { maxTons: 25, cfmPerTon: 404, maxOutdoorPercent: 25, fanWPerCfm: 0.5 };
 export type RtuAssumptions = typeof DEFAULT_RTU;
@@ -96,7 +95,7 @@ export function simulateRtuHour(row: SchoolRow, equipment: Equipment, a: RtuAssu
     const required = Math.max(d.sensible > 0.01 ? d.sensible / f.shr : 0, d.latent > 0.01 ? d.latent / (1 - f.shr) : 0);
     cooling = Math.min(required, availableCooling);
     runtime = runtimeFraction(cooling / availableCooling, "cooling", system.cooling);
-    compressor = availableCooling / BTU_PER_KWH * f.eir / ratedCop(equipment.tonsEach, "cooling", system.cooling) * runtime;
+    compressor = availableCooling / BTU_PER_KWH * f.eir / ratedCop(equipment.tonsEach, "cooling") * runtime;
     reheat = Math.max(0, cooling * f.shr - d.sensible) / BTU_PER_KWH;
     bounded = f.bounded;
     mode = reheat > 0.01 ? "Cooling + reheat" : "Cooling";
@@ -183,35 +182,29 @@ export function rtuCsv(schoolRows: SchoolRow[], school: SchoolAssumptions, resul
   const e = result.equipment, system = result.system;
   const hp = isHeatPump(system.heating);
   const metadata: Record<string, string | number> = {
-    RTU_model: RTU_VERSION, RTU_family: "Generic CAV packaged system; independently selected ComStock or EnergyPlus heating and DX cooling profiles; full-output compressor cycling",
-    EnergyPlus_version: ENERGYPLUS_VERSION, EnergyPlus_commit: ENERGYPLUS_COMMIT,
-    Heating_profile_rated_capacity_W: energyPlusProfile(system.heating)?.capacityW ?? "",
-    Heating_profile_rated_COP: energyPlusProfile(system.heating)?.cop ?? "",
-    Cooling_profile_rated_capacity_W: energyPlusProfile(system.cooling)?.capacityW ?? "",
-    Cooling_profile_rated_COP: energyPlusProfile(system.cooling)?.cop ?? "",
-    EnergyPlus_adaptation: "Source single-speed curves scaled to nominal cooling tons; original rated airflow/ton, SHR, COP and heating/cooling capacity ratio retained. Not a full EnergyPlus simulation. See /data/energyplus-coverage.csv for unsupported equipment.",
+    RTU_model: RTU_VERSION, RTU_family: "Generic CAV packaged system; independently selected NLR heating and DX cooling models; full-output compressor cycling",
     Heating_type: heatingName(system.heating), Cooling_type: coolingName(system.cooling),
     Heating_source: isHeatPump(system.heating) ? familySource(system.heating) : system.heating === "gas" ? FURNACE_SOURCE : RESISTANCE_SOURCE,
     Cooling_source: familySource(system.cooling), Heating_lockout_F: hp ? system.lockoutF : "Not applicable",
     Primary_heating_bank_output_BTU_hr_per_unit: e?.heatingBankBtuEach ?? "",
     Gas_efficiency: system.heating === "gas" ? 0.8 : "Not applicable",
-    Curve_source: familySource(system.cooling), Curve_report: energyPlusProfile(system.cooling)?.source ?? CURVE_REPORT, Curve_commit: energyPlusProfile(system.cooling) ? ENERGYPLUS_COMMIT : CURVE_COMMIT,
+    Curve_source: familySource(system.cooling), Curve_report: CURVE_REPORT, Curve_commit: CURVE_COMMIT,
     Equipment_count: e?.count ?? "", Nominal_tons_per_unit: e?.tonsEach ?? "", Total_nominal_tons: e?.totalTons ?? "", Total_supply_CFM: e?.supplyCfm ?? "", Mechanical_OA_capacity_CFM: e?.outdoorCapacityCfm ?? "",
     Required_dehumidification_reheat_kW_per_unit: e?.reheatKwEach ?? "", Maximum_unit_tons: a.maxTons,
     ...Object.fromEntries(RTU_FIELDS.map(f => [`RTU ${f.label} (${f.unit})`, a[f.key]])),
-    Selection: "Fewest identical units then smallest unit size; all valid hours; mechanical ventilation only; sensible and latent capacity checked separately including fan heat; no sizing margin; ComStock rated heating equals nominal cooling basis; EnergyPlus heating retains its source heating/cooling capacity ratio; gas/resistance output bank sized to peak coil heat need, rounded up to 10000 BTU/hr per unit",
+    Selection: "Fewest identical units then smallest unit size; all valid hours; mechanical ventilation only; sensible and latent capacity checked separately including fan heat; no sizing margin; heat-pump rated heating equals nominal cooling basis; gas/resistance output bank sized to peak coil heat need, rounded up to 10000 BTU/hr per unit",
     SHR_method: "Operating-condition ADP/bypass-factor model; dry-coil capacity evaluated at dry-out humidity; on-cycle SHR, no transient latent degradation or condensate re-evaporation",
-    Rated_SHR: energyPlusProfile(system.cooling)?.shr ?? RATED_SHR, SHR_method_source: SHR_SOURCE,
+    Rated_SHR: RATED_SHR, SHR_method_source: SHR_SOURCE,
     Excluded_equipment_effects: "No sizing safety margin, crankcase heater input, or added frost/defrost capacity and power adjustments; source capacity/EIR temperature curves retained",
     Controls: "Occupied continuous CAV fans; unoccupied full-hour CAV fans on load calls; no economizer; full-stage HP cycling; dehumidification priority; ideal electric reheat; no supplemental space heating; HP lockout as selected; gas/resistance are primary heat",
     RTU_energy_basis: "Positive kWh in each 1-hour interval = compressor/outdoor fan + supply fan + electric dehumidification reheat + primary resistance heat; excludes lighting and plugs",
     Gas_energy_basis: "Therms of gas input = delivered furnace heat / 0.8 / 100000 per hour; ignition/inducer/pilot electricity omitted; shared supply fans included",
     Site_energy_basis: "MMBtu = electricity kWh x 3412.141633 / 1000000 + gas therms x 0.1. Site energy is not source energy, cost, or emissions. Review unmet loads before comparing.",
-    Family_adaptation: "Highest-stage operation with cycling and constant fans; variable-speed modulation savings excluded. Cold-climate model is a hypothetical 2027 specification; high stage, boost at or below 17 F. ComStock profiles use the active ComStock size fits; EnergyPlus profiles retain their own rated COP, SHR, airflow/ton and heating/cooling capacity ratio.",
+    Family_adaptation: "Highest-stage operation with cycling and constant fans; variable-speed modulation savings excluded. Cold-climate model is a hypothetical 2027 specification; high stage, boost at or below 17 F. Rated COP uses the common active ComStock size fits for all families.",
     RTU_scope: "Building heating need is exported separately from coil heating need after supply-fan heat credit. Available net heating is potential full-load capacity at each operating point; usable heating is zero when cooling takes priority. Cooling capacity is evaluated in cooling mode only.",
     Heating_balance: "Coil heat need = max(0, building heat need - fan heat credit); unmet heating = max(0, coil heat need - usable available heating capacity); delivered heat = min(coil heat need, usable capacity). No auxiliary heat.",
     Efficiency_basis: "Full-load heating COP = available heating / (3412.141633 x mapped full-load compressor/outdoor-fan kW). Operating electric coil COP uses delivered heat or gross cooling divided by actual coil electricity, including cycling. Gas-heating COP and full-load electric input are blank; thermal efficiency is 0.80. COP excludes supply fan and reheat; RTU electricity includes them.",
-    Map_policy: "Bilinear interpolation; clamp outside measured input grids and flag affected operating hours; source polynomial evaluation or bilinear grid interpolation; standard sea-level air; variable operating SHR; no off-cycle condensate re-evaporation; subfreezing coil ADP requires engineering review",
+    Map_policy: "Bilinear interpolation; clamp outside measured input grids and flag affected operating hours; standard sea-level air; variable operating SHR; no off-cycle condensate re-evaporation; subfreezing coil ADP requires engineering review",
     Weather_coverage: result.summary.fullYear ? "8760 valid unique non-leap hourly records" : "Partial/incomplete weather; totals and selection are provisional",
     Selection_status: result.error ?? "Modeled cooling and ventilation covered; review map-boundary hours and engineering assumptions",
   };
