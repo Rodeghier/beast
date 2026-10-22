@@ -1,93 +1,54 @@
-# Building Energy Analysis Selection Tool (BEAST) — HVAC energy comparison
+# BEAST
 
-Select a US city, state and climate year (2015–2059). Sup3rCC EC-Earth3-CC SSP2-4.5 supplies hourly temperature, relative humidity, DHI, DNI and GHI. The app estimates loads for a 150,000 ft² building, sizes generic CAV equipment, compares two heating/cooling combinations, and reports electricity, gas input, unmet loads and electricity-generation and gas-combustion CO₂e. The weather dataset covers the contiguous US and DC.
+Building Energy Analysis Selection Tool. Load Sup3rCC weather, estimate building loads, and compare up to three scenarios using only user-supplied normalized capacity, COP and SHR surfaces.
 
-## Model and source code
+## Performance inputs
 
-- `app/api/climate/route.ts`: server-side NLR request, validated CSV redirects, credentials kept off the client.
-- `lib/csv.ts`: hourly parsing, missing values and irradiance units.
-- `lib/solar.ts`: solar position, irradiance transposition and solar gains.
-- `lib/school.ts`: single-zone steady-state building heat and moisture balance; internal module name retained for compatibility.
-- `lib/rtu-curves.ts`, `lib/rtu.ts`, `lib/equipment-catalog.ts`: variable SHR, operating maps, sizing and hourly equipment energy.
-- `app/api/location-energy/route.ts`, `lib/location-energy.ts`: OpenEI electricity tariffs, EIA gas benchmarks and keyless EPA subregion lookup.
-- `components/location-energy.tsx`, `lib/emissions.ts`: rate display, combined electricity/gas CO₂e comparison and hourly CO₂e CSV.
+There are no bundled equipment datasets or default performance values. The only equipment performance inputs are:
 
-The linked [engineering guide](public/engineering-guide.pdf) contains equations, assumptions, source links and the current worked example. Source synchronization and deployment are managed by Sites; project identity is in `.openai/hosting.json`.
+- Heating normalized capacity and absolute heating COP.
+- Cooling normalized capacity, absolute cooling COP and SHR.
 
-## Hourly building loads and solar
+All surfaces use **outdoor dry-bulb temperature and entering wet-bulb temperature in °F**. The blank template is `public/templates/performance-curves.json`. Replace each `null` with a rectangular grid containing `outdoorF`, `enteringWetBulbF` and `values`. Both temperature axes need at least two strictly increasing finite numbers. Values are rows by entering wet-bulb temperature and columns by outdoor dry-bulb temperature. Capacity must be nonnegative; COP positive; SHR within [0,1]. Unknown fields are rejected.
 
-The default building has 1,200 occupants, weekday occupancy 07:00–17:00, and 10% occupancy in June–August. Heating/cooling setpoints are 70/75°F occupied and 60/85°F unoccupied. RH limit is 50%. Defaults are editable assumptions, not a calibrated building. Lighting and equipment are 0.9/0.6 W/ft²; infiltration is 0.15 ACH; ventilation is 10 CFM/person + 0.12 CFM/ft² during occupied hours.
+The UI provides a grid-format outline without example equipment values. Apply curves explicitly. Bilinear interpolation operates only within the supplied domain on both axes; no extrapolation or boundary holding is applied.
 
-Solar replaces the previous assumed sine profile. Default geometry is two equal floor plates, plan aspect ratio 2, 0° rotation, 14 ft/story, 25% windows, SHGC 0.35 and no window shading. Roof area is total floor area / stories. For vertical walls:
-`Iwall = DNI × max(0, sun·normal) + DHI/2 + reflectance×GHI/2`, with beam zero below the horizon. Roof irradiance is GHI. Position uses NOAA equations, dataset coordinates, fixed standard-time offset and hour midpoint. The isotropic sky model and uniform ground reflectance are approximations.
+Supply entering wet-bulb operating conditions by importing a CSV with headers `Date,Time,Entering_wet_bulb_F`, dates `YYYY-MM-DD`, and local standard times `HH:00`. An empty CSV template is provided. An optional explicit fixed temperature can cover all hours or fill gaps in hourly data. No wet-bulb value is inferred from equipment airflow, mixing, or outdoor humidity. Each scenario has independent operating inputs.
 
-Window gains are irradiance × window area × SHGC × shading multiplier. Opaque gains are irradiance × opaque area × U × absorptance / exterior film coefficient. Convert W/m² to BTU/(hr ft²) with 0.316998331. Roof/wall U default to 0.04/0.06 BTU/(hr ft² °F), absorptance to 0.6 and film coefficient to 3 BTU/(hr ft² °F). These U-values apply only to the solar correction. Ordinary conduction still uses independently entered whole-building UA (default 15,000 BTU/hr °F). Geometry changes do not automatically recalibrate that UA.
+Normalized capacities scale the selected dataset's peak valid **building heating load** and **building total cooling load**, respectively. These dimensional references come from the building, with no nominal equipment rating or sizing multiplier. Changing the building, weather year or location changes the references. This is a screening convention; supplied capacity surfaces must use that normalization basis.
 
-Let H = UA + 1.08 × outdoor CFM. Heating is max(0, H × (heating setpoint − outdoor temperature) − sensible gains). Sensible cooling is −max(0, H × (outdoor temperature − cooling setpoint) + sensible gains). Latent removal uses the outdoor-air/occupant moisture balance at the indoor RH limit. Total cooling is sensible plus latent cooling; do not add sensible cooling to total again.
+## Calculations and retained outputs
 
-No thermal storage, delayed load response, detailed overhangs, angle-dependent SHGC, longwave sky exchange, zoning, economizers or heat recovery is simulated. Missing radiation/solar coordinates leaves dependent loads and equipment energy blank, never zero. Valid zero irradiance is zero gain. Missing RH preserves computable sensible building loads but prevents complete equipment calculations. Annual labels require 8,760 valid unique non-leap-day hourly records.
+For each hour, capacity = building peak reference × the supplied capacity multiplier. Delivered heating = min(heating load, available heating capacity). Gross cooling requirement = max(sensible load / SHR, latent load / (1−SHR)); delivery is capped at available cooling capacity. SHR splits that delivery into sensible and latent removal. Unmet cooling is the sum of remaining sensible and latent load. At SHR endpoints, any positive demand in the unavailable component remains unmet. Excess sensible cooling is not corrected. Heating and cooling are evaluated independently if both loads occur.
 
-## Equipment comparison
+Electricity (kWh per one-hour record) = delivered heating / heating COP / 3412.141633 + delivered gross cooling / cooling COP / 3412.141633. The COP surfaces define the electricity basis; no extra equipment energy is added. Retained performance outputs are curve-based electricity, capacities, delivered loads, COP, SHR, unmet loads and input/status diagnostics. Electricity cost uses that electricity and either a supported tariff or a manual $/kWh. Electricity CO₂e uses the same electricity and an EPA eGRID factor.
 
-Each of two cases independently selects heating and cooling. Heating choices: standard, laboratory-informed, highest-stage variable-speed-family under CAV operation, hypothetical 2027 cold-climate heat pump, 80%-efficient gas furnace, or resistance at COP 1. Cooling choices: standard, lab-data, or highest-stage variable-speed-family DX. These 18 combinations are generic coils, not manufacturer products.
+Missing curves, operating conditions, weather, or required domain coverage leave dependent hourly results blank. Available-hour totals identify their valid-hour count. Annual scorecards require 8,760 complete, unique, valid hours in one calendar year excluding February 29. Missing results never become zero.
 
-Sizing minimizes identical unit count then size (5–25 nominal tons), checking every valid hour for sensible capacity, latent capacity and mechanical ventilation. No 10% sizing margin is applied. Operating SHR uses an EnergyPlus-style apparatus-dew-point/bypass-factor method calibrated from rated SHR 0.77; it responds to entering air, airflow and mapped capacity, reaching 1 for a dry coil. Required gross cooling is max(sensible need / SHR, latent need / (1−SHR)); excess sensible cooling is offset by ideal electric reheat.
+## Building loads and weather
 
-Heat pumps are not sized to heating demand. Delivered heat is limited to mapped installed capacity and lockout (default 0°F). Gas/resistance banks are sized to peak coil heating demand and rounded to 10,000 BTU/hr output per unit, with no percentage margin. Supply fan heat is counted once. Electricity includes compressors/outdoor fans, CAV supply fans, electric reheat and primary resistance heat. Explicit crankcase, frost and defrost additions are excluded. No auxiliary space heat is silently added.
+The editable building model remains a 150,000 ft² single-zone, hourly steady-state estimate. Heating is positive and cooling negative. Total cooling includes sensible and latent cooling. Occupancy follows Monday–Friday local standard time, with reduced June–August occupancy and unoccupied setpoints. Lighting, plug loads and occupants contribute building heat gains; their electricity is not included in the curve-based electricity output.
 
-Source capacity/EIR grids, COP fits and part-load curves are pinned to ComStock commit `f25ac375311acb2448b4ee1665a8680e92abd24b`. See `docs/equipment-sources.json` and `lib/data/rtu/provenance.json`. Map inputs are clamped and flagged outside their domains. Cold-climate high/boost stage scaling is retained; variable-speed modulation savings are not modeled under CAV. Compare unmet loads before energy: different service levels are not an equal-service efficiency ranking.
+H = envelope UA + 1.08 × outdoor CFM. Heating = max(0, H × (heating setpoint − outdoor dry bulb) − sensible gains). Sensible cooling = −max(0, H × (outdoor dry bulb − cooling setpoint) + sensible gains). Latent removal follows the outdoor-air and occupant moisture balance at the indoor RH limit, using standard sea-level air. Outdoor airflow here is a building load input, not equipment airflow.
 
-The current Madison 2025 example selects 19 × 25 tons (475 tons), uses 1,455,082 kWh and has 70 unmet-heating hours. Gas + standard DX uses 1,306,660 kWh plus 11,219 therms with no unmet heating. These are modeled results with the stated solar/building assumptions, not field predictions. Current examples are in `docs/*example.json`.
+Sup3rCC DHI/DNI/GHI drive solar gains using the dataset grid coordinates and fixed UTC offset. NOAA solar geometry uses the hourly midpoint. Roof irradiance uses GHI; vertical walls use projected DNI plus isotropic sky and ground components. Window gains use area × SHGC × shading. Opaque gains use area × U × absorptance / exterior film coefficient. Solar U-values do not replace the independently entered envelope UA. No thermal storage, delayed load response, detailed overhangs, zoning or control solver is simulated. Missing radiation or grid metadata leaves dependent loads blank.
 
-## Utility rates and CO₂e
+## Electricity sources
 
-Electricity: OpenEI URDB v8 returns approved commercial candidates effective at retrieval time near city coordinates. Users select an eligible tariff; the app displays tiers, TOU schedules, demand charges/measurement windows, fixed/minimum charges, eligibility, notes and sources. Supported terms are applied to HVAC hourly use as a separate-meter, calendar-month estimate; this is not an actual whole-building account bill. Ratchets, coincident peaks, missing prices/schedules, unsupported units, and delivery-only tariffs block a total rather than silently dropping charges. Demand charges use hourly-average peak kW, with the source demand interval disclosed. Rates may omit riders or be outdated. Results are capped at 100 records, with an explicit truncation notice.
+OpenEI URDB supplies commercial tariff candidates; verify eligibility. Supported monthly/TOU tiers, demand charges, adjustments and fixed/minimum charges apply to curve-based electricity as a separate-meter estimate. Unsupported terms prevent a cost estimate. A manual nonnegative $/kWh replaces tariff pricing. Demand uses hourly-average peak kW, which may differ from utility demand intervals. Daily tier limits scale by calendar days; demand-based tier limits use the month's peak hourly-average import kW.
 
-Gas: EIA returns up to 60 monthly state commercial delivered-price records ($/Mcf); BEAST retains the newest valid price for each calendar month, so withheld values do not let repeated months crowd out seasonal coverage; this is a benchmark, not a local tariff breakdown. For each model calendar month, the newest API price for that month is applied using EPA’s default 10.26 therms/Mcf conversion. The exact source month is shown. Fixed charges are not added to this delivered-price benchmark. Missing required months block total cost for gas-consuming scenarios.
+Bundled EPA eGRID2023 revision 2 CO₂e factors provide electricity generation emissions. Source provenance is recorded in `lib/data/egrid*.json`. Select the applicable subregion; an optional ZIP helps identify candidates. Annual factors remain constant across hours and weather years. They are not future-grid or marginal forecasts. These outputs include only the supplied curves' electricity scope.
 
-EPA: bundled Power Profiler/eGRID2023 revision 2 data (released June 12, 2025) supplies geometry, ZIP/utility mappings and annual total-output CO₂ rates. Data source URLs, pinned commit and source hashes are recorded in the two `lib/data/egrid*.json` provenance records. Coordinates identify approximate candidates; ZIP can refine them, and multiple subregions require user choice. `kg CO₂/kWh = lb CO₂/MWh × 0.45359237 / 1000`. The original CO₂ factors are retained for provenance. Displayed emissions use the published eGRID2023 revision 2 **CO₂e** total-output rates in `lib/data/egrid-co2e-2023.json`, converted from lb/MWh to kg/kWh. The factor is constant across hours and weather years, not an hourly/marginal/future-grid forecast.
+## Configuration and verification
 
-Annual scorecards, emissions details and hourly CSV include electricity generation and direct natural gas combustion as CO₂e (CO₂, CH₄ and N₂O), using EPA factors. They exclude upstream emissions, transmission-loss adjustments and refrigerant leakage. Source, data year, subregion and factors are disclosed. Missing energy remains blank; annual scorecards require a complete year.
-
-## Configuration
-
-Server-only runtime secrets (never NEXT_PUBLIC variables):
-
-| Variable | Purpose |
-| --- | --- |
-| NLR_API_KEY | Sup3rCC download; existing connection |
-| NLR_EMAIL / NLR_FULL_NAME / NLR_AFFILIATION | NLR request metadata |
-| OPENEI_API_KEY | [OpenEI / api.data.gov key](https://apps.openei.org/services/api/signup/) for electricity tariffs |
-| EIA_API_KEY | [Separate EIA key](https://www.eia.gov/opendata/register.php) for state gas benchmarks |
-
-The app never reuses NLR_API_KEY for OpenEI. Missing keys produce independent provider messages while EPA data and solar remain usable. Configure secrets in Sites and redeploy to apply them. For local development, set the variables in an ignored `.env` file; never commit credentials.
-
-## Validation
-
-Node >=22.13; existing Vinext/Cloudflare configuration and lockfile are preserved.
+Node >=22.13. Server-only secrets: `NLR_API_KEY`, NLR request metadata, and optional `OPENEI_API_KEY`. Configure local secrets in an ignored environment file. Never commit credentials. Existing runtime configuration and lockfile are retained.
 
 - `node node_modules/typescript/bin/tsc --noEmit`
-- `node scripts/check-school-model.mjs /absolute/path/to/2025-solar.csv`: analytical loads, radiation geometry, solar units, missing inputs, psychrometrics, schedules and full-year export.
-- `node scripts/check-rtu-model.mjs /absolute/path/to/2025-solar.csv`: pinned maps, variable SHR, no margin/defrost additions, all equipment combinations, capacity/energy balances and minimum feasible selection.
-- `node scripts/check-location-energy.mjs`: tariff structures, gas units, EPA geometry/ZIP ambiguity, CO₂ multiplication, parser failures, missing keys and independent provider errors.
-- `python scripts/build-engineering-guide.py`: rebuild the PDF; render and visually inspect before publishing.
-- Use the supported Sites source helper to build, commit/push, package and publish. Do not start a preview when browser QA is unavailable.
+- `node scripts/check-performance-curves.mjs`
+- `node scripts/check-school-model.mjs` (optional full-year climate CSV argument)
+- `node scripts/check-beast-scorecard.mjs`
+- `node scripts/check-location-energy.mjs`
+- `node scripts/run-framework.mjs build`
+- `python scripts/build-engineering-guide.py` rebuilds `public/engineering-guide.pdf`; render and inspect it after edits.
 
-## BEAST analysis flow
-
-The initial Analysis inputs page collects location/year, editable building and equipment assumptions, and one to three equipment scenarios. There are no manual utility rates or emissions factors. Continue to results validates inputs and opens an annual scorecard before detailed results.
-
-One location-energy API response supplies the source choices for all scorecards and graphs. Users choose the applicable OpenEI tariff and EPA eGRID subregion; unique candidates are preselected. Users explicitly click **Load results** to calculate the scorecards and graphs, even when no tariff is available. Without a tariff, energy and available EPA emissions are shown while total utility cost remains unavailable. If the entire provider request fails, modeled energy results can still be loaded. Changing the tariff or EPA subregion, refreshing providers, or applying a ZIP clears the loaded results and prompts users to load again. Missing or unsupported pricing produces a specific explanation after loading, rather than a silent missing total. Electricity pricing uses monthly TOU energy tiers, weekday/weekend schedules, price and fuel adjustments, monthly/TOU demand tiers, fixed charges, and minimum charges. Annual minimum top-ups occur in December; annual fixed charges are allocated evenly. The local standard-time calendar excludes daylight-saving shifts and holiday exceptions. Confirm full-meter tariff eligibility and billing terms with the utility.
-
-CO₂e combines EPA eGRID2023 electricity CO₂e factors with the EPA 2025 Emissions Factors Hub natural gas combustion factors (5.31145 kg CO₂e/therm). The API returns factor provenance and EPA heat content (0.001026 MMBtu/scf = 10.26 therms/Mcf). These factors are not future-grid projections and exclude upstream emissions and refrigerant leakage. Sources: [OpenEI URDB v8](https://apps.openei.org/services/doc/rest/util_rates/?version=8), [EPA 2025 Hub, Table 1](https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf).
-
-Annual energy, utility cost, and CO₂e comparison bars plus an interactive monthly chart share exactly the same calculations as the scorecards. The monthly table provides accessible values and an electricity charge breakdown. Unavailable values remain blank in charts, never zero. Annual totals require 8,760 unique valid hours (February 29 excluded); unmet-load warnings remain visible. Lighting and plug loads are excluded from these HVAC totals. Latest API rates are applied to the chosen weather year, not reconstructed historical rates or projected future prices.
-
-Run `node scripts/check-beast-scorecard.mjs` for tariff billing, EPA conversions, API failure/missing data, annual/monthly reconciliation, and scorecard/chart rendering checks.
-
-Energy tier limits support `kWh`, `kWh daily`, `kWh/kW`, and `kWh/kW daily`; prices remain $/kWh. Daily limits scale by calendar days in the month, and demand-based limits scale by that month's peak hourly-average HVAC import kW, following the default current-month billing-demand approach in [SAM's billing documentation](https://samrepo.nlr.gov/help/electricity_purchases.html). These estimates do not model historical demand ratchets or subhourly peaks. Distributed-generation export terms do not block consumption-only results: export credits are not applied, and negative import values are rejected. Unknown tier units still block pricing and are identified in the error.
-
-
-Emissions scorecards, graphs, detailed totals and hourly CSV now report CO₂e from electricity generation plus on-site natural gas combustion. EPA 2025 Hub stationary natural gas factors per therm are 5.306 kg CO₂, 0.0001 kg CH₄, and 0.00001 kg N₂O. AR5 100-year GWPs (CH₄ = 28; N₂O = 265) give **5.31145 kg CO₂e/therm**. Gas therms are fuel input, so furnace efficiency is already accounted for in energy simulation and is not applied again. Electricity uses EPA's published CO₂e rate directly, without adding CH₄/N₂O again. Missing gas price data do not prevent gas emissions calculation. Upstream fuel emissions, transmission-loss adjustments and refrigerant leakage are not included. Sources: [eGRID summary](https://www.epa.gov/egrid/summary-data), [EPA 2025 Hub Table 1](https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf).
-
-Optional manual electricity pricing: enable **Use a manual electricity rate**, enter a nonnegative **$/kWh**, then click **Load results**. It replaces API tariff charges with hourly kWh multiplied by the entered rate, including when tariffs are unavailable. No separate demand, fixed, minimum, tax, or rider charges are added. Gas prices and EPA emissions factors remain sourced as before. Changing the rate clears loaded results until reloaded.
+Core files: `lib/performance-curves.ts` validates/interpolates surfaces; `lib/curve-model.ts` calculates outputs and CSVs; `components/curve-scenarios.tsx` provides empty editors and operating-condition inputs. The engineering guide describes the same simplified model. The repository contains no linked Sites deployment; source changes do not publish a website automatically.

@@ -7,7 +7,7 @@ import type { AnnualPerformance } from "@/lib/utility-billing";
 
 const COLORS = ["#2878a1", "#b56b32", "#6d55a1"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const METRICS = { energy: { title: "Energy consumption", unit: "MMBtu" }, cost: { title: "Estimated utility cost", unit: "USD" }, co2e: { title: "CO₂e emissions", unit: "metric tons CO₂e" } };
+const METRICS = { energy: { title: "Curve-based electricity", unit: "kWh" }, cost: { title: "Estimated electricity cost", unit: "USD" }, co2e: { title: "CO₂e emissions", unit: "metric tons CO₂e" } };
 type Metric = keyof typeof METRICS;
 const format = (value: number, metric: Metric) => metric === "cost" ? value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }) : `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${METRICS[metric].unit}`;
 

@@ -25,11 +25,3 @@ Dataset documentation: https://www.epa.gov/egrid/summary-data
 Source terms: https://github.com/USEPA/power-profiler/blob/f42a47a958325f134a11e609eaa6612893ad3140/LICENSE.md
 
 The complete MIT license is preserved at `public/references/epa-power-profiler-license.txt`.
-
-# NLR ComStock commercial heat-pump RTU data
-
-`lib/data/rtu/comstock-standard.json` is an unmodified copy of ComStock™ standard-performance heat-pump rooftop lookup data, pinned to commit `f25ac375311acb2448b4ee1665a8680e92abd24b` from NatLabRockies/ComStock. COP regressions, airflow modifiers, part-load data, and control references are attributed to that source. Full source details and the file hash are in `lib/data/rtu/provenance.json`.
-
-Source: https://github.com/NatLabRockies/ComStock
-
-The complete redistribution license is included at `public/references/comstock-license.txt` and is served at `/references/comstock-license.txt`. Climate Table is an independent screening tool, not the ComStock software or an NLR-endorsed equipment selection. PsychroLib's wet-bulb humidity-ratio formulas are also used in `lib/rtu-curves.ts` under the MIT terms above.
