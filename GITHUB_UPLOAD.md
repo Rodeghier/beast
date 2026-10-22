@@ -6,7 +6,7 @@ The ZIP includes the current site's existing NLR API key and request metadata in
 
 `.env` remains in `.gitignore`, so Git and GitHub Desktop do not commit it automatically. It is included in the ZIP for local setup. If you choose to upload it manually, use a private repository. API keys must also be configured in the hosting service's server environment; GitHub repository contents do not automatically set deployed runtime secrets.
 
-The complete source includes application code, solar-load calculations, empty user-curve placeholders, EPA emissions data, rate connections, verification scripts, and the engineering guide. It excludes installed dependencies, Git history, build output, and machine-local runtime state. The original Site deployment ID is removed from this exported copy.
+The complete source includes application code, solar-load calculations, packaged cooling fits and mixed-air calculations, EPA emissions data, rate connections, verification scripts, and the engineering guide. It excludes installed dependencies, Git history, build output, and machine-local runtime state. The original Site deployment ID is removed from this exported copy.
 
 ## Run locally
 
@@ -26,7 +26,7 @@ The development application uses port 5173. Run `pnpm build` to build it.
 - `app/globals.css`: styling
 - `lib/solar.ts`: radiation and solar gains
 - `lib/school.ts`: building heat and moisture balance (existing internal filename)
-- `lib/performance-curves.ts` and `lib/curve-model.ts`: user-supplied capacity, COP and SHR surfaces and curve-based electricity
+- `lib/packaged-cooling.ts`, `lib/mixed-air.ts` and `lib/equipment-model.ts`: catalog cooling fits, calculated entering conditions, equipment sizing and energy
 - `app/api/`: server connections
 - `public/engineering-guide.pdf`: calculation documentation
 

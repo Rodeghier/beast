@@ -1,6 +1,6 @@
 # PsychroLib
 
-The saturation pressure coefficients and humidity-ratio relation in `lib/school.ts` are adapted from PsychroLib's implementation of ASHRAE Fundamentals equations. The dew/frost-point inversion uses an independent bisection implementation.
+The saturation pressure coefficients and humidity-ratio relation in `lib/school.ts` are adapted from PsychroLib's implementation of ASHRAE Fundamentals equations. The dew/frost-point inversion uses an independent bisection implementation. The wet-bulb humidity-ratio equations in `lib/mixed-air.ts` are also adapted from PsychroLib; mixed-air enthalpy uses the corresponding ASHRAE relation.
 
 Source: https://psychrometrics.github.io/psychrolib/_modules/psychrolib.html
 
@@ -25,3 +25,7 @@ Dataset documentation: https://www.epa.gov/egrid/summary-data
 Source terms: https://github.com/USEPA/power-profiler/blob/f42a47a958325f134a11e609eaa6612893ad3140/LICENSE.md
 
 The complete MIT license is preserved at `public/references/epa-power-profiler-license.txt`.
+
+# Precedent packaged heat-pump cooling fits
+
+`lib/data/precedent-cooling.json` contains derived gross-capacity and SHR fits from the user-supplied Trane Precedent cooling tables, document PKGP-PRC023F-EN, heat-pump tables 10-33. Dual-fuel tables are excluded. The source PDF hash, fit coefficients, validity domains, fixed maximum airflow and source anomalies are retained in the data. The derived fit report and coefficient CSV are served under `public/references/`. The full source catalog PDF is not bundled.

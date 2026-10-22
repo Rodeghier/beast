@@ -1,0 +1,2770 @@
+{
+  "schema": "precedent-cooling-polynomial-1.0",
+  "source": {
+    "filename": "Precedent_Cooling.pdf",
+    "document_code": "PKGP-PRC023F-EN",
+    "sha256": "a205e18c3220c9f52e61b673e1570c9bfeea707f0ab123cb12b625d04d5fbb87",
+    "included_scope": "heat-pump tables 10-33 only; dual-fuel tables 34-57 excluded"
+  },
+  "input_order": [
+    "outdoor_dry_bulb_F",
+    "entering_wet_bulb_F",
+    "entering_dry_bulb_F"
+  ],
+  "transforms": {
+    "x": "(outdoor_dry_bulb_F - 95)/20",
+    "y": "(entering_wet_bulb_F - 67)/6",
+    "z": "(entering_dry_bulb_F - 80)/10"
+  },
+  "terms": [
+    "1",
+    "x",
+    "y",
+    "z",
+    "x^2",
+    "x*y",
+    "x*z",
+    "y^2",
+    "y*z",
+    "z^2"
+  ],
+  "formulas": {
+    "capacity_normalized": "sum(c[i]*term[i]); c[0]=1",
+    "gross_capacity_Btu_hr": "reference_capacity_Btu_hr * capacity_normalized",
+    "shr": "clip((b[0]+b[1]*x+b[2]*y+b[3]*z)/capacity_normalized,0,1)"
+  },
+  "policy": {
+    "airflow": "Largest CFM listed for each unit size and efficiency; fixed per model, never a runtime input.",
+    "capacity": "Gross total cooling before indoor fan heat; normalized at 95 F outdoor DB, 67 F entering WB, 80 F entering DB at selected airflow.",
+    "missing": "Manufacturer dashes retained as null; no extrapolation beyond valid catalog points convex hull.",
+    "fitting": "All valid source entries retained. Anchored ordinary least-squares capacity; bounded-output nonlinear least-squares SHR numerator.",
+    "validation": "Refit after holding out each interior outdoor-DB or entering-DB plane; capacity reference remains a known input. WB has only 3 levels; no independent WB-plane holdout test.",
+    "scope": "Cooling only. No electrical power/COP data are inferred. Unit-specific functions, not one universal heat-pump curve."
+  },
+  "models": [
+    {
+      "table": 10,
+      "nominal_tons": 3.0,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-3ton",
+      "fixed_cfm": 1440,
+      "reference_capacity_MBh": 38.9,
+      "reference_capacity_Btu_hr": 38900.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.1345045539026839,
+        0.0833097686375321,
+        0.048659939661086025,
+        -0.006283127654069568,
+        -0.01767352185089971,
+        0.009482561769055289,
+        0.02587998205498862,
+        -0.05778920308483287,
+        0.02559490323698575
+      ],
+      "shr_numerator_coefficients": [
+        0.8290306883048103,
+        -0.07070478696250128,
+        -0.2420912025684752,
+        0.40748904645643363
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        1
+      ],
+      "source_printed_pages": [
+        41
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.0075237086189751745,
+          "mae": 0.006049090643670467,
+          "max_absolute_error": 0.01828327244847361,
+          "r_squared": 0.9960764945791667
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.0024115412107671977,
+          "mae": 0.00140045264282903,
+          "max_absolute_error": 0.011751477043974834,
+          "r_squared": 0.9998736303224931
+        }
+      },
+      "capacity_relative_rmse_percent": 0.7834808705043076,
+      "capacity_max_relative_error_percent": 1.9922109194555275,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.007867997603247096,
+        "shr_rmse": 0.0025767522726999367
+      }
+    },
+    {
+      "table": 11,
+      "nominal_tons": 4.0,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-4ton",
+      "fixed_cfm": 1920,
+      "reference_capacity_MBh": 52.1,
+      "reference_capacity_Btu_hr": 52100.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.13101727447216888,
+        0.07657869481765836,
+        0.048304542546385096,
+        -0.009596928982725537,
+        -0.016266794625719717,
+        0.004043506078055059,
+        0.023656429942418348,
+        -0.05209213051823417,
+        0.02316058861164426
+      ],
+      "shr_numerator_coefficients": [
+        0.835131573284942,
+        -0.06687436410791198,
+        -0.24372107072052812,
+        0.4059499869192762
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        2
+      ],
+      "source_printed_pages": [
+        42
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.006742175591670441,
+          "mae": 0.005610098101940723,
+          "max_absolute_error": 0.015265515035188804,
+          "r_squared": 0.9967306530546274
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.0024615257821336885,
+          "mae": 0.0013138071122517692,
+          "max_absolute_error": 0.011639499344237025,
+          "r_squared": 0.9998635638421322
+        }
+      },
+      "capacity_relative_rmse_percent": 0.7051739129276097,
+      "capacity_max_relative_error_percent": 1.5526122148638575,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.007180620476612437,
+        "shr_rmse": 0.0026014794436860426
+      }
+    },
+    {
+      "table": 12,
+      "nominal_tons": 5.0,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-5ton",
+      "fixed_cfm": 2400,
+      "reference_capacity_MBh": 61.9,
+      "reference_capacity_Btu_hr": 61900.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.12294094218626225,
+        0.06637722132471735,
+        0.048828942520402714,
+        -0.0059190574855641775,
+        -0.013206785137318251,
+        0.0023669069792071795,
+        0.02145527814945913,
+        -0.049919224555735046,
+        0.022414253472299916
+      ],
+      "shr_numerator_coefficients": [
+        0.8610628032520241,
+        -0.05952969466540206,
+        -0.25829295380461265,
+        0.4233381741757389
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        3
+      ],
+      "source_printed_pages": [
+        43
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.006496108106128912,
+          "mae": 0.005406216700950876,
+          "max_absolute_error": 0.01510360588146642,
+          "r_squared": 0.9963921115139512
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.0016513206531098533,
+          "mae": 0.0009341590433852178,
+          "max_absolute_error": 0.005364344006748123,
+          "r_squared": 0.9999363622015077
+        }
+      },
+      "capacity_relative_rmse_percent": 0.677056513970449,
+      "capacity_max_relative_error_percent": 1.6864474483111098,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.00696273559823407,
+        "shr_rmse": 0.002009896966117178
+      }
+    },
+    {
+      "table": 13,
+      "nominal_tons": 6.0,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-6ton",
+      "fixed_cfm": 2880,
+      "reference_capacity_MBh": 79.3,
+      "reference_capacity_Btu_hr": 79300.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.09998516567518881,
+        0.07052963430012614,
+        0.05537348381905845,
+        -0.00823689275621524,
+        -0.014249684741487993,
+        0.0024268675937537303,
+        0.022551201126197698,
+        -0.04655737704918033,
+        0.020652547277132918
+      ],
+      "shr_numerator_coefficients": [
+        0.8271670305265335,
+        -0.05348190380524376,
+        -0.23709567963176256,
+        0.39388524742365283
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        4
+      ],
+      "source_printed_pages": [
+        44
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.00630815859741763,
+          "mae": 0.005054152271898965,
+          "max_absolute_error": 0.01586378503503072,
+          "r_squared": 0.9959020774638947
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.004059039161339555,
+          "mae": 0.0024327212919207373,
+          "max_absolute_error": 0.011746344289895627,
+          "r_squared": 0.9996178955795708
+        }
+      },
+      "capacity_relative_rmse_percent": 0.6484171689216487,
+      "capacity_max_relative_error_percent": 1.493178913500406,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.006559947921008471,
+        "shr_rmse": 0.0043465783705097655
+      }
+    },
+    {
+      "table": 14,
+      "nominal_tons": 7.5,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-7.5ton",
+      "fixed_cfm": 3600,
+      "reference_capacity_MBh": 92.0,
+      "reference_capacity_Btu_hr": 92000.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.09769571239311087,
+        0.07022282608695649,
+        0.05594544140672046,
+        -0.004121000441607536,
+        -0.011141304347826059,
+        0.0013802240154161258,
+        0.025666551246537415,
+        -0.05393478260869565,
+        0.02570757557509338
+      ],
+      "shr_numerator_coefficients": [
+        0.8648272506490193,
+        -0.049457955322142845,
+        -0.25723501701798673,
+        0.42763099703770635
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        5
+      ],
+      "source_printed_pages": [
+        45
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.0066736548061713105,
+          "mae": 0.005622723045217935,
+          "max_absolute_error": 0.014867562929061773,
+          "r_squared": 0.995215478346875
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.0013750861394214984,
+          "mae": 0.0007108841882638902,
+          "max_absolute_error": 0.004920027484681566,
+          "r_squared": 0.9999559693563129
+        }
+      },
+      "capacity_relative_rmse_percent": 0.678544447398482,
+      "capacity_max_relative_error_percent": 1.5831201267056516,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.007162318560967879,
+        "shr_rmse": 0.0016333297980666744
+      }
+    },
+    {
+      "table": 15,
+      "nominal_tons": 8.5,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-8.5ton",
+      "fixed_cfm": 4080,
+      "reference_capacity_MBh": 110.7,
+      "reference_capacity_Btu_hr": 110700.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.10345829152351241,
+        0.06573396567299006,
+        0.052689716493963944,
+        -0.0033781501249915196,
+        -0.012895212285456143,
+        0.000663218451205778,
+        0.02307751978720152,
+        -0.047443541102077665,
+        0.023844401571131706
+      ],
+      "shr_numerator_coefficients": [
+        0.8457967956032986,
+        -0.04856538147384004,
+        -0.24547845132151935,
+        0.40272527848423034
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        6
+      ],
+      "source_printed_pages": [
+        46
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.006150278183121211,
+          "mae": 0.005101030460904795,
+          "max_absolute_error": 0.013848000760709134,
+          "r_squared": 0.9959132011827349
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.002467752530808347,
+          "mae": 0.0014213785098826787,
+          "max_absolute_error": 0.010694710849449951,
+          "r_squared": 0.9998546626145921
+        }
+      },
+      "capacity_relative_rmse_percent": 0.6284734844920927,
+      "capacity_max_relative_error_percent": 1.4970446134868174,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.0065646551799912935,
+        "shr_rmse": 0.0027161063186355175
+      }
+    },
+    {
+      "table": 16,
+      "nominal_tons": 10.0,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-10ton",
+      "fixed_cfm": 4800,
+      "reference_capacity_MBh": 124.1,
+      "reference_capacity_Btu_hr": 124100.0,
+      "valid_points": 60,
+      "missing_slots": 12,
+      "capacity_coefficients": [
+        1.0,
+        -0.10001527820477958,
+        0.07053239421395022,
+        0.0530688861315478,
+        -0.022516278647623067,
+        -0.014845914978086072,
+        0.0033136902501166364,
+        0.023920860845900282,
+        -0.04372280419016919,
+        0.02004919506823786
+      ],
+      "shr_numerator_coefficients": [
+        0.8542037035187062,
+        -0.05633411986352653,
+        -0.24423959423682337,
+        0.40924140045776813
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          120
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        6,
+        7
+      ],
+      "source_printed_pages": [
+        46,
+        47
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -120.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.010657656387488258,
+          "mae": 0.008400122400983034,
+          "max_absolute_error": 0.027257685679882293,
+          "r_squared": 0.9881214117638334
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.004695106627229776,
+          "mae": 0.002656848330092184,
+          "max_absolute_error": 0.015665253050412553,
+          "r_squared": 0.9994629473553903
+        }
+      },
+      "capacity_relative_rmse_percent": 1.1253609980574728,
+      "capacity_max_relative_error_percent": 3.092028147050633,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.012536880551167702,
+        "shr_rmse": 0.006106027687616768
+      }
+    },
+    {
+      "table": 17,
+      "nominal_tons": 12.5,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-12.5ton",
+      "fixed_cfm": 6000,
+      "reference_capacity_MBh": 156.9,
+      "reference_capacity_Btu_hr": 156900.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.12907723335375446,
+        0.07397705544933074,
+        0.050082243278855604,
+        -0.0060992439503374,
+        -0.014977692797960436,
+        0.004656281944672508,
+        0.022675972662863704,
+        -0.052249840662842544,
+        0.02188536316807583
+      ],
+      "shr_numerator_coefficients": [
+        0.8254335628491585,
+        -0.06948839726863675,
+        -0.24121307855065954,
+        0.39694304901663985
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        7,
+        8
+      ],
+      "source_printed_pages": [
+        47,
+        48
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.0076759332147013125,
+          "mae": 0.006266402409252355,
+          "max_absolute_error": 0.01970445384872055,
+          "r_squared": 0.9954730941110286
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.0029499877868609083,
+          "mae": 0.001712795474683244,
+          "max_absolute_error": 0.012442904176310554,
+          "r_squared": 0.9998068872073895
+        }
+      },
+      "capacity_relative_rmse_percent": 0.7981041054678796,
+      "capacity_max_relative_error_percent": 1.8369749309948034,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.008168412668612698,
+        "shr_rmse": 0.0033585127093162036
+      }
+    },
+    {
+      "table": 18,
+      "nominal_tons": 15.0,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-15ton",
+      "fixed_cfm": 7200,
+      "reference_capacity_MBh": 189.6,
+      "reference_capacity_Btu_hr": 189600.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.11349619746679597,
+        0.07043908227848103,
+        0.05325733136973018,
+        -0.005684806620147993,
+        -0.012882383966244719,
+        0.005321325743851076,
+        0.02314893141414493,
+        -0.04844936708860753,
+        0.020545270014921832
+      ],
+      "shr_numerator_coefficients": [
+        0.829823758779212,
+        -0.05657693613387839,
+        -0.2348373506590659,
+        0.39054994819384725
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        8,
+        9
+      ],
+      "source_printed_pages": [
+        48,
+        49
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.007442919365364951,
+          "mae": 0.006181646649147506,
+          "max_absolute_error": 0.016522883379891162,
+          "r_squared": 0.9949192340373066
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.00279822326797541,
+          "mae": 0.0017737026312280959,
+          "max_absolute_error": 0.010132140951673585,
+          "r_squared": 0.9998148927998183
+        }
+      },
+      "capacity_relative_rmse_percent": 0.7668976289856855,
+      "capacity_max_relative_error_percent": 1.649661805115189,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.008042078647918382,
+        "shr_rmse": 0.0034458811510707328
+      }
+    },
+    {
+      "table": 19,
+      "nominal_tons": 17.5,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-17.5ton",
+      "fixed_cfm": 8400,
+      "reference_capacity_MBh": 215.9,
+      "reference_capacity_Btu_hr": 215900.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.11665313059592491,
+        0.0614844835572024,
+        0.04890101219016189,
+        0.0021251417224467813,
+        -0.005766558591940725,
+        0.0032934778378382727,
+        0.010912542869569953,
+        -0.03630384437239463,
+        0.025095062563163014
+      ],
+      "shr_numerator_coefficients": [
+        0.8301672547532454,
+        -0.053869854435090264,
+        -0.23604428554264698,
+        0.3869563397990182
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        9,
+        10
+      ],
+      "source_printed_pages": [
+        49,
+        50
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.023862341712711267,
+          "mae": 0.011494575877624228,
+          "max_absolute_error": 0.1658537582590347,
+          "r_squared": 0.944588992583782
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.004905936101885969,
+          "mae": 0.0030131559235869205,
+          "max_absolute_error": 0.01355358024881359,
+          "r_squared": 0.9994157384534403
+        }
+      },
+      "capacity_relative_rmse_percent": 3.1533938060938835,
+      "capacity_max_relative_error_percent": 22.865789532647252,
+      "warnings": [
+        "A source value has >5% capacity residual. Inspect flagged-source-values.csv; no source value was removed or corrected."
+      ],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.034252706158321926,
+        "shr_rmse": 0.006656918726327688
+      }
+    },
+    {
+      "table": 20,
+      "nominal_tons": 20.0,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-20ton",
+      "fixed_cfm": 9600,
+      "reference_capacity_MBh": 253.5,
+      "reference_capacity_Btu_hr": 253500.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.11561151086998084,
+        0.06394575936883631,
+        0.06157535955532968,
+        -0.0071617848732701455,
+        -0.015236686390532555,
+        0.005504353638169987,
+        0.020423762614259083,
+        -0.043376725838264275,
+        0.01679118381441
+      ],
+      "shr_numerator_coefficients": [
+        0.84068449528264,
+        -0.05940486523369713,
+        -0.24138500852304307,
+        0.3986498479951868
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        10,
+        11
+      ],
+      "source_printed_pages": [
+        50,
+        51
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.007902682363459836,
+          "mae": 0.006343605557892799,
+          "max_absolute_error": 0.01837748711028042,
+          "r_squared": 0.9943769000666858
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.003588245386113997,
+          "mae": 0.002024552285471561,
+          "max_absolute_error": 0.013127898328760268,
+          "r_squared": 0.9996886780309283
+        }
+      },
+      "capacity_relative_rmse_percent": 0.8201642537435093,
+      "capacity_max_relative_error_percent": 2.1759425420159206,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.008479886053347676,
+        "shr_rmse": 0.004271170277323781
+      }
+    },
+    {
+      "table": 21,
+      "nominal_tons": 25.0,
+      "efficiency": "standard",
+      "equipment": "heat pump",
+      "id": "heat-pump-standard-25ton",
+      "fixed_cfm": 12000,
+      "reference_capacity_MBh": 277.8,
+      "reference_capacity_Btu_hr": 277800.0,
+      "valid_points": 57,
+      "missing_slots": 3,
+      "capacity_coefficients": [
+        1.0,
+        -0.11590271403826248,
+        0.0650550850668786,
+        0.051305482852889765,
+        -0.004491148122312439,
+        -0.013622541775605516,
+        0.003533471240837513,
+        0.025736868970552107,
+        -0.05125705733015053,
+        0.02608512382631096
+      ],
+      "shr_numerator_coefficients": [
+        0.8610024370946034,
+        -0.055225775377337694,
+        -0.25322556882672825,
+        0.4168016654302293
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        11
+      ],
+      "source_printed_pages": [
+        51
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -73.0
+        ],
+        [
+          0.4472135955,
+          0.0,
+          0.894427191,
+          -131.928010672488
+        ],
+        [
+          1.0,
+          0.0,
+          0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 57,
+          "rmse": 0.0063685679151643335,
+          "mae": 0.00536543222211951,
+          "max_absolute_error": 0.013371921233006012,
+          "r_squared": 0.9963466529833932
+        },
+        "shr": {
+          "n": 57,
+          "rmse": 0.0023978632355492074,
+          "mae": 0.0016144297389977782,
+          "max_absolute_error": 0.005558814686608127,
+          "r_squared": 0.9998655622444967
+        }
+      },
+      "capacity_relative_rmse_percent": 0.6492181536450709,
+      "capacity_max_relative_error_percent": 1.3547896717268357,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 60,
+        "capacity_normalized_rmse": 0.006881814189554073,
+        "shr_rmse": 0.002653036502853731
+      }
+    },
+    {
+      "table": 22,
+      "nominal_tons": 3.0,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-3ton",
+      "fixed_cfm": 1440,
+      "reference_capacity_MBh": 37.8,
+      "reference_capacity_Btu_hr": 37800.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.1266951003239092,
+        0.10126984126984127,
+        0.029477201776370775,
+        -0.011065675885620529,
+        -0.0187830687830688,
+        0.011064503363672321,
+        0.018031921910038304,
+        -0.03999999999999994,
+        0.011696883534372024
+      ],
+      "shr_numerator_coefficients": [
+        0.8470534446285426,
+        -0.06758375017221824,
+        -0.2371541243014974,
+        0.40657141763949467
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        12
+      ],
+      "source_printed_pages": [
+        52
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.012714972678881884,
+          "mae": 0.009737401495942589,
+          "max_absolute_error": 0.030085398681890085,
+          "r_squared": 0.9889578410835461
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.004496216902478255,
+          "mae": 0.0025214290790779295,
+          "max_absolute_error": 0.015849558868407887,
+          "r_squared": 0.9995329051896615
+        }
+      },
+      "capacity_relative_rmse_percent": 1.3537342424507126,
+      "capacity_max_relative_error_percent": 3.569545307079901,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.013963553347772254,
+        "shr_rmse": 0.005501416916048893
+      }
+    },
+    {
+      "table": 23,
+      "nominal_tons": 4.0,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-4ton",
+      "fixed_cfm": 1920,
+      "reference_capacity_MBh": 51.4,
+      "reference_capacity_Btu_hr": 51400.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.11816128997488605,
+        0.08148346303501945,
+        0.047946509731219236,
+        -0.0075198235194785384,
+        -0.015029182879377427,
+        0.005923163427717371,
+        0.020541055433997618,
+        -0.05287937743190658,
+        0.015520369631841249
+      ],
+      "shr_numerator_coefficients": [
+        0.8347547553376321,
+        -0.060296929233947076,
+        -0.23997072946453457,
+        0.4001501700379864
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        13
+      ],
+      "source_printed_pages": [
+        53
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.008437184521850839,
+          "mae": 0.006611523240314608,
+          "max_absolute_error": 0.023962296689912232,
+          "r_squared": 0.9940839867925471
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.0032764533533994975,
+          "mae": 0.0018633045854402146,
+          "max_absolute_error": 0.015325897745498862,
+          "r_squared": 0.9997549442423788
+        }
+      },
+      "capacity_relative_rmse_percent": 0.8783003648357414,
+      "capacity_max_relative_error_percent": 2.41646052536581,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.009642424454159046,
+        "shr_rmse": 0.003461704753938736
+      }
+    },
+    {
+      "table": 24,
+      "nominal_tons": 5.0,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-5ton",
+      "fixed_cfm": 2400,
+      "reference_capacity_MBh": 62.9,
+      "reference_capacity_Btu_hr": 62900.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.12186380938539973,
+        0.08228934817170105,
+        0.0451671811945561,
+        -0.0033220445473989405,
+        -0.015898251192368786,
+        0.006015087924815843,
+        0.021600812968745185,
+        -0.0472813990461049,
+        0.01677140722276785
+      ],
+      "shr_numerator_coefficients": [
+        0.8518061030207025,
+        -0.060726670117834045,
+        -0.2440829933159293,
+        0.4115465674624041
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        14
+      ],
+      "source_printed_pages": [
+        54
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.008177065716004293,
+          "mae": 0.006585957474502377,
+          "max_absolute_error": 0.018982027489441555,
+          "r_squared": 0.9944181976338252
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.003063423488247729,
+          "mae": 0.0016752525382770704,
+          "max_absolute_error": 0.011468936724925438,
+          "r_squared": 0.9997803457580284
+        }
+      },
+      "capacity_relative_rmse_percent": 0.85129870926893,
+      "capacity_max_relative_error_percent": 2.003304579003144,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.008844533520375779,
+        "shr_rmse": 0.0036964693396526345
+      }
+    },
+    {
+      "table": 25,
+      "nominal_tons": 6.0,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-6ton",
+      "fixed_cfm": 2880,
+      "reference_capacity_MBh": 79.3,
+      "reference_capacity_Btu_hr": 79300.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.09998516567518881,
+        0.07052963430012614,
+        0.05537348381905845,
+        -0.00823689275621524,
+        -0.014249684741487993,
+        0.0024268675937537303,
+        0.022551201126197698,
+        -0.04655737704918033,
+        0.020652547277132918
+      ],
+      "shr_numerator_coefficients": [
+        0.8271670305265335,
+        -0.05348190380524376,
+        -0.23709567963176256,
+        0.39388524742365283
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        15
+      ],
+      "source_printed_pages": [
+        55
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.00630815859741763,
+          "mae": 0.005054152271898965,
+          "max_absolute_error": 0.01586378503503072,
+          "r_squared": 0.9959020774638947
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.004059039161339555,
+          "mae": 0.0024327212919207373,
+          "max_absolute_error": 0.011746344289895627,
+          "r_squared": 0.9996178955795708
+        }
+      },
+      "capacity_relative_rmse_percent": 0.6484171689216487,
+      "capacity_max_relative_error_percent": 1.493178913500406,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.006559947921008471,
+        "shr_rmse": 0.0043465783705097655
+      }
+    },
+    {
+      "table": 26,
+      "nominal_tons": 7.5,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-7.5ton",
+      "fixed_cfm": 3600,
+      "reference_capacity_MBh": 92.0,
+      "reference_capacity_Btu_hr": 92000.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.09769571239311087,
+        0.07022282608695649,
+        0.05594544140672046,
+        -0.004121000441607536,
+        -0.011141304347826059,
+        0.0013802240154161258,
+        0.025666551246537415,
+        -0.05393478260869565,
+        0.02570757557509338
+      ],
+      "shr_numerator_coefficients": [
+        0.8648272506490193,
+        -0.049457955322142845,
+        -0.25723501701798673,
+        0.42763099703770635
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        16
+      ],
+      "source_printed_pages": [
+        56
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.0066736548061713105,
+          "mae": 0.005622723045217935,
+          "max_absolute_error": 0.014867562929061773,
+          "r_squared": 0.995215478346875
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.0013750861394214984,
+          "mae": 0.0007108841882638902,
+          "max_absolute_error": 0.004920027484681566,
+          "r_squared": 0.9999559693563129
+        }
+      },
+      "capacity_relative_rmse_percent": 0.678544447398482,
+      "capacity_max_relative_error_percent": 1.5831201267056516,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.007162318560967879,
+        "shr_rmse": 0.0016333297980666744
+      }
+    },
+    {
+      "table": 27,
+      "nominal_tons": 8.5,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-8.5ton",
+      "fixed_cfm": 4080,
+      "reference_capacity_MBh": 110.7,
+      "reference_capacity_Btu_hr": 110700.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.10345829152351241,
+        0.06573396567299006,
+        0.052689716493963944,
+        -0.0033781501249915196,
+        -0.012895212285456143,
+        0.000663218451205778,
+        0.02307751978720152,
+        -0.047443541102077665,
+        0.023844401571131706
+      ],
+      "shr_numerator_coefficients": [
+        0.8457967956032986,
+        -0.04856538147384004,
+        -0.24547845132151935,
+        0.40272527848423034
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        17
+      ],
+      "source_printed_pages": [
+        57
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.006150278183121211,
+          "mae": 0.005101030460904795,
+          "max_absolute_error": 0.013848000760709134,
+          "r_squared": 0.9959132011827349
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.002467752530808347,
+          "mae": 0.0014213785098826787,
+          "max_absolute_error": 0.010694710849449951,
+          "r_squared": 0.9998546626145921
+        }
+      },
+      "capacity_relative_rmse_percent": 0.6284734844920927,
+      "capacity_max_relative_error_percent": 1.4970446134868174,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.0065646551799912935,
+        "shr_rmse": 0.0027161063186355175
+      }
+    },
+    {
+      "table": 28,
+      "nominal_tons": 10.0,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-10ton",
+      "fixed_cfm": 4800,
+      "reference_capacity_MBh": 124.1,
+      "reference_capacity_Btu_hr": 124100.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.10324987369819856,
+        0.07062046736502818,
+        0.0537181092601728,
+        -0.004936744932861023,
+        -0.013537469782433472,
+        0.0036670751478976964,
+        0.021441860620846798,
+        -0.04372280419016916,
+        0.016743861434833182
+      ],
+      "shr_numerator_coefficients": [
+        0.856078551186407,
+        -0.05170626469644581,
+        -0.24518261901240904,
+        0.4093442823695128
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        17,
+        18
+      ],
+      "source_printed_pages": [
+        57,
+        58
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.007790045506290685,
+          "mae": 0.006372135950093392,
+          "max_absolute_error": 0.016054859996592175,
+          "r_squared": 0.9936536884393666
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.004032626886411064,
+          "mae": 0.002127999473998066,
+          "max_absolute_error": 0.01747391598746506,
+          "r_squared": 0.9996038113562733
+        }
+      },
+      "capacity_relative_rmse_percent": 0.8005118326639922,
+      "capacity_max_relative_error_percent": 1.6934286215083583,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.008316002234513849,
+        "shr_rmse": 0.004965472162522106
+      }
+    },
+    {
+      "table": 29,
+      "nominal_tons": 12.5,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-12.5ton",
+      "fixed_cfm": 6000,
+      "reference_capacity_MBh": 156.9,
+      "reference_capacity_Btu_hr": 156900.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.12907723335375446,
+        0.07397705544933074,
+        0.050082243278855604,
+        -0.0060992439503374,
+        -0.014977692797960436,
+        0.004656281944672508,
+        0.022675972662863704,
+        -0.052249840662842544,
+        0.02188536316807583
+      ],
+      "shr_numerator_coefficients": [
+        0.8254335628491585,
+        -0.06948839726863675,
+        -0.24121307855065954,
+        0.39694304901663985
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        18,
+        19
+      ],
+      "source_printed_pages": [
+        58,
+        59
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.0076759332147013125,
+          "mae": 0.006266402409252355,
+          "max_absolute_error": 0.01970445384872055,
+          "r_squared": 0.9954730941110286
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.0029499877868609083,
+          "mae": 0.001712795474683244,
+          "max_absolute_error": 0.012442904176310554,
+          "r_squared": 0.9998068872073895
+        }
+      },
+      "capacity_relative_rmse_percent": 0.7981041054678796,
+      "capacity_max_relative_error_percent": 1.8369749309948034,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.008168412668612698,
+        "shr_rmse": 0.0033585127093162036
+      }
+    },
+    {
+      "table": 30,
+      "nominal_tons": 15.0,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-15ton",
+      "fixed_cfm": 7200,
+      "reference_capacity_MBh": 189.6,
+      "reference_capacity_Btu_hr": 189600.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.11349619746679597,
+        0.07043908227848103,
+        0.05325733136973018,
+        -0.005684806620147993,
+        -0.012882383966244719,
+        0.005321325743851076,
+        0.02314893141414493,
+        -0.04844936708860753,
+        0.020545270014921832
+      ],
+      "shr_numerator_coefficients": [
+        0.829823758779212,
+        -0.05657693613387839,
+        -0.2348373506590659,
+        0.39054994819384725
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        19,
+        20
+      ],
+      "source_printed_pages": [
+        59,
+        60
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.007442919365364951,
+          "mae": 0.006181646649147506,
+          "max_absolute_error": 0.016522883379891162,
+          "r_squared": 0.9949192340373066
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.00279822326797541,
+          "mae": 0.0017737026312280959,
+          "max_absolute_error": 0.010132140951673585,
+          "r_squared": 0.9998148927998183
+        }
+      },
+      "capacity_relative_rmse_percent": 0.7668976289856855,
+      "capacity_max_relative_error_percent": 1.649661805115189,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.008042078647918382,
+        "shr_rmse": 0.0034458811510707328
+      }
+    },
+    {
+      "table": 31,
+      "nominal_tons": 17.5,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-17.5ton",
+      "fixed_cfm": 8400,
+      "reference_capacity_MBh": 215.9,
+      "reference_capacity_Btu_hr": 215900.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.11665313059592491,
+        0.0614844835572024,
+        0.04890101219016189,
+        0.0021251417224467813,
+        -0.005766558591940725,
+        0.0032934778378382727,
+        0.010912542869569953,
+        -0.03630384437239463,
+        0.025095062563163014
+      ],
+      "shr_numerator_coefficients": [
+        0.8301672547532454,
+        -0.053869854435090264,
+        -0.23604428554264698,
+        0.3869563397990182
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        20,
+        21
+      ],
+      "source_printed_pages": [
+        60,
+        61
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.023862341712711267,
+          "mae": 0.011494575877624228,
+          "max_absolute_error": 0.1658537582590347,
+          "r_squared": 0.944588992583782
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.004905936101885969,
+          "mae": 0.0030131559235869205,
+          "max_absolute_error": 0.01355358024881359,
+          "r_squared": 0.9994157384534403
+        }
+      },
+      "capacity_relative_rmse_percent": 3.1533938060938835,
+      "capacity_max_relative_error_percent": 22.865789532647252,
+      "warnings": [
+        "A source value has >5% capacity residual. Inspect flagged-source-values.csv; no source value was removed or corrected."
+      ],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.034252706158321926,
+        "shr_rmse": 0.006656918726327688
+      }
+    },
+    {
+      "table": 32,
+      "nominal_tons": 20.0,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-20ton",
+      "fixed_cfm": 9600,
+      "reference_capacity_MBh": 253.5,
+      "reference_capacity_Btu_hr": 253500.0,
+      "valid_points": 60,
+      "missing_slots": 0,
+      "capacity_coefficients": [
+        1.0,
+        -0.11561151086998084,
+        0.06394575936883631,
+        0.06157535955532968,
+        -0.0071617848732701455,
+        -0.015236686390532555,
+        0.005504353638169987,
+        0.020423762614259083,
+        -0.043376725838264275,
+        0.01679118381441
+      ],
+      "shr_numerator_coefficients": [
+        0.84068449528264,
+        -0.05940486523369713,
+        -0.24138500852304307,
+        0.3986498479951868
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        21,
+        22
+      ],
+      "source_printed_pages": [
+        61,
+        62
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0,
+          -73.0
+        ],
+        [
+          1.0,
+          -0.0,
+          -0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 60,
+          "rmse": 0.007902682363459836,
+          "mae": 0.006343605557892799,
+          "max_absolute_error": 0.01837748711028042,
+          "r_squared": 0.9943769000666858
+        },
+        "shr": {
+          "n": 60,
+          "rmse": 0.003588245386113997,
+          "mae": 0.002024552285471561,
+          "max_absolute_error": 0.013127898328760268,
+          "r_squared": 0.9996886780309283
+        }
+      },
+      "capacity_relative_rmse_percent": 0.8201642537435093,
+      "capacity_max_relative_error_percent": 2.1759425420159206,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 66,
+        "capacity_normalized_rmse": 0.008479886053347676,
+        "shr_rmse": 0.004271170277323781
+      }
+    },
+    {
+      "table": 33,
+      "nominal_tons": 25.0,
+      "efficiency": "high",
+      "equipment": "heat pump",
+      "id": "heat-pump-high-25ton",
+      "fixed_cfm": 12000,
+      "reference_capacity_MBh": 277.8,
+      "reference_capacity_Btu_hr": 277800.0,
+      "valid_points": 57,
+      "missing_slots": 3,
+      "capacity_coefficients": [
+        1.0,
+        -0.11590271403826248,
+        0.0650550850668786,
+        0.051305482852889765,
+        -0.004491148122312439,
+        -0.013622541775605516,
+        0.003533471240837513,
+        0.025736868970552107,
+        -0.05125705733015053,
+        0.02608512382631096
+      ],
+      "shr_numerator_coefficients": [
+        0.8610024370946034,
+        -0.055225775377337694,
+        -0.25322556882672825,
+        0.4168016654302293
+      ],
+      "axis_ranges_F": {
+        "outdoor_dry_bulb_F": [
+          85,
+          125
+        ],
+        "entering_wet_bulb_F": [
+          61,
+          73
+        ],
+        "entering_dry_bulb_F": [
+          75,
+          90
+        ]
+      },
+      "source_pdf_pages": [
+        22
+      ],
+      "source_printed_pages": [
+        62
+      ],
+      "valid_domain_halfspaces": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          85.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          61.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -1.0,
+          75.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          1.0,
+          -90.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -73.0
+        ],
+        [
+          0.4472135955,
+          0.0,
+          0.894427191,
+          -131.928010672488
+        ],
+        [
+          1.0,
+          0.0,
+          0.0,
+          -125.0
+        ]
+      ],
+      "fit_metrics": {
+        "capacity_normalized": {
+          "n": 57,
+          "rmse": 0.0063685679151643335,
+          "mae": 0.00536543222211951,
+          "max_absolute_error": 0.013371921233006012,
+          "r_squared": 0.9963466529833932
+        },
+        "shr": {
+          "n": 57,
+          "rmse": 0.0023978632355492074,
+          "mae": 0.0016144297389977782,
+          "max_absolute_error": 0.005558814686608127,
+          "r_squared": 0.9998655622444967
+        }
+      },
+      "capacity_relative_rmse_percent": 0.6492181536450709,
+      "capacity_max_relative_error_percent": 1.3547896717268357,
+      "warnings": [],
+      "interior_plane_validation": {
+        "n": 60,
+        "capacity_normalized_rmse": 0.006881814189554073,
+        "shr_rmse": 0.002653036502853731
+      }
+    }
+  ]
+}

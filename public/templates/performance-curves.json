@@ -1,4 +1,0 @@
-{
-  "heating": { "capacity": null, "cop": null },
-  "cooling": { "capacity": null, "cop": null, "shr": null }
-}

@@ -14,6 +14,6 @@ export function AnalysisAssumptions({ school, onSchool }: {
         <input form="analysis-inputs" id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step={field.step} value={Number.isFinite(school[field.key]) ? school[field.key] : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>
       </div>)}</div>
     </fieldset>)}
-    <p>Electricity estimates use only your supplied curves and operating conditions. Select an applicable OpenEI electricity tariff or enter a manual electricity rate in results; electricity CO₂e uses EPA eGRID factors.</p>
+    <p>Return-air temperature follows the modeled zone condition and return-air humidity uses the indoor RH target above. The heat-pump model calculates mixed-air dry bulb and wet bulb from these conditions and scheduled ventilation. Utility and emissions data are selected in results.</p>
   </section>;
 }

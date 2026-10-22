@@ -25,11 +25,11 @@ try {
   const { GET } = await import(pathToFileURL(join(temp, "route.mjs")).href);
   const { totalCo2e } = await import(pathToFileURL(join(temp, "emissions.mjs")).href);
   const region = { kgCo2ePerKwh: 0.5 };
-  const result = { error: null, summary: { completeHours: 8760, electricity: 1000 } };
-  assert.equal(totalCo2e(result, region), 500);
+  const result = { error: null, summary: { completeHours: 8760, electricity: 1000, gasTherms: 0 } };
+  assert.equal(totalCo2e(result, region, undefined), 500);
   assert.equal(totalCo2e({ ...result, error: "Awaiting curves" }, region), null);
   assert.equal(totalCo2e(result, null), null);
-  assert.equal(totalCo2e({ ...result, summary: { completeHours: 0, electricity: 0 } }, region), null);
+  assert.equal(totalCo2e({ ...result, summary: { completeHours: 0, electricity: 0, gasTherms: 0 } }, region), null);
   for (const v of [null, undefined, "", "  ", true, false, {}, [], "Infinity", NaN]) assert.equal(m.finiteNumber(v), null);
   assert.equal(m.finiteNumber("0"), 0);
   assert.equal(m.publicUrl("javascript:alert(1)"), null);

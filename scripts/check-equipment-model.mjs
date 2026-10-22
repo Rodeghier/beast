@@ -1,0 +1,76 @@
+import assert from "node:assert/strict";
+import { readFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+const root = fileURLToPath(new URL("../", import.meta.url));
+const require = createRequire(import.meta.url), cache = new Map();
+function load(path) {
+  let file = resolve(root, path);
+  if (!existsSync(file)) file += existsSync(file + ".tsx") ? ".tsx" : ".ts";
+  if (file.endsWith(".json")) return JSON.parse(readFileSync(file, "utf8"));
+  if (cache.has(file)) return cache.get(file).exports;
+  const module = { exports: {} }; cache.set(file, module);
+  const { outputText } = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } });
+  const localRequire = name => name.startsWith("@/") ? load(name.slice(2)) : name.startsWith(".") ? load(resolve(dirname(file), name)) : require(name);
+  new Function("require", "module", "exports", outputText)(localRequire, module, module.exports);
+  return module.exports;
+}
+
+const { DEFAULT_SCHOOL, simulateSchool, humidityRatio, celsius }=load('lib/school.ts');
+const { newScenario }=load('lib/equipment.ts');
+const { simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
+const { airContext, mixAir, enthalpy, wetBulbF }=load('lib/mixed-air.ts');
+const { coolingPoint, COOLING_MODELS }=load('lib/packaged-cooling.ts');
+const { parseCsv }=load('lib/csv.ts');
+const near=(a,b,t=1e-7)=>assert.ok(Math.abs(a-b)<=t,`${a} != ${b}`);
+for(const reference of load('scripts/fixtures/mixed-air-reference.json').cases) near(wetBulbF(reference.dryF,reference.humidityRatio),reference.wetF,.003);
+const base=simulateSchool([{year:2025,month:7,day:7,hour:12,minute:0,temperature:35,humidity:50,dhi:0,dni:0,ghi:0}],DEFAULT_SCHOOL)[0];
+const row={...base,freeFloatF:80,heatingSetpointF:70,coolingSetpointF:80,ventilationCfm:400,heating:100000,sensibleCooling:-100000,latentCooling:-30000,totalCooling:-130000};
+const context=airContext(row,DEFAULT_SCHOOL),mixed=mixAir(context,4000);
+near(mixed.outdoorFraction,.1);
+near(mixed.humidityRatio,.9*context.returnW+.1*context.outdoorW);
+near(enthalpy(celsius(mixed.dryF),mixed.humidityRatio),.9*context.returnH+.1*context.outdoorH);
+assert.ok(mixed.dryF>80&&mixed.dryF<95);assert.ok(mixed.wetF<mixed.dryF);
+near(mixAir({...context,ventilationCfm:0},4000).dryF,80);
+near(mixAir({...context,ventilationCfm:4000},4000).dryF,95);
+assert.equal(mixAir(context,300),null);
+assert.equal(wetBulbF(80,.2),null);
+const infiltrating=airContext({...row,infiltrationCfm:100000,outdoorAirCfm:100400},DEFAULT_SCHOOL);
+near(mixAir(infiltrating,4000).wetF,mixed.wetF);
+assert.equal(COOLING_MODELS.length,24);assert.ok(COOLING_MODELS.every(m=>m.equipment==='heat pump'));
+const hp=simulateEquipment([row],DEFAULT_SCHOOL,newScenario('Heat pump'));
+assert.ok(hp.selection);assert.ok(hp.selection.supplyCfm>=row.ventilationCfm);assert.equal(hp.selection.provisional,false);
+assert.ok(hp.rows[0].unmetCooling<=1);assert.equal(hp.rows[0].electricity,null);assert.equal(hp.rows[0].unmetHeating,null);
+assert.match(hp.rows[0].status,/heating capacity and COP data pending/);
+const operating=hp.rows[0],point=coolingPoint(hp.selection.model,95,operating.enteringWetBulbF,operating.enteringDryBulbF);
+near(operating.availableCooling,hp.selection.count*point.capacityBtuHr);
+near(operating.outdoorAirFraction,400/hp.selection.supplyCfm);
+const gasScenario={...newScenario('Gas','gas'),gasEfficiencyPercent:80};
+const gas=simulateEquipment([row],DEFAULT_SCHOOL,gasScenario),resistance=simulateEquipment([row],DEFAULT_SCHOOL,newScenario('Resistance','resistance'));
+near(gas.rows[0].gasTherms,1.25);near(gas.rows[0].electricity,0);near(gas.heatingCapacityBtuHr,100000);
+near(resistance.rows[0].electricity,100000/BTU_PER_KWH);near(resistance.rows[0].gasTherms,0);
+for(const r of [gas,resistance]){assert.equal(r.selection,null);near(r.rows[0].unmetCooling,130000);assert.equal(r.rows[0].enteringWetBulbF,null);}
+for(const percent of [null,0,101,NaN]){const invalid=simulateEquipment([row],DEFAULT_SCHOOL,{...gasScenario,gasEfficiencyPercent:percent});assert.ok(invalid.error);assert.equal(invalid.rows[0].gasTherms,null);}
+const noRh={...row,humidity:null,latentCooling:null,totalCooling:null};
+near(simulateEquipment([noRh],DEFAULT_SCHOOL,gasScenario).rows[0].gasTherms,1.25);
+const coolGap=simulateEquipment([row,{...row,hour:13,temperatureF:70,temperature:celsius(70)}],DEFAULT_SCHOOL,newScenario('Gap'));
+assert.equal(coolGap.selection.provisional,true);assert.equal(coolGap.rows[1].availableCooling,null);assert.equal(coolGap.rows[1].electricity,null);assert.ok(coolGap.rows[1].enteringWetBulbF!==null);
+const fallback=simulateEquipment([{...row,temperatureF:70,temperature:celsius(70)}],DEFAULT_SCHOOL,newScenario('Outside'));
+assert.equal(fallback.selection.verifiedCoolingHours,0);assert.equal(fallback.selection.provisional,true);assert.match(fallback.selection.basis,/Reference-condition estimate/);
+const year=Array.from({length:8760},(_,i)=>{const d=new Date(Date.UTC(2025,0,1,i));return {...row,year:2025,month:d.getUTCMonth()+1,day:d.getUTCDate(),hour:d.getUTCHours()};});
+const annual=simulateEquipment(year,DEFAULT_SCHOOL,newScenario('Resistance','resistance'));
+assert.equal(annual.summary.fullYear,true);near(annual.summary.electricity,8760*100000/BTU_PER_KWH,1e-5);assert.equal(annual.summary.unmetCoolingHours,8760);
+const duplicate=[...year];duplicate[1]=duplicate[0];assert.equal(simulateEquipment(duplicate,DEFAULT_SCHOOL,gasScenario).summary.fullYear,false);
+const exportRows=parseCsv(equipmentResultsCsv([row],DEFAULT_SCHOOL,gas,'Test City','UTC-6'));
+assert.equal(exportRows[0].length,exportRows[1].length);assert.equal(exportRows[2].length,exportRows[3].length);near(Number(exportRows[3][exportRows[2].indexOf('Gas_input_therms')]),1.25);
+assert.match(equipmentComparisonCsv([hp,gas,resistance]),/Rooftop Packaged Heat Pump/);
+const {EquipmentScenarios}=load('components/equipment-scenarios.tsx');
+const html=renderToStaticMarkup(createElement(EquipmentScenarios,{choices:[hp.scenario,gasScenario,resistance.scenario],results:[hp,gas,resistance],active:0,onActive:()=>{},onChange:()=>{}}));
+assert.match(html,/Rooftop Packaged Heat Pump/);assert.match(html,/Natural Gas/);assert.match(html,/Electric Resistance/);assert.match(html,/AHUE \/ AFUE/);
+assert.doesNotMatch(html,/type="file"|Entering wet-bulb · optional|Import hourly/);assert.match(html,/Heating only/);assert.match(html,/automatically/);
+console.log('Equipment checks passed: mixed-air balances, calculated wet bulb, maximum-airflow catalog autosizing, domain gaps, pending COP/heating, AHUE fuel input, resistance, heating-only scope, annual energy, exports and rendered controls.');
