@@ -29,3 +29,7 @@ The complete MIT license is preserved at `public/references/epa-power-profiler-l
 # Precedent packaged heat-pump cooling fits
 
 `lib/data/precedent-cooling.json` contains derived gross-capacity and SHR fits from the user-supplied Trane Precedent cooling tables, document PKGP-PRC023F-EN, heat-pump tables 10-33. Dual-fuel tables are excluded. The source PDF hash, fit coefficients, validity domains, fixed maximum airflow and source anomalies are retained in the data. The derived fit report and coefficient CSV are served under `public/references/`. The full source catalog PDF is not bundled.
+
+# Precedent packaged heat-pump heating fits
+
+`lib/data/precedent-heating.json` contains derived integrated net-heating-capacity and total-power fits from user-supplied Heating_Cap.pdf, Trane PKGP-PRC023F-EN, tables 58-73, printed pages 86-95. Source hash, table/page provenance, nominal-airflow/ESP and 70% outdoor-RH basis, integrated fan/defrost effects, coefficients, errors and source flags are preserved. Derived COP is capacity divided by total electric input in consistent units. The coefficient, fit-summary and source-audit CSVs are served under `public/references/`. The source catalog PDF is not bundled. Trane's model-family key confirms WSK/WHK as standard/high heat pumps; size-only tables are shared across those families. Applying nominal-airflow heating data with the cooling airflow is explicitly marked as an uncorrected screening approximation.

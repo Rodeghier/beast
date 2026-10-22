@@ -1,0 +1,1340 @@
+{
+  "schema": "precedent-heating-polynomial-1.0",
+  "source": {
+    "filename": "Heating_Cap.pdf",
+    "document_code": "PKGP-PRC023F-EN",
+    "sha256": "6be2f78a7e7d15dca92ecaadce6695caa6db778f79826c1d2439bb8c3ad3120a",
+    "tables": "58-73",
+    "printed_pages": "86-95"
+  },
+  "terms": [
+    "1",
+    "x",
+    "y",
+    "x^2",
+    "x*y",
+    "y^2",
+    "x^3",
+    "x^2*y",
+    "x*y^2",
+    "y^3",
+    "x^4",
+    "x^3*y",
+    "x^2*y^2",
+    "x*y^3",
+    "y^4"
+  ],
+  "term_powers": [
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      3,
+      0
+    ],
+    [
+      2,
+      1
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      4,
+      0
+    ],
+    [
+      3,
+      1
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      1,
+      3
+    ],
+    [
+      0,
+      4
+    ]
+  ],
+  "transforms": {
+    "x": "(outdoor_dry_bulb_F - 47)/40",
+    "y": "(entering_dry_bulb_F - 70)/20"
+  },
+  "formulas": {
+    "net_capacity_Btu_hr": "reference_capacity_Btu_hr * sum(capacity_coefficients[i]*terms[i])",
+    "total_power_kW": "reference_power_kW * sum(power_coefficients[i]*terms[i])",
+    "heating_COP": "net_capacity_Btu_hr / (3412.141633 * total_power_kW)"
+  },
+  "policy": {
+    "fitting": "Anchored least squares: fourth-degree total-degree capacity, second-degree power. All source values retained.",
+    "validation": "Interior outdoor/entering plane holdout refits; the 47/70 reference remains a known anchor, so validation is conditional on it.",
+    "domain": "Outdoor -8 to 72 F; entering dry bulb 40 to 80 F. No extrapolation, humidity correction, added defrost or fan term.",
+    "catalog_basis": "Net integrated heating capacity and total power include indoor fan heat/power at nominal CFM and listed ESP; defrost integrated; 70% outdoor RH.",
+    "application_basis": "Mixed air continues to use installed maximum cooling CFM. Applying nominal-airflow heating fits there is an uncorrected screening approximation; sizing remains provisional when heating is required.",
+    "mapping": "Tables 58-60 standard 3/4/5 ton; 61-63 high 3/4/5 ton; table 67 standard 10-ton WSK; 68 high 10-ton WHK. Other sizes share their size-only table across families. No dual-fuel equipment added."
+  },
+  "models": [
+    {
+      "table": 58,
+      "nominal_tons": 3.0,
+      "efficiency": "standard",
+      "id": "heating-table-58",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.5,
+      "reference_capacity_Btu_hr": 31000.0,
+      "reference_power_kW": 2.6,
+      "capacity_coefficients": [
+        1.0,
+        0.6854853904123258,
+        -0.07197568975729524,
+        0.01750246383347769,
+        -0.022034189511336198,
+        0.02410966296177185,
+        -0.13878930573682538,
+        -0.009818655256448025,
+        0.01201661746146219,
+        0.018718827294917674,
+        -0.0712940000670729,
+        0.020076004049984216,
+        -0.0017608555743602809,
+        0.008646386681755866,
+        0.004187312501967906
+      ],
+      "power_coefficients": [
+        1.0,
+        0.10809224384311988,
+        0.19684837814875963,
+        0.021901281687503903,
+        0.02066836863139672,
+        0.026200485874033785,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        1
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.008403940843804249,
+          "relative_rmse_percent": 1.0588352000874646,
+          "max_relative_error_percent": 3.1022504951031014,
+          "max_absolute_error": 0.023404077001152324
+        },
+        "power": {
+          "rmse": 0.01135644044973098,
+          "relative_rmse_percent": 1.2801139487806399,
+          "max_relative_error_percent": 2.4325073866491347,
+          "max_absolute_error": 0.019399455948408972
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 2.093329982948012,
+        "power_relative_rmse_percent": 1.3375152309850917
+      }
+    },
+    {
+      "table": 59,
+      "nominal_tons": 4.0,
+      "efficiency": "standard",
+      "id": "heating-table-59",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.5,
+      "reference_capacity_Btu_hr": 43000.0,
+      "reference_power_kW": 3.6,
+      "capacity_coefficients": [
+        1.0,
+        0.6125841056208292,
+        -0.0562414808192566,
+        -0.009857478201705155,
+        -0.03028049347521244,
+        0.024048785102152647,
+        -0.12417140754299252,
+        -0.0040752760914767,
+        0.007759725773184896,
+        0.01595118728391169,
+        -0.055349450807994104,
+        0.012852038522729821,
+        -0.003443481699967615,
+        0.009434693929589054,
+        0.0030808158343418536
+      ],
+      "power_coefficients": [
+        1.0,
+        0.09554781310781849,
+        0.1978737408902762,
+        -0.0015568784871071828,
+        0.015219345651070118,
+        0.031135048754974567,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        1,
+        2
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [
+        "Source entries require review; retained without correction. See source-data.csv."
+      ],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.007400290511758842,
+          "relative_rmse_percent": 0.8548723592203642,
+          "max_relative_error_percent": 2.225390474896846,
+          "max_absolute_error": 0.021170291960840082
+        },
+        "power": {
+          "rmse": 0.008344669191586003,
+          "relative_rmse_percent": 0.9404189494598205,
+          "max_relative_error_percent": 1.9868198657235492,
+          "max_absolute_error": 0.01994406167737317
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 2.127748867250695,
+        "power_relative_rmse_percent": 0.9772135595897387
+      }
+    },
+    {
+      "table": 60,
+      "nominal_tons": 5.0,
+      "efficiency": "standard",
+      "id": "heating-table-60",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.5,
+      "reference_capacity_Btu_hr": 51000.0,
+      "reference_power_kW": 4.3,
+      "capacity_coefficients": [
+        1.0,
+        0.6079870264252205,
+        -0.045604968853919986,
+        -0.0043625182903661635,
+        -0.028626746241236258,
+        0.025440690552946975,
+        -0.13275258443787075,
+        -0.003036362913892192,
+        0.014209990047269234,
+        0.021997591061092718,
+        -0.051924020228528954,
+        0.009417958472304982,
+        -0.00682576792762783,
+        0.00790098960754751,
+        0.004915318828585002
+      ],
+      "power_coefficients": [
+        1.0,
+        0.09120625015187356,
+        0.1980690380461396,
+        -0.0024369819193250423,
+        0.017289342194727417,
+        0.02400849865524623,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        2
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.007424210773728319,
+          "relative_rmse_percent": 0.8145907766783694,
+          "max_relative_error_percent": 2.3506777588734526,
+          "max_absolute_error": 0.021822257166165704
+        },
+        "power": {
+          "rmse": 0.007754051014947669,
+          "relative_rmse_percent": 0.8742866598272118,
+          "max_relative_error_percent": 1.989047896718043,
+          "max_absolute_error": 0.015782825668940514
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.9276884369654061,
+        "power_relative_rmse_percent": 0.8945627864142096
+      }
+    },
+    {
+      "table": 61,
+      "nominal_tons": 3.0,
+      "efficiency": "high",
+      "id": "heating-table-61",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.5,
+      "reference_capacity_Btu_hr": 32400.0,
+      "reference_power_kW": 2.5,
+      "capacity_coefficients": [
+        1.0,
+        0.6165375714092699,
+        -0.07755747078842244,
+        0.03923296654086192,
+        -0.035605278879801465,
+        0.022255595916970843,
+        -0.07368472528647334,
+        0.009553607530614324,
+        0.007628976366494744,
+        0.018267827927611783,
+        -0.03822849116158988,
+        0.013730373091548476,
+        -0.004386297097098395,
+        0.006600344104438418,
+        0.00513586825354049
+      ],
+      "power_coefficients": [
+        1.0,
+        0.13159003498236851,
+        0.19315939178170397,
+        0.0152288360453714,
+        0.020157247506638387,
+        0.022080458028563454,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        2,
+        3
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.00610587219575082,
+          "relative_rmse_percent": 0.6978783550669335,
+          "max_relative_error_percent": 1.9874431444645,
+          "max_absolute_error": 0.017922976082468844
+        },
+        "power": {
+          "rmse": 0.011759554319593739,
+          "relative_rmse_percent": 1.3438998294904838,
+          "max_relative_error_percent": 2.6631710249360765,
+          "max_absolute_error": 0.021987808479841386
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.5793235602032822,
+        "power_relative_rmse_percent": 1.3812489438866875
+      }
+    },
+    {
+      "table": 62,
+      "nominal_tons": 4.0,
+      "efficiency": "high",
+      "id": "heating-table-62",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.5,
+      "reference_capacity_Btu_hr": 43000.0,
+      "reference_power_kW": 3.4,
+      "capacity_coefficients": [
+        1.0,
+        0.621666805514143,
+        -0.06219027091400433,
+        0.02151367960608433,
+        -0.036766252798993516,
+        0.026702721461597162,
+        -0.12096787026381568,
+        0.00028101025959013053,
+        0.010446293791168427,
+        0.015669321375319543,
+        -0.05810949355553538,
+        0.011763846660638618,
+        -0.005697080408543763,
+        0.007681425059780865,
+        0.002101323971175505
+      ],
+      "power_coefficients": [
+        1.0,
+        0.1292368454330436,
+        0.18084720023883108,
+        0.012071075100608928,
+        0.04143113851468228,
+        0.02528658857361134,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        3
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.007357885444198573,
+          "relative_rmse_percent": 0.8216585218622644,
+          "max_relative_error_percent": 2.256291912829802,
+          "max_absolute_error": 0.022540680402790114
+        },
+        "power": {
+          "rmse": 0.010271897342173921,
+          "relative_rmse_percent": 1.156759374629623,
+          "max_relative_error_percent": 2.597213302563188,
+          "max_absolute_error": 0.021107060521775578
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.9191797414886913,
+        "power_relative_rmse_percent": 1.1884623265348564
+      }
+    },
+    {
+      "table": 63,
+      "nominal_tons": 5.0,
+      "efficiency": "high",
+      "id": "heating-table-63",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.5,
+      "reference_capacity_Btu_hr": 53500.0,
+      "reference_power_kW": 4.2,
+      "capacity_coefficients": [
+        1.0,
+        0.5881369047204534,
+        -0.06254908095311254,
+        0.02374950326981898,
+        -0.03773632099414339,
+        0.027612157270490004,
+        -0.10973088308970856,
+        0.006697716917095051,
+        0.012104682710824434,
+        0.01928011868166044,
+        -0.04463828964653566,
+        0.006549567246411594,
+        -0.004413154679569259,
+        0.008785069918946146,
+        0.002601739241680253
+      ],
+      "power_coefficients": [
+        1.0,
+        0.1353465662598987,
+        0.18017124511557292,
+        0.014410656715087844,
+        0.04401752993963756,
+        0.01714533115901545,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        4
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.007348747568576829,
+          "relative_rmse_percent": 0.787533599345252,
+          "max_relative_error_percent": 2.1520200735483037,
+          "max_absolute_error": 0.02203055243363572
+        },
+        "power": {
+          "rmse": 0.009891374466877462,
+          "relative_rmse_percent": 1.1568475860368184,
+          "max_relative_error_percent": 3.216771831316656,
+          "max_absolute_error": 0.026750406044914854
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.8539614406269302,
+        "power_relative_rmse_percent": 1.1332218658708344
+      }
+    },
+    {
+      "table": 64,
+      "nominal_tons": 6.0,
+      "efficiency": "shared",
+      "id": "heating-table-64",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.25,
+      "reference_capacity_Btu_hr": 68000.0,
+      "reference_power_kW": 5.9,
+      "capacity_coefficients": [
+        1.0,
+        0.6131544499533487,
+        -0.05904271353598409,
+        0.026365489774234804,
+        -0.04133020110566074,
+        0.018237462067206844,
+        -0.06042349391683622,
+        -0.005633848850755728,
+        0.0064863610102421565,
+        0.009436184650154767,
+        -0.027568985519814994,
+        0.009740210856798732,
+        -0.0016171325763181367,
+        0.007794999761428474,
+        0.0010910121132865058
+      ],
+      "power_coefficients": [
+        1.0,
+        0.10013158589484944,
+        0.1844268261664563,
+        -0.0010299639267944431,
+        0.019037593611396578,
+        0.019754398409595975,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        4,
+        5
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.005385621225561188,
+          "relative_rmse_percent": 0.6055232480395435,
+          "max_relative_error_percent": 1.6731991176972085,
+          "max_absolute_error": 0.017149840442214348
+        },
+        "power": {
+          "rmse": 0.005807357887814887,
+          "relative_rmse_percent": 0.6504234140823237,
+          "max_relative_error_percent": 1.6052566125114716,
+          "max_absolute_error": 0.014420101773408134
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.2271268331066234,
+        "power_relative_rmse_percent": 0.6813121547354981
+      }
+    },
+    {
+      "table": 65,
+      "nominal_tons": 7.5,
+      "efficiency": "shared",
+      "id": "heating-table-65",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.25,
+      "reference_capacity_Btu_hr": 81000.0,
+      "reference_power_kW": 7.0,
+      "capacity_coefficients": [
+        1.0,
+        0.5944909400849538,
+        -0.05263943753126078,
+        0.028804784505543777,
+        -0.041302816548515774,
+        0.020089527303058078,
+        -0.06514949889497347,
+        -0.004646010969423652,
+        0.012509149786951888,
+        0.013019124465190065,
+        -0.026295286294389125,
+        0.007348232610832901,
+        -0.003935816340131004,
+        0.0075074699085908875,
+        0.001954296439108615
+      ],
+      "power_coefficients": [
+        1.0,
+        0.09629934916084702,
+        0.1898471952900975,
+        0.011650785252372996,
+        0.016794660254745002,
+        0.024162244997844345,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        5
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.005514319055075279,
+          "relative_rmse_percent": 0.5797923605256933,
+          "max_relative_error_percent": 1.5401437274519905,
+          "max_absolute_error": 0.017711583051648327
+        },
+        "power": {
+          "rmse": 0.004648592932239879,
+          "relative_rmse_percent": 0.5230141523758942,
+          "max_relative_error_percent": 1.3530366086698389,
+          "max_absolute_error": 0.011702913854795494
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.2434731868832491,
+        "power_relative_rmse_percent": 0.5479930930402771
+      }
+    },
+    {
+      "table": 66,
+      "nominal_tons": 8.5,
+      "efficiency": "shared",
+      "id": "heating-table-66",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.25,
+      "reference_capacity_Btu_hr": 97000.0,
+      "reference_power_kW": 8.4,
+      "capacity_coefficients": [
+        1.0,
+        0.5775359090527595,
+        -0.048659130343176,
+        0.013508486463627152,
+        -0.03537188671861529,
+        0.026599382351977,
+        -0.1159527350902968,
+        0.00011335624230855784,
+        0.01377938044623172,
+        0.01907661434263459,
+        -0.054331253284577316,
+        0.011951303140720557,
+        -0.006016511509037325,
+        0.007773930609138429,
+        0.0041625075581379345
+      ],
+      "power_coefficients": [
+        1.0,
+        0.12356609753810743,
+        0.18899745786559252,
+        0.007588948609717851,
+        0.019389950096157432,
+        0.015127588679002558,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        5,
+        6
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.0070389932860092565,
+          "relative_rmse_percent": 0.7532031340111704,
+          "max_relative_error_percent": 2.087736893526623,
+          "max_absolute_error": 0.021703210689292707
+        },
+        "power": {
+          "rmse": 0.004593723332716923,
+          "relative_rmse_percent": 0.523929206397283,
+          "max_relative_error_percent": 1.3265134998118473,
+          "max_absolute_error": 0.012370143425729507
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.8118684729403394,
+        "power_relative_rmse_percent": 0.5425257746382963
+      }
+    },
+    {
+      "table": 67,
+      "nominal_tons": 10.0,
+      "efficiency": "standard",
+      "id": "heating-table-67",
+      "model_scope": "WSK only",
+      "nominal_esp_inches": 0.3,
+      "reference_capacity_Btu_hr": 103400.0,
+      "reference_power_kW": 12.0,
+      "capacity_coefficients": [
+        1.0,
+        0.525937169922449,
+        -0.044216131057779016,
+        0.017450582010718686,
+        -0.037288556238112044,
+        0.0002610819556454521,
+        0.010192902986501873,
+        -0.025504292669930803,
+        0.0025037830035325587,
+        -0.004039060788878351,
+        0.017987311616755233,
+        -0.012000599147169132,
+        0.0030995210086976845,
+        -0.0005782169974352717,
+        -0.002189777713366284
+      ],
+      "power_coefficients": [
+        1.0,
+        0.10494312266862607,
+        0.18234296558928256,
+        -0.0020255108415747456,
+        0.020592960992750188,
+        0.015072195820443652,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        6
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.002272282785305784,
+          "relative_rmse_percent": 0.2890216490108127,
+          "max_relative_error_percent": 0.9756309656269523,
+          "max_absolute_error": 0.006189345691436365
+        },
+        "power": {
+          "rmse": 0.003054176897274574,
+          "relative_rmse_percent": 0.34771017093132867,
+          "max_relative_error_percent": 0.9569278623338215,
+          "max_absolute_error": 0.009011070703643487
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 0.335548574768567,
+        "power_relative_rmse_percent": 0.35007813514168445
+      }
+    },
+    {
+      "table": 68,
+      "nominal_tons": 10.0,
+      "efficiency": "high",
+      "id": "heating-table-68",
+      "model_scope": "WHK heat pump; dual-fuel uses excluded",
+      "nominal_esp_inches": 0.3,
+      "reference_capacity_Btu_hr": 108100.0,
+      "reference_power_kW": 8.3,
+      "capacity_coefficients": [
+        1.0,
+        0.5699781852528091,
+        -0.04968542402905168,
+        0.0038778189469352727,
+        -0.032812321067650696,
+        0.025018229906635634,
+        -0.09975946561476406,
+        0.00044577945645959006,
+        0.012309405569443939,
+        0.01809530178036764,
+        -0.04291977786924869,
+        0.008149582257177258,
+        -0.00483429536011128,
+        0.008185081074062371,
+        0.003042565242038464
+      ],
+      "power_coefficients": [
+        1.0,
+        0.12085599655899316,
+        0.1853188362499456,
+        0.005583759355583056,
+        0.024285493616211875,
+        0.01778754389922554,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        6,
+        7
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.006935966671871049,
+          "relative_rmse_percent": 0.7573119902890035,
+          "max_relative_error_percent": 2.027038747531471,
+          "max_absolute_error": 0.021239576973686836
+        },
+        "power": {
+          "rmse": 0.005628784174286356,
+          "relative_rmse_percent": 0.6271158493442102,
+          "max_relative_error_percent": 1.3331638248555728,
+          "max_absolute_error": 0.014134748986420531
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.7997684460038632,
+        "power_relative_rmse_percent": 0.685772747045648
+      }
+    },
+    {
+      "table": 69,
+      "nominal_tons": 12.5,
+      "efficiency": "shared",
+      "id": "heating-table-69",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.35,
+      "reference_capacity_Btu_hr": 133000.0,
+      "reference_power_kW": 11.8,
+      "capacity_coefficients": [
+        1.0,
+        0.6431702393520513,
+        -0.06093008733421248,
+        0.012188482053915773,
+        -0.04403395716321578,
+        0.025737892174101287,
+        -0.11200307767370332,
+        0.012896679810821295,
+        0.011374419698605262,
+        0.0178711094297931,
+        -0.05042451887441243,
+        0.02401431547571473,
+        0.0019077568877924086,
+        0.009004642484488774,
+        0.0031844069422613305
+      ],
+      "power_coefficients": [
+        1.0,
+        0.12427183526081591,
+        0.17868809111552575,
+        0.004869072027372806,
+        0.020801226179781723,
+        0.02086167926478002,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        7
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.0076134806689064066,
+          "relative_rmse_percent": 0.9047567907877119,
+          "max_relative_error_percent": 2.1446477904372765,
+          "max_absolute_error": 0.02339922805176875
+        },
+        "power": {
+          "rmse": 0.004055488469431246,
+          "relative_rmse_percent": 0.4529807751289575,
+          "max_relative_error_percent": 1.1680155065307656,
+          "max_absolute_error": 0.012035382421649699
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 2.054042064877977,
+        "power_relative_rmse_percent": 0.48774034606492234
+      }
+    },
+    {
+      "table": 70,
+      "nominal_tons": 15.0,
+      "efficiency": "shared",
+      "id": "heating-table-70",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.35,
+      "reference_capacity_Btu_hr": 161500.0,
+      "reference_power_kW": 13.9,
+      "capacity_coefficients": [
+        1.0,
+        0.6030541092715913,
+        -0.05488838180407903,
+        -0.003165378314577971,
+        -0.039582038321707494,
+        0.023854531953995842,
+        -0.11502515615999617,
+        0.006943950771820007,
+        0.007797908622388395,
+        0.017559004601044374,
+        -0.05197465257251036,
+        0.009114846198942525,
+        -0.00519192966069614,
+        0.006698639730922196,
+        0.0028392664573434604
+      ],
+      "power_coefficients": [
+        1.0,
+        0.1094344664100403,
+        0.17885796996497574,
+        -0.014859529524470434,
+        0.04406797900991872,
+        0.020737206838149107,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        7,
+        8
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [
+        "Source entries require review; retained without correction. See source-data.csv."
+      ],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.006901953327151527,
+          "relative_rmse_percent": 0.807619156030872,
+          "max_relative_error_percent": 3.042191458397497,
+          "max_absolute_error": 0.02040272705093238
+        },
+        "power": {
+          "rmse": 0.004994116803860796,
+          "relative_rmse_percent": 0.5536192609881618,
+          "max_relative_error_percent": 1.115583832648338,
+          "max_absolute_error": 0.011411408665829237
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 2.110134565322163,
+        "power_relative_rmse_percent": 0.6146456099338466
+      }
+    },
+    {
+      "table": 71,
+      "nominal_tons": 17.5,
+      "efficiency": "shared",
+      "id": "heating-table-71",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.35,
+      "reference_capacity_Btu_hr": 190000.0,
+      "reference_power_kW": 16.9,
+      "capacity_coefficients": [
+        1.0,
+        0.5733606565958366,
+        -0.053970609359751856,
+        0.0051682164568364886,
+        -0.03872137830065201,
+        0.025866879528137415,
+        -0.11846510485321857,
+        0.002435364913120986,
+        0.01038242899589923,
+        0.019347514040233677,
+        -0.05349986842610409,
+        0.00931665396672302,
+        -0.0049998493621911866,
+        0.006628359814875751,
+        0.004191893118407565
+      ],
+      "power_coefficients": [
+        1.0,
+        0.1229648181639907,
+        0.17164447753659864,
+        0.0005700055054077462,
+        0.024302708937014333,
+        0.01274948771039875,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        8,
+        9
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [
+        "Source entries require review; retained without correction. See source-data.csv."
+      ],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.00674678712882467,
+          "relative_rmse_percent": 0.7240729886717956,
+          "max_relative_error_percent": 1.9751533139095052,
+          "max_absolute_error": 0.02051550581862749
+        },
+        "power": {
+          "rmse": 0.003016459110964764,
+          "relative_rmse_percent": 0.3305546336357588,
+          "max_relative_error_percent": 0.7616043782831021,
+          "max_absolute_error": 0.008170661625556574
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.6897056344011823,
+        "power_relative_rmse_percent": 0.3212925456432702
+      }
+    },
+    {
+      "table": 72,
+      "nominal_tons": 20.0,
+      "efficiency": "shared",
+      "id": "heating-table-72",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.4,
+      "reference_capacity_Btu_hr": 218000.0,
+      "reference_power_kW": 20.0,
+      "capacity_coefficients": [
+        1.0,
+        0.614830294306657,
+        -0.049864121440727556,
+        0.011572876056834668,
+        -0.0357750707789088,
+        0.025967672866124007,
+        -0.12910433313585812,
+        -5.30649537285202e-05,
+        0.007223303799282222,
+        0.019122823084850124,
+        -0.05954527592202009,
+        0.010209097974776725,
+        -0.0028463760299821854,
+        0.009336715489319332,
+        0.003617292195924687
+      ],
+      "power_coefficients": [
+        1.0,
+        0.11823195239640534,
+        0.17482209274783256,
+        -0.0002135593484931739,
+        0.020574714182794978,
+        0.016269148301540783,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        9
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.007177382932092514,
+          "relative_rmse_percent": 0.7864162046510565,
+          "max_relative_error_percent": 2.12722649628859,
+          "max_absolute_error": 0.022127246577811732
+        },
+        "power": {
+          "rmse": 0.0023653405651609468,
+          "relative_rmse_percent": 0.2521115526816988,
+          "max_relative_error_percent": 0.6129867108339366,
+          "max_absolute_error": 0.006748692674114487
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.9194621193745085,
+        "power_relative_rmse_percent": 0.23714989188437954
+      }
+    },
+    {
+      "table": 73,
+      "nominal_tons": 25.0,
+      "efficiency": "shared",
+      "id": "heating-table-73",
+      "model_scope": "heat pump",
+      "nominal_esp_inches": 0.4,
+      "reference_capacity_Btu_hr": 240800.0,
+      "reference_power_kW": 21.8,
+      "capacity_coefficients": [
+        1.0,
+        0.601197538833689,
+        -0.057387343215890826,
+        0.0030487487897305904,
+        -0.05497948034048644,
+        0.024486392272135518,
+        -0.06344254145733151,
+        -0.03419265342780268,
+        -0.011212545374787657,
+        0.049384868684838004,
+        -0.027551234732498698,
+        0.003942304987103945,
+        -0.022703408080270136,
+        0.008982240648368426,
+        0.020180325820929025
+      ],
+      "power_coefficients": [
+        1.0,
+        0.1304607378094677,
+        0.1718196198736807,
+        0.02973120795606004,
+        0.013854002806357422,
+        0.015589938994916692,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_pdf_pages": [
+        9,
+        10
+      ],
+      "outdoor_range_F": [
+        -8,
+        72
+      ],
+      "entering_dry_bulb_range_F": [
+        40,
+        80
+      ],
+      "points": 102,
+      "warnings": [
+        "Source entries require review; retained without correction. See source-data.csv."
+      ],
+      "fit_metrics": {
+        "capacity": {
+          "rmse": 0.010422236292850814,
+          "relative_rmse_percent": 1.0448472724724578,
+          "max_relative_error_percent": 4.5855655534602935,
+          "max_absolute_error": 0.06756472833752958
+        },
+        "power": {
+          "rmse": 0.004628922517459248,
+          "relative_rmse_percent": 0.4646046710366362,
+          "max_relative_error_percent": 3.310756444115893,
+          "max_absolute_error": 0.03447439049606915
+        }
+      },
+      "interior_plane_validation": {
+        "points": 158,
+        "capacity_relative_rmse_percent": 1.810302160880921,
+        "power_relative_rmse_percent": 0.4267597508594503
+      }
+    }
+  ]
+}

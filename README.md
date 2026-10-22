@@ -1,6 +1,6 @@
 # BEAST
 
-Building Energy Analysis Selection Tool: weather-driven building loads, packaged cooling autosizing and heating-only equipment comparisons.
+Building Energy Analysis Selection Tool: weather-driven building loads, packaged heat-pump autosizing and heating-only equipment comparisons.
 
 ## Equipment
 
@@ -8,7 +8,11 @@ Three scenarios start with Rooftop Packaged Heat Pump, Natural Gas and Electric 
 
 The rooftop heat pump uses the 24 standard/high efficiency heat-pump fits from the supplied Precedent_Cooling.pdf, Trane PKGP-PRC023F-EN, tables 10-33. Dual-fuel tables are excluded. The fit data and source hash are in `lib/data/precedent-cooling.json`. Each unit runs at its largest listed catalog airflow (480 CFM per nominal ton); airflow is fixed by selected size and count. Cooling capacity and SHR use outdoor dry bulb plus calculated mixed-air entering wet bulb and dry bulb. The fit report and coefficient CSV are served under `public/references/`.
 
-Heat-pump heating capacity, heating COP and cooling COP await the user's data. No COP, heating capacity, fan energy/heat, auxiliary heat or reheat is inferred. Known cooling capacities, SHR, mixed-air conditions and shortfalls remain available independently; dependent energy remains blank.
+Heating capacity and total input power use all 16 tables (58-73, printed pages 86-95) in the supplied Heating_Cap.pdf. The 1,632 pairs are retained, with four source reversals flagged without correction. `lib/data/precedent-heating.json` includes source hash, coefficients, domains, errors and mapping. Heating takes outdoor and mixed entering **dry bulb**, not wet bulb. Capacity uses an anchored fourth-degree polynomial and total power an anchored second-degree polynomial; both normalize at 47°F outdoor / 70°F entering DB. COP = net heat BTU/hr / (3412.141633 × total input kW). Maximum source-point errors are 4.59% capacity and 3.31% power; interior-plane conditional validation has capacity relative RMSE up to 2.13% (reference remains a known anchor).
+
+Heating tables already include indoor fan heat/power at nominal CFM and the listed ESP, integrated defrost, and 70% outdoor RH. The excerpt supplies no correction to the maximum cooling airflow used by mixed air. Applying these heating fits there is an **uncorrected screening approximation**, and heating selections remain provisional. No added fan/defrost term or outdoor-humidity correction is invented. Heating reference capacity is a catalog rating, not nominal cooling tons × 12,000. The 3/4/5-ton tables distinguish efficiency; 10-ton standard WSK uses table 67 and high WHK uses table 68. Other sizes share size-only heating tables across families. No dual-fuel system is added.
+
+Hourly heating delivery is min(load, installed net capacity). Unmet heat is the remainder. Ideal duty fraction = delivered / available; hourly kWh = installed catalog total input kW × duty fraction, with no cycling degradation or auxiliary heat. Positive loads outside outdoor -8–72°F or entering DB 40–80°F leave dependent heating outputs blank. Cooling COP still awaits the user's data. Known heating electricity remains available separately; combined electricity is unknown when required cooling electricity is unknown.
 
 Natural-gas heating output is sized to peak building heating demand. Enter AHUE / AFUE efficiency above 0% and at or below 100%; no value is assumed. Hourly input therms = delivered heat / (100000 × efficiency fraction). This uses annual efficiency as a fixed hourly screening conversion. Electric resistance output is also sized to peak heating load; electricity = delivered heat / 3412.141633. Both use ideal modulation up to that heating output and omit separate fan/controls energy.
 
@@ -20,9 +24,9 @@ Mix humidity ratios and moist-air enthalpies by that fraction. In SI, h = 1.006 
 
 ## Automatic rooftop unit selection
 
-For each available size (3–25 tons), check integer unit counts starting with the ventilation minimum. Recalculate mixed air for each candidate, then test sensible and latent cooling capacities separately at every verifiable cooling-load hour. Retain the first passing count for that size; choose among candidates by more verified cooling hours, fewer units, then less total nominal tonnage. No sizing percentage margin is added.
+For each available size (3–25 tons), check integer unit counts starting with the ventilation minimum. Recalculate mixed air for each candidate, then test heating plus separate sensible/latent cooling capacities at every verifiable load hour. Retain the first passing count for that size; choose among candidates by more covered heating plus cooling hours, fewer units, then less total nominal tonnage. Heating-only load years also produce a packaged selection. No sizing percentage margin is added.
 
-Every candidate must deliver at least the scheduled ventilation airflow. Manufacturer capacities are gross; no indoor fan heat correction is added. Selection is cooling-based until heating data are supplied. Missing inputs and out-of-domain conditions make sizing provisional, with counts shown in the UI and exports. If the bounded search cannot verify a selection, show a clearly marked catalog-reference-condition estimate. It never creates hourly performance outside the data domain.
+Every candidate must deliver at least scheduled ventilation airflow. Cooling capacity is gross; heating is integrated net capacity. Missing inputs, out-of-domain conditions and the heating airflow approximation make sizing provisional, with coverage shown in the UI and exports. If the bounded search cannot verify a selection, show a clearly marked reference-condition estimate covering reference heating, separate sensible/latent cooling and ventilation. It never creates hourly performance outside the data domain.
 
 Valid entering WB is 61–73°F and entering DB 75–90°F. Outdoor DB is generally 85–125°F; the standard 10-ton fit ends at 120°F. Both 25-ton fits also require outdoor DB + 2 × entering DB ≤ 295. All models check the valid-point convex hull and prohibit extrapolation. The anomalous 156.6 MBh entry in both 17.5-ton tables is retained and flagged.
 
@@ -57,6 +61,8 @@ Node >=22.13. Server-only secrets: `NLR_API_KEY` and NLR request metadata; optio
 - `node scripts/run-framework.mjs build`
 - `python scripts/build-engineering-guide.py` (render and inspect the resulting PDF)
 
-The 55 independent reference wet-bulb cases are in `scripts/fixtures/mixed-air-reference.json`, generated from PsychroLib 2.5.0. Core implementation: `lib/equipment.ts`, `lib/mixed-air.ts`, `lib/packaged-cooling.ts`, `lib/equipment-model.ts`; equipment controls: `components/equipment-scenarios.tsx`.
+The 55 independent reference wet-bulb cases are in `scripts/fixtures/mixed-air-reference.json`, generated from PsychroLib 2.5.0. Core implementation: `lib/equipment.ts`, `lib/mixed-air.ts`, `lib/packaged-cooling.ts`, `lib/packaged-heating.ts`, `lib/equipment-model.ts`; controls: `components/equipment-scenarios.tsx`. Reproduce heating fits with `python scripts/fit-precedent-heating.py --source PATH`; generated audit/validation CSVs go under ignored `outputs/precedent-heating/`. Published coefficient CSVs include c0-c14 in `[1,x,y,x²,xy,y²,x³,x²y,xy²,y³,x⁴,x³y,x²y²,xy³,y⁴]` order, with x=(outdoor F-47)/40 and y=(entering F-70)/20.
 
 Psychrometric references: https://psychrometrics.github.io/psychrolib/_modules/psychrolib.html. AFUE definition: https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-furnaces. Bundled source provenance and licenses remain in `THIRD_PARTY_NOTICES.md`.
+
+Trane model-family key (W = packaged heat pump; S/H = standard/high efficiency): https://elibrary.tranetechnologies.com/public/commercial-hvac/Literature/Product%20Catalog/PKGP-PRC023D-EN_09122025.pdf. Heating numerical data come exclusively from the user-supplied excerpt.
