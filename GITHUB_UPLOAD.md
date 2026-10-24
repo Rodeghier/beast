@@ -26,7 +26,8 @@ The development application uses port 5173. Run `pnpm build` to build it.
 - `app/globals.css`: styling
 - `lib/solar.ts`: radiation and solar gains
 - `lib/school.ts`: building heat and moisture balance (existing internal filename)
-- `lib/packaged-cooling.ts`, `lib/packaged-heating.ts`, `lib/mixed-air.ts` and `lib/equipment-model.ts`: catalog heating/cooling fits, calculated entering conditions, equipment sizing and energy
+- `lib/packaged-cooling.ts`, `lib/packaged-heating.ts`, `lib/mixed-air.ts` and `lib/equipment-model.ts`: catalog heating/cooling fits, calculated entering conditions, equipment sizing, nominal power, fan heat/energy and automatic heating/cooling labels
+- `lib/unit-ratings.ts`: standard/high nominal cooling inputs and inferred supply-fan data
 - `app/api/`: server connections
 - `public/engineering-guide.pdf`: calculation documentation
 

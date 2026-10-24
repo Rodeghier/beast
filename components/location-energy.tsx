@@ -6,6 +6,7 @@ import type { Place } from "@/lib/climate";
 import type { EquipmentResult } from "@/lib/equipment-model";
 import type { SchoolRow } from "@/lib/school";
 import type { ElectricTariff, LocationEnergyContext, RateTier } from "@/lib/location-energy";
+import { scenarioName } from "@/lib/equipment";
 import { annualPerformance } from "@/lib/utility-billing";
 import { AnnualScorecard } from "./annual-scorecard";
 import { totalCo2e, energyEmissions } from "@/lib/emissions";
@@ -81,7 +82,7 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
   function exportEmissions() {
     if (!data) return;
     const quote = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-    const lines: unknown[][] = [["Location", `${place.name}, ${place.stateCode}`, "Weather year", year, "EPA year", region?.year, "Subregion", region?.code, "kg CO2e/kWh", region?.kgCo2ePerKwh, "Gas kg CO2e/therm", data.emissions.naturalGas.kgCo2ePerTherm], ["Scope", "Modeled electricity generation plus on-site gas combustion; heating-only gas/resistance leave cooling unserved; missing heat-pump COP/heating remains blank"], ["Date", "Hour", ...results.flatMap((_, i) => [`Case ${String.fromCharCode(65 + i)} kWh`, `Case ${String.fromCharCode(65 + i)} gas therms`, `Case ${String.fromCharCode(65 + i)} kg CO2e`])]];
+    const lines: unknown[][] = [["Location", `${place.name}, ${place.stateCode}`, "Weather year", year, "EPA year", region?.year, "Subregion", region?.code, "kg CO2e/kWh", region?.kgCo2ePerKwh, "Gas kg CO2e/therm", data.emissions.naturalGas.kgCo2ePerTherm], ["Scope", "Modeled selected heating and heat-pump cooling, including supply-fan energy/heat; missing equipment data remain blank"], ["Date", "Hour", ...results.flatMap(r => [`${scenarioName(r.scenario)} kWh`, `${scenarioName(r.scenario)} gas therms`, `${scenarioName(r.scenario)} kg CO2e`])]];
     rows.forEach((row, i) => { lines.push([`${row.year}-${String(row.month).padStart(2, "0")}-${String(row.day).padStart(2, "0")}`, `${String(row.hour).padStart(2, "0")}:${String(row.minute).padStart(2, "0")}`, ...results.flatMap(result => { const kwh = result.rows[i]?.electricity ?? null, therms = result.rows[i]?.gasTherms ?? null; return [kwh,therms,energyEmissions(kwh,therms,region,data.emissions.naturalGas).co2e]; })]); });
     const url = URL.createObjectURL(new Blob([lines.map(line => line.map(quote).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a"); a.href = url; a.download = `equipment-co2e-${place.stateCode}-${year}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -111,9 +112,9 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
       <div className="energy-emissions"><h4>Equipment CO₂e</h4><p>{data.emissions.message}</p>
         {region && <p>Electricity: {n(region.kgCo2ePerKwh,6)} kg CO₂e/kWh · eGRID {region.year}, {region.code}.</p>}
         <p>Natural gas: EPA {data.emissions.naturalGas.year} · {n(data.emissions.naturalGas.kgCo2ePerTherm,6)} kg CO₂e/therm. <Source href={data.emissions.naturalGas.sourceUrl}>Gas factor source</Source></p>
-        <div className="emission-cases">{results.map((r,i)=>{const kg=totalCo2e(r,region,data.emissions.naturalGas);return <div key={i}><span>Scenario {String.fromCharCode(65+i)} · {r.summary.fullYear?"annual":"available hours"}</span><strong>{kg===null?"Unavailable":`${n(kg/1000,1)} t CO₂e`}</strong><p>{r.summary.completeHours.toLocaleString()} complete energy hours · {r.scenario.heating==="heat-pump"?"Heating curves loaded; cooling COP pending":"Heating only"}</p></div>;})}</div>
+        <div className="emission-cases">{results.map((r,i)=>{const kg=totalCo2e(r,region,data.emissions.naturalGas);return <div key={i}><span>{scenarioName(r.scenario)} · {r.summary.fullYear?"annual":"available hours"}</span><strong>{kg===null?"Unavailable":`${n(kg/1000,1)} t CO₂e`}</strong><p>{r.summary.completeHours.toLocaleString()} complete energy hours · Nominal cooling power and fan estimates included</p></div>;})}</div>
         <button type="button" className="secondary-button" onClick={exportEmissions}><Download size={15}/>Hourly CO₂e CSV</button>
-        <p className="comparison-note">CO₂e = electricity × eGRID factor + gas input therms × EPA gas factor. Factors stay constant across weather years. Gas and resistance provide heating only. Upstream emissions and refrigerant leakage are excluded.</p><Source href={data.emissions.sourceUrl}>EPA eGRID source</Source>
+        <p className="comparison-note">CO₂e = electricity × eGRID factor + gas input therms × EPA gas factor. Factors stay constant across weather years. Gas and resistance heating are paired with the selected heat-pump cooling. Upstream emissions and refrigerant leakage are excluded.</p><Source href={data.emissions.sourceUrl}>EPA eGRID source</Source>
       </div>
       <details className="energy-provider" open><summary>Electricity tariff structure <span>{data.electricity.status === "missing_key" ? "Connection needed" : `${data.electricity.tariffs.length} candidates`}</span></summary><p>{data.electricity.message}</p>
         {data.electricity.status === "missing_key" && <p><Source href="https://apps.openei.org/services/api/signup/">Get an OpenEI API key</Source> and provide it to configure the lookup.</p>}

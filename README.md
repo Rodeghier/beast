@@ -1,68 +1,70 @@
 # BEAST
 
-Building Energy Analysis Selection Tool: weather-driven building loads, packaged heat-pump autosizing and heating-only equipment comparisons.
+Building Energy Analysis Selection Tool: hourly building loads, selected heating/cooling equipment, supply-fan energy and heat, and utility/emissions comparisons.
 
-## Equipment
+## Equipment and names
 
-Three scenarios start with Rooftop Packaged Heat Pump, Natural Gas and Electric Resistance. Each scenario can select any of those options. Gas and resistance are **heating only**; their cooling loads are explicitly unserved.
+Heating choices are Rooftop Packaged Heat Pump, Natural Gas and Electric Resistance. Every combination includes cooling. A heat pump includes its cooling automatically; gas and resistance require the user to select cooling, currently Rooftop Packaged Heat Pump only. The interface and calculation validation reject a missing cooling selection. Gas/resistance no longer represent heating-only comparisons.
 
-The rooftop heat pump uses the 24 standard/high efficiency heat-pump fits from the supplied Precedent_Cooling.pdf, Trane PKGP-PRC023F-EN, tables 10-33. Dual-fuel tables are excluded. The fit data and source hash are in `lib/data/precedent-cooling.json`. Each unit runs at its largest listed catalog airflow (480 CFM per nominal ton); airflow is fixed by selected size and count. Cooling capacity and SHR use outdoor dry bulb plus calculated mixed-air entering wet bulb and dry bulb. The fit report and coefficient CSV are served under `public/references/`.
+There is no editable scenario name or stored name field. `scenarioName()` derives labels such as **Heat Pump Cooling + Natural Gas Heating** for cards, tables, graphs and CSVs. Each combination can choose standard or high efficiency for its heat-pump equipment. Gas efficiency (AHUE / AFUE) is entered above 0% and at or below 100%, with no assumed value.
 
-Heating capacity and total input power use all 16 tables (58-73, printed pages 86-95) in the supplied Heating_Cap.pdf. The 1,632 pairs are retained, with four source reversals flagged without correction. `lib/data/precedent-heating.json` includes source hash, coefficients, domains, errors and mapping. Heating takes outdoor and mixed entering **dry bulb**, not wet bulb. Capacity uses an anchored fourth-degree polynomial and total power an anchored second-degree polynomial; both normalize at 47°F outdoor / 70°F entering DB. COP = net heat BTU/hr / (3412.141633 × total input kW). Maximum source-point errors are 4.59% capacity and 3.31% power; interior-plane conditional validation has capacity relative RMSE up to 2.13% (reference remains a known anchor).
+## Supplied equipment data
 
-Heating tables already include indoor fan heat/power at nominal CFM and the listed ESP, integrated defrost, and 70% outdoor RH. The excerpt supplies no correction to the maximum cooling airflow used by mixed air. Applying these heating fits there is an **uncorrected screening approximation**, and heating selections remain provisional. No added fan/defrost term or outdoor-humidity correction is invented. Heating reference capacity is a catalog rating, not nominal cooling tons × 12,000. The 3/4/5-ton tables distinguish efficiency; 10-ton standard WSK uses table 67 and high WHK uses table 68. Other sizes share size-only heating tables across families. No dual-fuel system is added.
+- `lib/data/precedent-cooling.json`: 24 heat-pump capacity/SHR fits from Precedent_Cooling.pdf, Trane PKGP-PRC023F-EN tables 10-33. Dual fuel is excluded. Capacity is gross, with unit-specific reference at 95°F outdoor / 67°F entering WB / 80°F entering DB, at the largest listed CFM (480 CFM per nominal ton).
+- `lib/data/precedent-heating.json`: 16 heating-capacity/total-power fits from Heating_Cap.pdf, tables 58-73, 1,632 pairs. Fourth-degree capacity and second-degree power, anchored at 47°F outdoor / 70°F entering DB. Heating capacity is integrated net heat; total power and heat already include catalog fan/defrost effects at nominal airflow, listed ESP and 70% outdoor RH. Full-output COP = net BTU/hr / (3412.141633 × total kW).
+- `lib/data/precedent-unit-ratings.json`: 24 standard/high ratings from **Unit_data_full.pdf**, tables 6-7, printed pages 24-29. Published nominal cooling system kW, gross/net rated capacity and nominal/AHRI airflow are preserved. Fan count and motor nameplate HP are reference data, not operating electrical input. Source hashes are retained in each JSON file.
 
-Hourly heating delivery is min(load, installed net capacity). Unmet heat is the remainder. Ideal duty fraction = delivered / available; hourly kWh = installed catalog total input kW × duty fraction, with no cycling degradation or auxiliary heat. Positive loads outside outdoor -8–72°F or entering DB 40–80°F leave dependent heating outputs blank. Cooling COP still awaits the user's data. Known heating electricity remains available separately; combined electricity is unknown when required cooling electricity is unknown.
+Heating table mapping: standard 3/4/5 tons → tables 58-60; high 3/4/5 → 61-63; standard 10-ton WSK → 67; high 10-ton WHK → 68; size-only tables are shared at other sizes. The heating ratings in the new general-data file do not overwrite the detailed heating curves.
 
-Natural-gas heating output is sized to peak building heating demand. Enter AHUE / AFUE efficiency above 0% and at or below 100%; no value is assumed. Hourly input therms = delivered heat / (100000 × efficiency fraction). This uses annual efficiency as a fixed hourly screening conversion. Electric resistance output is also sized to peak heating load; electricity = delivered heat / 3412.141633. Both use ideal modulation up to that heating output and omit separate fan/controls energy.
+Coefficient, source, error and nominal-rating CSVs are served under `public/references/`. The complete source PDFs are not bundled.
 
-## Mixed air: entering wet bulb is calculated
+## Cooling power, COP and supply fan
 
-Return-air dry bulb follows the building free-float condition limited by active heating/cooling setpoints; return RH uses the building indoor RH target. Outdoor humidity ratio uses weather temperature/RH. Scheduled ventilation / installed catalog supply CFM gives the outdoor-air fraction, using a standard-volume dry-air approximation at 101325 Pa. Infiltration affects building loads but is not routed through the mixer.
+Nominal **total** cooling system power is held constant at full output because no off-rating power curve was provided. Fan heat per unit = rated gross cooling minus AHRI net cooling. Inferred fan kW = that heat / 3412.141633, assuming all electrical input becomes air heat. This is a rating-derived estimate, not a measured operating fan curve. Nameplate motor HP is not converted into operating fan watts.
 
-Mix humidity ratios and moist-air enthalpies by that fraction. In SI, h = 1.006 T + W(2501 + 1.86 T); mixed dry bulb = (h − 2501 W)/(1.006 + 1.86 W). Solve mixed wet bulb by inversion of the ASHRAE wet-bulb humidity-ratio equations, using water/ice branches adapted from PsychroLib. Wet bulbs and RH are not averaged. Invalid or supersaturated mixed states remain unavailable. Gas/resistance have no defined supply-airflow model and do not display invented coil-entering conditions.
+Remove the inferred supply-fan input from total system power before scaling the remaining cooling input by coil duty. Add the operating supply fan once:
 
-## Automatic rooftop unit selection
+- Cooling input excluding supply fan = installed (nominal system kW − inferred fan kW) × cooling duty.
+- Supply-fan kWh = installed inferred fan kW for every full hour with a heating, cooling or scheduled ventilation call; zero otherwise.
+- Full-output net cooling COP = (installed gross curve capacity − installed fan heat) / (3412.141633 × installed nominal system kW).
+- Operating net cooling COP = max(0, delivered gross cooling − hourly fan heat) / (3412.141633 × (cooling input excluding fan + fan kWh)). Both COP definitions are exported; the hourly table displays full-output net COP.
 
-For each available size (3–25 tons), check integer unit counts starting with the ventilation minimum. Recalculate mixed air for each candidate, then test heating plus separate sensible/latent cooling capacities at every verifiable load hour. Retain the first passing count for that size; choose among candidates by more covered heating plus cooling hours, fewer units, then less total nominal tonnage. Heating-only load years also produce a packaged selection. No sizing percentage margin is added.
+The fan runs through the full call hour, even when coil duty is below 1. This is an explicit screening control assumption. At full cooling duty, total input reconciles to nominal system kW. Nominal/AHRI ratings are not adjusted to the selected maximum airflow. No fan-law scaling, power-temperature correction, motor-efficiency assumption or extra outdoor-fan term is invented. All power/fan estimates are provisional.
 
-Every candidate must deliver at least scheduled ventilation airflow. Cooling capacity is gross; heating is integrated net capacity. Missing inputs, out-of-domain conditions and the heating airflow approximation make sizing provisional, with coverage shown in the UI and exports. If the bounded search cannot verify a selection, show a clearly marked reference-condition estimate covering reference heating, separate sensible/latent cooling and ventilation. It never creates hourly performance outside the data domain.
+Fan heat reduces heating demand and enters the **signed** sensible cooling balance: heater demand = max(0, building heating − fan heat); sensible cooling demand = max(0, signed cooling balance + fan heat). Latent demand is unchanged. This retains thermostat deadband and permits fan-only ventilation to create cooling demand.
 
-Valid entering WB is 61–73°F and entering DB 75–90°F. Outdoor DB is generally 85–125°F; the standard 10-ton fit ends at 120°F. Both 25-ton fits also require outdoor DB + 2 × entering DB ≤ 295. All models check the valid-point convex hull and prohibit extrapolation. The anomalous 156.6 MBh entry in both 17.5-ton tables is retained and flagged.
+Gas/resistance heater output is sized to peak heating demand after fan heat credit. Gas therms = delivered heater output / (100000 × efficiency fraction). Resistance element kWh = element output / 3412.141633. Fan electricity is separate and its heat also serves the building, preventing duplicate heating input. Gas annual efficiency used hourly and ideal modulation are screening assumptions.
 
-Gross cooling delivery is capped at installed capacity; its sensible/latent split uses fitted SHR. Remaining sensible and latent loads are reported as unmet. Excess sensible removal is not corrected by reheat. Manufacturer dashes are not zero capacity. Missing performance is not zero energy.
+For heat-pump heating, subtract inferred fan heat/input from integrated heating capacity/power before determining coil duty. Add actual fan heat to delivered building heat and fan electricity once to total input. No extra defrost term, auxiliary heat or reheat is supplied. Total kWh = heating coil input + cooling input excluding supply fan + supply-fan input.
 
-## Building loads and weather
+## Mixed air and automatic unit selection
 
-The editable building model remains a 150,000 ft² single-zone, hourly steady-state estimate. Heating is positive and cooling negative. Total cooling includes sensible and latent cooling. Occupancy follows Monday–Friday local standard time, with reduced June–August occupancy and unoccupied setpoints. Lighting, plug loads and occupants contribute building heat gains; their electricity is not included in the curve-based electricity output.
+Entering wet bulb is calculated, not entered. Return dry bulb follows the baseline free-float temperature limited by active setpoints; return RH uses the indoor RH target. Mix scheduled ventilation and return air using humidity ratio and moist-air enthalpy. At 101325 Pa, standard-volume CFM fractions approximate dry-air mass fractions. Solve mixed dry bulb from enthalpy/humidity, then wet bulb by inversion of the ASHRAE water/ice relations (PsychroLib). Wet bulbs and RH are not averaged. Infiltration remains in building loads and is excluded from the mixer.
 
-H = envelope UA + 1.08 × outdoor CFM. Heating = max(0, H × (heating setpoint − outdoor dry bulb) − sensible gains). Sensible cooling = −max(0, H × (outdoor dry bulb − cooling setpoint) + sensible gains). Latent removal follows the outdoor-air and occupant moisture balance at the indoor RH limit, using standard sea-level air. Outdoor airflow here is a building load input, not equipment airflow.
+For each size, scan integer counts starting at the ventilation minimum. Recalculate mixed air and fan heat, and check sensible and latent cooling separately. Include heating-capacity checks when heat-pump heating is selected; gas/resistance heaters are sized separately. Retain the first passing count per size; prefer more covered load hours, fewer units, then less total nominal tonnage. No sizing margin is added. If no candidate is verified, show a provisional reference estimate without creating out-of-domain performance.
 
-Sup3rCC DHI/DNI/GHI drive solar gains using the dataset grid coordinates and fixed UTC offset. NOAA solar geometry uses the hourly midpoint. Roof irradiance uses GHI; vertical walls use projected DNI plus isotropic sky and ground components. Window gains use area × SHGC × shading. Opaque gains use area × U × absorptance / exterior film coefficient. Solar U-values do not replace the independently entered envelope UA. No thermal storage, delayed load response, detailed overhangs, zoning or control solver is simulated. Missing radiation or grid metadata leaves dependent loads blank.
+Cooling domain: entering WB 61–73°F, entering DB 75–90°F, outdoor generally 85–125°F (standard 10-ton ends at 120°F). Both 25-ton fits require outdoor DB + 2 × entering DB ≤ 295. Valid-point convex hulls prohibit extrapolation. Heating domain: outdoor −8–72°F and entering DB 40–80°F. Unsupported dependent results remain blank. The 17.5-ton cooling anomaly and four heating source reversals are retained and flagged. No reheat correction is applied to excess sensible cooling.
 
-## Utility rates, energy and emissions
+## Building, annual energy and interpretation
 
-Annual site energy = electricity kWh × 3412.141633 / 1e6 + gas input therms × 0.1 MMBtu/therm. Electricity cost applies a supported OpenEI tariff or manual $/kWh. Gas cost uses the newest available EIA state commercial delivered price for each used calendar month, with the EPA heat-content conversion retained. A gas-only model with zero electricity does not receive separate electricity-account charges. EIA is a benchmark, not the building's gas tariff.
+The editable building remains a 150,000 ft² hourly steady-state single zone with weekday occupancy, reduced summer use, setback temperatures, internal gains and Sup3rCC solar gains. Infiltration plus scheduled ventilation affect building loads. Roofs use GHI; walls use projected DNI plus sky/ground components at the dataset grid location and fixed local time. There is no thermal storage, detailed zoning, economizer or controls simulation. Sup3rCC is modeled climate, not observed weather. Lighting and plug electricity are excluded from these equipment totals.
 
-CO₂e includes EPA eGRID electricity generation and EPA natural-gas combustion factors. Zero consumption does not require a factor for that unused fuel. Missing prices or EPA factors block only dependent results. Sources and data years are displayed; they are independent of the weather year. No upstream emissions or refrigerant leakage are modeled.
+Annual site energy = electricity kWh × 3412.141633 / 1e6 + gas therms × 0.1 MMBtu/therm. Electricity cost uses supported OpenEI tariff terms or an entered rate; gas cost uses an EIA monthly state commercial benchmark. EPA eGRID and gas-combustion factors give CO₂e. Fan electricity is part of equipment electricity, including for gas heating. Missing tariffs/prices/factors block only dependent metrics.
 
-Annual metrics require 8,760 unique valid complete energy records in one year, excluding February 29. Available-hour totals disclose coverage. Heating-only gas/resistance should be compared with their unserved cooling loads; lower energy is not an equal-service efficiency comparison.
+Annual totals require 8,760 unique, valid, complete hourly energy records. Missing equipment performance is not zero. Mild-weather cooling can fall outside the supplied source domains, preventing annual totals even with nominal input power available. Component subtotals may cover different available hours; do not add fan subtotal to total electricity again. Review coverage and unmet loads alongside energy/cost/emissions.
 
 ## Configuration and verification
 
-Node >=22.13. Server-only secrets: `NLR_API_KEY` and NLR request metadata; optional `OPENEI_API_KEY` and separate `EIA_API_KEY`. Keep credentials in ignored local environment files or hosting runtime secrets. This checkout has no linked Sites deployment.
+Node >=22.13. Server secrets remain in ignored local environment/hosting configuration: NLR API key and metadata, optional OpenEI and EIA keys. This checkout has no linked Sites deployment.
 
 - `node node_modules/typescript/bin/tsc --noEmit`
 - `node scripts/check-equipment-model.mjs`
 - `node scripts/check-school-model.mjs`
 - `node scripts/check-beast-scorecard.mjs`
 - `node scripts/check-location-energy.mjs`
-- `node scripts/check-precedent-curves.mjs` (checks the generated curve-fit package)
 - `node scripts/run-framework.mjs build`
-- `python scripts/build-engineering-guide.py` (render and inspect the resulting PDF)
+- `python scripts/build-engineering-guide.py` (render and inspect the PDF)
 
-The 55 independent reference wet-bulb cases are in `scripts/fixtures/mixed-air-reference.json`, generated from PsychroLib 2.5.0. Core implementation: `lib/equipment.ts`, `lib/mixed-air.ts`, `lib/packaged-cooling.ts`, `lib/packaged-heating.ts`, `lib/equipment-model.ts`; controls: `components/equipment-scenarios.tsx`. Reproduce heating fits with `python scripts/fit-precedent-heating.py --source PATH`; generated audit/validation CSVs go under ignored `outputs/precedent-heating/`. Published coefficient CSVs include c0-c14 in `[1,x,y,x²,xy,y²,x³,x²y,xy²,y³,x⁴,x³y,x²y²,xy³,y⁴]` order, with x=(outdoor F-47)/40 and y=(entering F-70)/20.
+Reproduce ratings: `python scripts/extract-unit-data.py --source PATH_TO_FULL_PDF`. Reproduce heating fits: `python scripts/fit-precedent-heating.py --source PATH`. Checks cover all 1,632 heating points, all 24 nominal power records, fan power reconciliation, part duty, fuel/element heat credit, ventilation, fan-induced cooling, required cooling, automatic names, domains, annual accounting, CSVs and rendered controls. The 55 independent wet-bulb reference states remain in `scripts/fixtures/mixed-air-reference.json`.
 
-Psychrometric references: https://psychrometrics.github.io/psychrolib/_modules/psychrolib.html. AFUE definition: https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-furnaces. Bundled source provenance and licenses remain in `THIRD_PARTY_NOTICES.md`.
-
-Trane model-family key (W = packaged heat pump; S/H = standard/high efficiency): https://elibrary.tranetechnologies.com/public/commercial-hvac/Literature/Product%20Catalog/PKGP-PRC023D-EN_09122025.pdf. Heating numerical data come exclusively from the user-supplied excerpt.
+References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psychrolib.html; fan inference https://www.energycodes.gov/sites/default/files/2024-08/90.1_Secton_11_and%29_Appendix_G_Review_Manual_V04.pdf; AFUE https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-furnaces. Source provenance and licenses are in `THIRD_PARTY_NOTICES.md`.
