@@ -2,12 +2,13 @@ import type { ClimateRow } from "./csv";
 import { solarGains, type SolarLocation } from "./solar";
 
 export const SCHOOL_AREA = 150_000;
-export const MODEL_VERSION = "building-solar-2.0";
+export const MODEL_VERSION = "building-solar-3.0";
 export const BTU_PER_WH = 3.412141633;
 const PRESSURE_PA = 101325;
 
 export const DEFAULT_SCHOOL = {
   heatingF: 70, coolingF: 75, setbackHeatingF: 60, setbackCoolingF: 85, indoorRh: 50,
+  floorArea: SCHOOL_AREA,
   people: 1200, startHour: 7, endHour: 17, summerPercent: 10,
   envelopeUa: 0.10, ceilingFt: 14, infiltrationAch: 0.15,
   ventilationPerson: 10, ventilationArea: 0.12,
@@ -16,8 +17,19 @@ export const DEFAULT_SCHOOL = {
   roofU: 0.04, wallU: 0.06, solarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
 };
 export type SchoolAssumptions = typeof DEFAULT_SCHOOL;
+export type ComstockGainHour = { month: number; day: number; hour: number; lightingBtuHr: number; equipmentBtuHr: number };
+export type ComstockAnalysisInputs = {
+  assumptions: Partial<SchoolAssumptions>;
+  gainProfile: ComstockGainHour[];
+  representedWeight: number;
+  county: string;
+  buildingType: string;
+};
 export type SchoolField = { key: keyof SchoolAssumptions; label: string; unit: string; min: number; max: number; step: number };
 export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
+  { title: "Building size", fields: [
+    { key: "floorArea", label: "Floor area", unit: "ft²", min: 500, max: 100_000_000, step: 100 },
+  ] },
   { title: "Indoor conditions", fields: [
     { key: "heatingF", label: "Occupied heating setpoint", unit: "°F", min: 40, max: 85, step: 1 },
     { key: "coolingF", label: "Occupied cooling setpoint", unit: "°F", min: 60, max: 100, step: 1 },
@@ -122,12 +134,15 @@ export type SchoolRow = ClimateRow & {
   heatBalance: number | null; coolBalance: number | null; heatTransfer: number;
   freeFloatF: number | null; heatingSetpointF: number; coolingSetpointF: number;
   solarGain: number | null; windowSolarGain: number | null; opaqueSolarGain: number | null; solarStatus: string;
+  lightingGain: number; equipmentGain: number;
 };
 
-export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: SolarLocation | null): SchoolRow[] {
+export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: SolarLocation | null, comstockGains?: ComstockGainHour[]): SchoolRow[] {
   const error = validateSchool(a); if (error) throw new Error(error);
-  const infiltration = a.infiltrationAch * SCHOOL_AREA * a.ceilingFt / 60;
-  const ua = a.envelopeUa * SCHOOL_AREA;
+  const area = a.floorArea;
+  const gainsByHour = comstockGains ? new Map(comstockGains.map(g => [`${g.month}-${g.day}-${g.hour}`, g])) : null;
+  const infiltration = a.infiltrationAch * area * a.ceilingFt / 60;
+  const ua = a.envelopeUa * area;
   return rows.map(row => {
     // Use the CSV's calendar directly. Date.UTC avoids shifting weekdays in
     // a visitor's browser time zone; the source excludes daylight saving time.
@@ -136,19 +151,20 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     const fraction = schoolHour ? (row.month >= 6 && row.month <= 8 ? a.summerPercent / 100 : 1) : 0;
     const occupied = fraction > 0;
     const occupants = a.people * fraction;
-    const ventilation = occupied ? occupants * a.ventilationPerson + SCHOOL_AREA * a.ventilationArea : 0;
+    const ventilation = occupied ? occupants * a.ventilationPerson + area * a.ventilationArea : 0;
     const outdoorAirCfm = infiltration + ventilation;
     const heatSetpoint = occupied ? a.heatingF : a.setbackHeatingF;
     const coolSetpoint = occupied ? a.coolingF : a.setbackCoolingF;
     const tempF = row.temperature !== null && Number.isFinite(row.temperature) && row.temperature >= -100 && row.temperature <= 100 ? fahrenheit(row.temperature) : null;
     const heatTransfer = ua + 1.08 * outdoorAirCfm;
-    const solar = solarGains(row, a, SCHOOL_AREA, site);
+    const solar = solarGains(row, a, area, site);
+    const profileGain = gainsByHour?.get(`${row.month}-${row.day}-${row.hour}`);
+    const lighting = profileGain?.lightingBtuHr ?? area * a.lightingW * (0.10 + 0.90 * fraction) * BTU_PER_WH;
+    const equipment = profileGain?.equipmentBtuHr ?? area * a.equipmentW * (0.25 + 0.75 * fraction) * BTU_PER_WH;
     const base: SchoolRow = { ...row, temperatureF: tempF, dewPointF: dewPointF(row.temperature, row.humidity), sensibleCooling: null, latentCooling: null, totalCooling: null, heating: null, occupied, occupants, outdoorAirCfm,
       ventilationCfm: ventilation, infiltrationCfm: infiltration, heatBalance: null, coolBalance: null, heatTransfer, freeFloatF: null, heatingSetpointF: heatSetpoint, coolingSetpointF: coolSetpoint,
-      solarGain: solar.total, windowSolarGain: solar.windows, opaqueSolarGain: solar.opaque, solarStatus: solar.status };
+      solarGain: solar.total, windowSolarGain: solar.windows, opaqueSolarGain: solar.opaque, solarStatus: solar.status, lightingGain: lighting, equipmentGain: equipment };
     if (tempF === null || solar.total === null) return base;
-    const lighting = SCHOOL_AREA * a.lightingW * (0.10 + 0.90 * fraction) * BTU_PER_WH;
-    const equipment = SCHOOL_AREA * a.equipmentW * (0.25 + 0.75 * fraction) * BTU_PER_WH;
     const gains = lighting + equipment + occupants * a.sensiblePerson + solar.total;
     const sensible = Math.max(0, heatTransfer * (tempF - coolSetpoint) + gains);
     const heating = Math.max(0, heatTransfer * (heatSetpoint - tempF) - gains);
@@ -185,9 +201,9 @@ export function summarizeLoads(rows: SchoolRow[]) {
   return { sensible, total, heating, daily: [...daily.values()], completeHours };
 }
 
-export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: string, zone: string, site?: SolarLocation | null): string {
+export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: string, zone: string, site?: SolarLocation | null, inputSource = "Editable assumptions"): string {
   const metadata: Record<string, string | number> = {
-    Model: MODEL_VERSION, Location: location, Time: zone, Floor_area_ft2: SCHOOL_AREA,
+    Model: MODEL_VERSION, Location: location, Time: zone, Building_input_source: inputSource, Floor_area_ft2: a.floorArea,
     Basis: "Illustrative single-zone hourly steady-state load estimate; cooling negative; heating positive; total cooling includes sensible cooling",
     Schedule: "Mon-Fri; June-Aug reduced occupancy; no holidays; fixed local standard time; no Feb 29",
     Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and steady-state sol-air correction; no thermal lag or longwave sky correction",
@@ -200,7 +216,7 @@ export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: str
   const line = (values: unknown[]) => values.map(escape).join(",");
   const precision = (v: number | null) => v === null ? null : Number(v.toFixed(4));
   return [line(Object.keys(metadata)), line(Object.values(metadata)), "",
-    line(["Date", "Time_local", "Air_temperature_F", "Dew_point_F", "Sensible_cooling_BTU_hr", "Latent_cooling_BTU_hr", "Total_cooling_BTU_hr", "Heating_BTU_hr", "Occupied", "Occupants", "Outdoor_air_including_infiltration_CFM", "DHI_W_m2", "DNI_W_m2", "GHI_W_m2", "Solar_gain_BTU_hr", "Window_solar_gain_BTU_hr", "Opaque_solar_gain_BTU_hr", "Solar_status"]),
-    ...rows.map(r => line([dateLabel(r), timeLabel(r), precision(r.temperatureF), precision(r.dewPointF), precision(r.sensibleCooling), precision(r.latentCooling), precision(r.totalCooling), precision(r.heating), r.occupied ? "Yes" : "No", r.occupants, precision(r.outdoorAirCfm), r.dhi, r.dni, r.ghi, precision(r.solarGain), precision(r.windowSolarGain), precision(r.opaqueSolarGain), r.solarStatus])),
+    line(["Date", "Time_local", "Air_temperature_F", "Dew_point_F", "Sensible_cooling_BTU_hr", "Latent_cooling_BTU_hr", "Total_cooling_BTU_hr", "Heating_BTU_hr", "Occupied", "Occupants", "Outdoor_air_including_infiltration_CFM", "DHI_W_m2", "DNI_W_m2", "GHI_W_m2", "Lighting_heat_gain_BTU_hr", "Interior_equipment_heat_gain_BTU_hr", "Solar_gain_BTU_hr", "Window_solar_gain_BTU_hr", "Opaque_solar_gain_BTU_hr", "Solar_status"]),
+    ...rows.map(r => line([dateLabel(r), timeLabel(r), precision(r.temperatureF), precision(r.dewPointF), precision(r.sensibleCooling), precision(r.latentCooling), precision(r.totalCooling), precision(r.heating), r.occupied ? "Yes" : "No", r.occupants, precision(r.outdoorAirCfm), r.dhi, r.dni, r.ghi, precision(r.lightingGain), precision(r.equipmentGain), precision(r.solarGain), precision(r.windowSolarGain), precision(r.opaqueSolarGain), r.solarStatus])),
   ].join("\r\n");
 }
