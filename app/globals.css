@@ -326,6 +326,9 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 
 .location-energy { margin: 26px 0; padding: 28px 30px; border: 1px solid #d9e3ea; border-radius: 9px; background: white; color: #34516b; }
 .comstock-profile { margin: 26px 0; padding: 28px 30px; border: 1px solid #d9e3ea; border-radius: 9px; background: white; color: #34516b; }
+.assumption-source-summary { margin: 26px 30px; padding: 22px 24px; border: 1px solid #dce8e2; border-radius: 9px; background: #f7faf9; color: #34516b; }
+.assumption-source-summary h3 { margin: 0 0 8px; font-size: 1.1rem; }
+.assumption-source-summary p { margin: 0 0 14px; color: #5f7286; font-size: .9rem; line-height: 1.65; }
 .comstock-profile h3 { font-size: 1.35rem; font-weight: 650; margin: 7px 0; }
 .comstock-profile p { font-size: .875rem; line-height: 1.7; margin: 10px 0; color: #5f7286; }
 .comstock-controls { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 16px; margin: 20px 0; }
