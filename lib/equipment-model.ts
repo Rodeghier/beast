@@ -76,8 +76,10 @@ export function autosizePackaged(rows:SchoolRow[],school:SchoolAssumptions,effic
       if(!failed&&(verified+estimated+verifiedHeat+estimatedHeat>0||!loadHours.some(({r})=>needsCooling(r))&&!heatHours.length)){candidates.push(make(count,verified,estimated,unknown,verifiedHeat,estimatedHeat,unverifiedHeat,heating==="heat-pump"?"Checks net heating, fan-adjusted sensible/latent cooling and scheduled ventilation using the selected temperature-range policy.":"Cooling and ventilation selection with fan heat; separate gas/resistance heater sized to peak load after fan heat credit."));break;}
     }
   }
-  const coverage=(s:PackagedSelection)=>s.verifiedCoolingHours+s.estimatedCoolingHours+s.verifiedHeatingHours+s.estimatedHeatingHours;
-  const order=(a:PackagedSelection,b:PackagedSelection)=>coverage(b)-coverage(a)||a.count-b.count||a.totalTons-b.totalTons;
+  // Fan heat can create extra cooling calls. Ranking by the number of evaluated
+  // calls would reward a larger fan for adding loads; compare missing checks instead.
+  const missing=(s:PackagedSelection)=>s.unverifiedCoolingHours+s.unverifiedHeatingHours;
+  const order=(a:PackagedSelection,b:PackagedSelection)=>missing(a)-missing(b)||a.count-b.count||a.totalTons-b.totalTons;
   return candidates.sort(order)[0]??fallback.sort(order)[0]??null;
 }
 
