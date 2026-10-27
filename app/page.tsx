@@ -9,14 +9,13 @@ import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/p
 import { STATES, MIN_YEAR, MAX_YEAR, supportsClimate, type Place } from "@/lib/climate";
 import { parseClimateCsv, type ClimateData } from "@/lib/csv";
 import { solarLocation } from "@/lib/solar";
-import { DEFAULT_SCHOOL, simulateSchool, validateSchool, type ComstockAnalysisInputs, type SchoolAssumptions } from "@/lib/school";
+import { DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
 import { autosizePackaged, simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv } from "@/lib/equipment-model";
 import { coolingFor, curveRangeMode, scenarioName, newScenario, type EquipmentScenario, type CurveRangeMode } from "@/lib/equipment";
 import { EquipmentScenarios } from "@/components/equipment-scenarios";
 import { LoadSummary, formatLoad } from "@/components/load-summary";
 import { AnalysisAssumptions } from "@/components/analysis-assumptions";
 import { LocationEnergy } from "@/components/location-energy";
-import { ComstockProfile } from "@/components/comstock-profile";
 
 const DOCS = "https://developer.nlr.gov/docs/climate/sup3rcc/sup3rcc-conus-ecearth3cc-ssp245-r1i1p1f1-v0-2-2-download/";
 type Result = { place: Place; year: number; data: ClimateData; csv: string };
@@ -53,27 +52,23 @@ export default function Home() {
   const [pageSize, setPageSize] = useState("25");
   const [elapsed, setElapsed] = useState(0);
   const [school, setSchool] = useState<SchoolAssumptions>({ ...DEFAULT_SCHOOL });
-  const [comstockInputs, setComstockInputs] = useState<ComstockAnalysisInputs | null>(null);
-  const [usingComstock, setUsingComstock] = useState(false);
-  const analysisSchool = useMemo(() => usingComstock && comstockInputs ? { ...school, ...comstockInputs.assumptions } : school, [school, comstockInputs, usingComstock]);
-  const schoolRows = useMemo(() => result && !validateSchool(analysisSchool) ? simulateSchool(result.data.rows, analysisSchool, solarLocation(result.data.metadata), usingComstock ? comstockInputs?.gainProfile : undefined) : [], [result, analysisSchool, comstockInputs, usingComstock]);
-  const [systems, setSystems] = useState<EquipmentScenario[]>(() => [newScenario("heat-pump")]);
+  const schoolRows = useMemo(() => result && !validateSchool(school) ? simulateSchool(result.data.rows, school, solarLocation(result.data.metadata)) : [], [result, school]);
+  const [systems, setSystems] = useState<EquipmentScenario[]>(() => [newScenario("heat-pump"), newScenario("gas"), newScenario("resistance")]);
   const [activeSystem, setActiveSystem] = useState(0);
   const sizingRequests=systems.map(s=>`${s.heating==="heat-pump"?"heat-pump":"gas"}:${s.efficiency}:${!!coolingFor(s)}:${curveRangeMode(s)}`).join("|");
   const packagedSelections=useMemo(()=>{
     const cache=new Map<string,ReturnType<typeof autosizePackaged>>();
     return sizingRequests.split("|").map(request=>{const [mode,efficiency,selected,rangeMode]=request.split(":");if(!schoolRows.length||selected!=="true")return null;
-      if(!cache.has(request))cache.set(request,autosizePackaged(schoolRows,analysisSchool,efficiency as "standard"|"high",mode as "heat-pump"|"gas",rangeMode as CurveRangeMode));return cache.get(request)!;});
-  },[schoolRows,analysisSchool,sizingRequests]);
-  const comparisonResults = useMemo(() => schoolRows.length ? systems.map((system,i) => simulateEquipment(schoolRows, analysisSchool, system,packagedSelections[i])) : [], [schoolRows, analysisSchool, systems,packagedSelections]);
-  const inputSource = usingComstock && comstockInputs ? `ComStock ${comstockInputs.buildingType} · ${comstockInputs.county}` : "Editable assumptions";
+      if(!cache.has(request))cache.set(request,autosizePackaged(schoolRows,school,efficiency as "standard"|"high",mode as "heat-pump"|"gas",rangeMode as CurveRangeMode));return cache.get(request)!;});
+  },[schoolRows,school,sizingRequests]);
+  const comparisonResults = useMemo(() => schoolRows.length ? systems.map((system,i) => simulateEquipment(schoolRows, school, system,packagedSelections[i])) : [], [schoolRows, school, systems,packagedSelections]);
   const curveResult = comparisonResults[activeSystem] ?? null;
   function updateSystem(index: number, choice: EquipmentScenario) {
     setSystems(current => current.map((s, i) => i === index ? choice : s));
   }
   function downloadComparison() {
     if (!result) return;
-    const csv = equipmentComparisonCsv(comparisonResults, inputSource);
+    const csv = equipmentComparisonCsv(comparisonResults);
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url; link.download = `equipment-comparison-${result.place.stateCode}-${result.year}.csv`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -111,17 +106,13 @@ export default function Home() {
       setError("Enter a city or town and select a state.");
       return { status: "error", error: "A city and state are required." };
     }
-    const issue = !systems.some(s=>coolingFor(s))?"Configure cooling equipment for at least one equipment combination before continuing.":validateSchool(analysisSchool);
+    const issue = systems.some(s=>!coolingFor(s))?"Choose cooling equipment for every heating system before continuing.":validateSchool(school);
     if (issue) {
       setError(issue); return;
     }
-    if (result && pending && stage === "ready" && query.city.trim().toLowerCase() === pending.city.trim().toLowerCase() && query.state === pending.state && query.year === pending.year) {
-      setError(""); setTab("data");
-      return { status: "loaded", city: result.place.name, state: result.place.state, year: result.year, rows: result.data.rows.length };
-    }
     operation.current?.abort();
     const controller = new AbortController(); operation.current = controller;
-    setError(""); setResult(null); setComstockInputs(null); setUsingComstock(false); setCandidates([]); setPlace(null); setPending(query); setTab("data"); setStage("locating");
+    setError(""); setResult(null); setCandidates([]); setPlace(null); setPending(query); setTab("data"); setStage("locating");
     try {
       const params = new URLSearchParams({ city: query.city.trim(), state: query.state });
       const response = await request(`/api/locations?${params}`, controller.signal);
@@ -137,7 +128,7 @@ export default function Home() {
       const message = cause instanceof Error ? cause.message : "Something went wrong. Please try again.";
       setError(message); setStage("error"); return { status: "error", error: message };
     }
-  }, [fetchClimate, analysisSchool, systems, result, pending, stage]);
+  }, [fetchClimate, school,systems]);
 
   useEffect(() => {
     type Context = { registerTool: (tool: { name: string; title: string; description: string; inputSchema: object; annotations: object; execute: (input: unknown) => Promise<unknown> }, options: { signal: AbortSignal }) => void | Promise<void> };
@@ -172,7 +163,7 @@ export default function Home() {
   }
   function download(source = false) {
     if (!result) return;
-    const csv = source || !curveResult ? result.csv : equipmentResultsCsv(schoolRows, analysisSchool, curveResult, `${result.place.name}, ${result.place.state}`, `${timezone}; local standard time`, solarLocation(result.data.metadata), inputSource);
+    const csv = source || !curveResult ? result.csv : equipmentResultsCsv(schoolRows, school, curveResult, `${result.place.name}, ${result.place.state}`, `${timezone}; local standard time`, solarLocation(result.data.metadata));
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url;
     link.download = `${source ? "sup3rcc-source" : `equipment-results-${curveResult?scenarioName(curveResult.scenario).toLowerCase().replace(/[^a-z0-9]+/g,"-"):"equipment"}`}-${result.place.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${result.place.stateCode.toLowerCase()}-${result.year}.csv`;
@@ -190,8 +181,8 @@ export default function Home() {
     <main>
       <div className="page-intro"><h1>Building Energy Analysis Selection Tool <span>(BEAST)</span></h1><p>Choose your location, review building assumptions, and compare rooftop heat pumps, natural gas, and electric resistance.</p></div>
       <Tabs value={tab} onValueChange={setTab} className="workspace">
-        <div className="tabs-bar"><TabsList aria-label="BEAST workspace" variant="line" className="workspace-tabs"><TabsTrigger value="query"><SlidersHorizontal size={17}/>Analysis inputs</TabsTrigger><TabsTrigger value="data" disabled={(!pending && !result) || !!validateSchool(analysisSchool)}><Table2 size={17}/>Results{result && <span className="tab-count">{total.toLocaleString()}</span>}</TabsTrigger></TabsList><span className="coverage"><Globe2 size={15}/>US cities & towns</span></div>
-        <TabsContent value="query" forceMount className="query-panel"><div className="query-grid">
+        <div className="tabs-bar"><TabsList aria-label="BEAST workspace" variant="line" className="workspace-tabs"><TabsTrigger value="query"><SlidersHorizontal size={17}/>Analysis inputs</TabsTrigger><TabsTrigger value="data" disabled={(!pending && !result) || !!validateSchool(school)}><Table2 size={17}/>Results{result && <span className="tab-count">{total.toLocaleString()}</span>}</TabsTrigger></TabsList><span className="coverage"><Globe2 size={15}/>US cities & towns</span></div>
+        <TabsContent value="query" className="query-panel"><div className="query-grid">
           <section className="form-section"><div className="section-heading"><span className="section-icon"><MapPin size={22}/></span><div><h2>Location and year</h2></div></div>
             <form id="analysis-inputs" onSubmit={e => { e.preventDefault(); void startQuery({ city, state, year: Number(year) }); }}>
               <div className="form-location-row"><div className="form-field"><label htmlFor="city">City or town</label><input id="city" name="city" value={city} onChange={e => setCity(e.target.value)} placeholder="Enter city or town" required minLength={1} maxLength={100} autoComplete="address-level2" disabled={busy}/></div><div className="form-field"><label htmlFor="state">State</label><Choice id="state" label="State" value={state} onChange={setState} disabled={busy}>{Object.entries(STATES).map(([code, name]) => <SelectItem key={code} value={code}>{name}</SelectItem>)}</Choice></div></div>
@@ -200,14 +191,18 @@ export default function Home() {
               <div className="coordinate-note"><MapPin size={17}/><span>Search cities and towns in all 50 states and Washington, DC.</span></div>
             </form>
           </section><aside className="dataset-section"><div className="eyebrow">WEATHER DATA</div><h3>Hourly climate projections</h3><p className="dataset-description">2-meter temperature, relative humidity, and hourly DHI / DNI / GHI.</p><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Air temperature</strong><span>Degrees Fahrenheit · °F</span></div></div><div className="variable"><span className="variable-icon humidity"><Droplets size={20}/></span><div><strong>Dew point</strong><span>Derived from temperature + RH · °F</span></div></div><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Solar irradiance</strong><span>DHI · DNI · GHI in W/m²</span></div></div><dl className="dataset-meta"><div><dt>Climate model</dt><dd>EC-Earth3-CC</dd></div><div><dt>Scenario</dt><dd>SSP2-4.5</dd></div><div><dt>Time interval</dt><dd>60 minutes</dd></div><div><dt>Grid resolution</dt><dd>4 km</dd></div><div><dt>Climate coverage</dt><dd>48 contiguous states + DC</dd></div></dl><div className="dataset-footnote"><Clock3 size={15}/><span>Local standard time, without daylight saving time. February 29 excluded.</span></div></aside>
-        </div>{result && stage === "ready" && <ComstockProfile key={`comstock-${result.place.id}-${result.place.stateCode}`} place={result.place} utcOffset={solarLocation(result.data.metadata)?.utcOffset ?? null} usingComstock={usingComstock} onUsingComstock={setUsingComstock} onInputs={setComstockInputs}/>} {usingComstock && comstockInputs ? <section className="assumption-source-summary"><h3>Building assumptions</h3><p>Using ComStock {comstockInputs.buildingType} characteristics for {comstockInputs.county}. BEAST applies published floor area, occupancy and envelope characteristics and the ComStock lighting and equipment profiles. Unavailable characteristics keep their editable defaults.</p><button className="button secondary" type="button" onClick={() => setUsingComstock(false)}>Use editable assumptions</button></section> : <AnalysisAssumptions school={school} onSchool={setSchool}/>}<EquipmentScenarios choices={systems} onChange={updateSystem} results={[]} active={activeSystem} onActive={setActiveSystem} onAdd={() => setSystems(current => current.length < 3 ? [...current, newScenario()] : current)} onRemove={index => { setSystems(current => current.length > 1 ? current.filter((_, i) => i !== index) : current); setActiveSystem(0); }}/><div className="continue-actions">{error && <p className="model-error" role="alert">{error}</p>}<button className="button primary" type="submit" form="analysis-inputs" disabled={busy || !city.trim() || !state}>Continue to results<ArrowRight size={18}/></button></div></TabsContent>
+        </div><AnalysisAssumptions school={school} onSchool={setSchool}/><EquipmentScenarios choices={systems} onChange={updateSystem} results={[]} active={activeSystem} onActive={setActiveSystem} onAdd={() => setSystems(current => current.length < 3 ? [...current, newScenario()] : current)} onRemove={index => { setSystems(current => current.filter((_, i) => i !== index)); setActiveSystem(0); }}/><div className="continue-actions">{error && <p className="model-error" role="alert">{error}</p>}<button className="button primary" type="submit" form="analysis-inputs" disabled={busy || !city.trim() || !state}>Continue to results<ArrowRight size={18}/></button></div></TabsContent>
         <TabsContent value="data" className="data-panel">
           {busy && <section className="status-panel" aria-live="polite"><span className="loading-icon"><LoaderCircle className="spin" size={28}/></span><h2>{stage === "locating" ? "Finding your location" : "Loading your climate data"}</h2><p>{place ? `${place.name}, ${place.state} · ${pending?.year}` : `${pending?.city}, ${STATES[pending?.state || ""]} · ${pending?.year}`}</p><div className="load-steps"><span className={stage === "loading" ? "complete" : "current"}>{stage === "loading" ? <Check size={16}/> : <MapPin size={16}/>}Resolve location</span><span className={stage === "loading" ? "current" : ""}><Table2 size={16}/>Read hourly data</span></div><p className="status-hint">{elapsed > 25 ? "NLR is still preparing this year of data. This can take a couple of minutes." : "Fetching data directly from the source. This may take a moment."}</p><button className="button text-button" onClick={cancel}><X size={16}/>Cancel</button></section>}
           {stage === "choosing" && <section className="status-panel"><span className="loading-icon"><MapPin size={27}/></span><h2>Confirm your location</h2><p>Choose the matching place in {STATES[pending?.state || ""]}.</p><div className="match-select"><Choice id="location-match" label="Matching location" value={candidate} onChange={setCandidate}>{candidates.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}{p.county ? ` · ${p.county}` : ""} · {p.latitude.toFixed(3)}, {p.longitude.toFixed(3)}</SelectItem>)}</Choice></div><div className="center-actions"><button className="button secondary" onClick={cancel}>Edit location</button><button className="button primary" onClick={() => void confirmPlace()}>Continue to results<ArrowRight size={17}/></button></div></section>}
           {stage === "unsupported" && place && <section className="status-panel"><span className="loading-icon"><MapPin size={28}/></span><h2>Location found, outside climate coverage</h2><p><strong>{place.name}, {place.state}</strong><br/>{coordinate(place.latitude, true)} · {coordinate(place.longitude)}</p><p>The supplied Sup3rCC dataset covers the contiguous 48 states and Washington, DC. It does not provide climate CSVs for Alaska or Hawaii.</p><div className="center-actions"><button className="button primary" onClick={cancel}>Choose another location</button><a className="button secondary" href={DOCS} target="_blank" rel="noreferrer">Dataset coverage<ExternalLink size={15}/></a></div></section>}
           {stage === "error" && <section className="status-panel error-panel" role="alert"><span className="loading-icon"><Info size={28}/></span><h2>We couldn’t load the results</h2><p>{error}</p><div className="center-actions"><button className="button secondary" onClick={cancel}>Edit location</button><button className="button primary" onClick={() => pending && void startQuery(pending)}>Try again</button></div></section>}
           {result && stage === "ready" && <>
-            <LocationEnergy key={`energy-${result.place.id}-${result.place.stateCode}`} place={result.place} year={result.year} results={comparisonResults} rows={schoolRows}/><div className="edit-inputs"><button type="button" className="button secondary" onClick={() => setTab("query")}>Edit analysis inputs</button></div>
+<<<<<<< HEAD
+            <LocationEnergy key={`${result.place.id}-${result.place.stateCode}`} place={result.place} year={result.year} results={comparisonResults} rows={schoolRows}/><div className="edit-inputs"><button type="button" className="button secondary" onClick={() => setTab("query")}>Edit analysis inputs</button></div>
+=======
+            <ComstockProfile key={`comstock-${result.place.id}-${result.place.stateCode}`} place={result.place}/><LocationEnergy key={`energy-${result.place.id}-${result.place.stateCode}`} place={result.place} year={result.year} results={comparisonResults} rows={schoolRows}/><div className="edit-inputs"><button type="button" className="button secondary" onClick={() => setTab("query")}>Edit analysis inputs</button></div>
+>>>>>>> parent of 2b4aaab (Use ComStock data as building analysis inputs)
             <div className="results-heading"><div><div className="eyebrow">WEATHER & BUILDING LOADS</div><h2>{result.place.name}, {result.place.state}<span className="result-year">{result.year}</span></h2><p><MapPin size={14}/>{coordinate(result.place.latitude, true)}<span>·</span>{coordinate(result.place.longitude)}<span>·</span>{timezone}</p></div><div className="download-actions"><button className="button primary" onClick={() => download()}><Download size={17}/>Download results CSV</button><button className="button text-button" onClick={() => download(true)}>Original weather CSV</button></div></div>
             <div className="results-meta"><span><Table2 size={16}/><strong>{total.toLocaleString()}</strong> hourly records</span><span><CalendarDays size={16}/>{result.data.rows[0]?.year}-{pad(result.data.rows[0]?.month)}-{pad(result.data.rows[0]?.day)} to {result.data.rows.at(-1)?.year}-{pad(result.data.rows.at(-1)!.month)}-{pad(result.data.rows.at(-1)!.day)}</span><span>EC-Earth3-CC <span className="meta-separator">/</span> SSP2-4.5</span></div>
             <EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
