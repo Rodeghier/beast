@@ -10,7 +10,7 @@ import ts from "typescript";
 const temp = mkdtempSync(join(tmpdir(), "location-energy-"));
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const emit = (name, source) => writeFileSync(join(temp, `${name}.mjs`), ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText);
-const egrid = JSON.parse(read("lib/data/egrid-2023.json")), zip = JSON.parse(read("lib/data/egrid-zip-2023.json"));
+const egrid = JSON.parse(read("lib/data/egrid-2023.json"));
 emit("location-energy", read("lib/location-energy.ts").replace('import egridCo2e from "./data/egrid-co2e-2023.json";', `const egridCo2e = ${read("lib/data/egrid-co2e-2023.json")};`));
 emit("climate", read("lib/climate.ts"));
 emit("emissions", read("lib/emissions.ts"));
@@ -76,27 +76,21 @@ try {
   assert.equal(m.pointInGeometry(1, 1, polygon), true);
   assert.equal(m.pointInGeometry(3, 3, polygon), false);
   assert.equal(m.pointInGeometry(1, 11, polygon), false);
-  const madison = m.resolveEmissions(43.0748, -89.3848, "WI", "53703", egrid, zip);
+  const madison = m.resolveEmissions(43.0748, -89.3848, egrid);
   assert.equal(madison.status, "ok");
   assert.deepEqual(madison.regions.map(r => r.code), ["MROE"]);
-  assert.equal(madison.utilities[0].id, "11479");
+  assert.deepEqual(madison.utilities, []);
   assert.equal(madison.regions[0].kgCo2PerKwh, 1397.313 * .45359237 / 1000);
   assert.equal(madison.regions[0].year, 2023);
-  const coordinates = m.resolveEmissions(43.0748, -89.3848, "WI", null, egrid, zip);
+  const coordinates = m.resolveEmissions(43.0748, -89.3848, egrid);
   assert.ok(coordinates.regions.some(r => r.code === "MROE"));
   assert.equal(coordinates.method, "coordinates");
-  assert.equal(m.resolveEmissions(43, -89, "MN", "53703", egrid, zip).status, "error");
-  const overlappingZip = { utilities: [["1", "One", "MROE", "WI"], ["2", "Two", "MROW", "WI"]], zips: { "11111": [0, 1] } };
-  const overlap = m.resolveEmissions(43, -89, "WI", "11111", egrid, overlappingZip);
-  assert.equal(overlap.regions.length, 2);
-  assert.equal(overlap.utilities.length, 2);
-  assert.match(overlap.message, /Multiple subregions/);
-  assert.equal(m.resolveEmissions(0, 0, "WI", null, egrid, zip).status, "error");
+  assert.equal(m.resolveEmissions(0, 0, egrid).status, "error");
   assert.equal(egrid.provenance.dataYear, 2023);
   assert.equal(egrid.regions.length, 27);
 
   let calls = [];
-  const request = (query = "latitude=43.0748&longitude=-89.3848&state=WI&zip=53703") => new Request(`https://site.example/api/location-energy?${query}`);
+  const request = (query = "latitude=43.0748&longitude=-89.3848&state=WI") => new Request(`https://site.example/api/location-energy?${query}`);
   globalThis.fetch = async () => { throw new Error("No network calls expected without provider keys"); };
   const missing = await (await GET(request())).json();
   assert.equal(missing.electricity.status, "missing_key");
@@ -105,7 +99,6 @@ try {
   assert.ok(!JSON.stringify(missing).includes("DO_NOT_TRANSMIT_THIS_SENTINEL"));
   assert.equal((await GET(request("latitude=&longitude=-89&state=WI"))).status, 400);
   assert.equal((await GET(request("latitude=43&longitude=-89&state=ZZ"))).status, 400);
-  assert.equal((await GET(request("latitude=43&longitude=-89&state=WI&zip=53703-1234"))).status, 400);
 
   globalThis.__locationEnergyEnv.OPENEI_API_KEY = "fixture-openei-key";
   globalThis.__locationEnergyEnv.EIA_API_KEY = "fixture-eia-key";
@@ -166,7 +159,7 @@ try {
   assert.equal(redirects.electricity.status, "error");
   assert.equal(redirects.gas.status, "error");
   assert.equal(redirects.emissions.status, "ok");
-  console.log("Location energy checks passed: tariff schedules and eligibility, safe parsing, gas units, EPA ZIP/geometry/overlap, missing keys, fixed upstreams and independent failures.");
+  console.log("Location energy checks passed: tariff schedules and eligibility, safe parsing, gas units, EPA coordinate geometry, missing keys, fixed upstreams and independent failures.");
 } finally {
   globalThis.fetch = fetchOriginal;
   delete globalThis.__locationEnergyEnv;

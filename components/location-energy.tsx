@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, MapPin, RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import type { Place } from "@/lib/climate";
 import type { EquipmentResult } from "@/lib/equipment-model";
 import type { SchoolRow } from "@/lib/school";
@@ -52,17 +52,17 @@ function Tariff({ rate }: { rate: ElectricTariff }) {
 
 export function LocationEnergy({ place, year, results, rows }: { place: Place; year: number; results: EquipmentResult[]; rows: SchoolRow[] }) {
   const [data, setData] = useState<LocationEnergyContext | null>(null), [error, setError] = useState("");
-  const [zipDraft, setZipDraft] = useState(""), [zip, setZip] = useState(""), [retry, setRetry] = useState(0);
+  const [retry, setRetry] = useState(0);
   const [tariffId, setTariffId] = useState(""), [regionCode, setRegionCode] = useState("");
   const [manualEnabled, setManualEnabled] = useState(false), [manualRateText, setManualRateText] = useState("");
   const manualRate = manualEnabled && manualRateText.trim() !== "" ? Number(manualRateText) : undefined;
   const invalidManualRate = manualEnabled && (manualRate === undefined || !Number.isFinite(manualRate) || manualRate < 0);
   const [applied, setApplied] = useState<{ tariffId: string; regionCode: string } | null>(null);
-  const [loading, setLoading] = useState(true), [zipError, setZipError] = useState("");
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setApplied(null); setError(""); setData(null); setTariffId(""); setRegionCode("");
-    const params = new URLSearchParams({ latitude: String(place.latitude), longitude: String(place.longitude), state: place.stateCode, ...(zip ? { zip } : {}) });
+    const params = new URLSearchParams({ latitude: String(place.latitude), longitude: String(place.longitude), state: place.stateCode });
     void fetch(`/api/location-energy?${params}`, { signal: controller.signal, cache: "no-store" }).then(async response => {
       if (!response.ok) throw new Error("Location energy data could not be loaded. Please retry.");
       return response.json() as Promise<LocationEnergyContext>;
@@ -74,7 +74,7 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Unable to load location energy data."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [place.latitude, place.longitude, place.stateCode, zip, retry]);
+  }, [place.latitude, place.longitude, place.stateCode, retry]);
   const region = data?.emissions.regions.find(r => r.code === regionCode);
   const tariff = data?.electricity.tariffs.find(r => r.id === tariffId);
   const ready = !!applied && !loading && applied.tariffId === tariffId && applied.regionCode === regionCode;
@@ -104,9 +104,6 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
       </div>}
     </AnnualScorecard><section className="location-energy" aria-label="Utility rates and greenhouse gas emissions">
     <div className="comparison-heading"><div><span className="eyebrow">LOCATION ENERGY DATA</span><h3>Utility rates & greenhouse gas emissions</h3><p>{place.name}, {place.stateCode} · current rate information and EPA annual emissions factors</p></div><button type="button" className="secondary-button" onClick={() => setRetry(v => v + 1)} disabled={loading}><RefreshCw size={15}/>Refresh</button></div>
-    <form className="energy-zip" onSubmit={event => { event.preventDefault(); const v = zipDraft.trim(); if (v && !/^\d{5}$/.test(v)) { setZipError("Enter a five-digit ZIP code, or leave it blank."); return; } setZipError(""); setZip(v); }}>
-      <label htmlFor="energy-zip"><MapPin size={15}/>Building ZIP code <span>(optional; refines EPA utility mapping)</span></label><div><input id="energy-zip" inputMode="numeric" maxLength={5} value={zipDraft} onChange={event => setZipDraft(event.target.value)} placeholder="ZIP code"/><button type="submit" className="secondary-button">Apply ZIP</button></div>{zipError && <p role="alert">{zipError}</p>}
-    </form>
     {loading && <p role="status">Loading location energy data…</p>}{error && <p role="alert" className="energy-status">{error}</p>}
     {data && <>
       <div className="energy-emissions"><h4>Equipment CO₂e</h4><p>{data.emissions.message}</p>
