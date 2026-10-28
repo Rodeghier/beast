@@ -1,7 +1,6 @@
 import { env } from "cloudflare:workers";
 import { STATES } from "@/lib/climate";
 import egridData from "@/lib/data/egrid-2023.json";
-import zipData from "@/lib/data/egrid-zip-2023.json";
 import { ELECTRICITY_SOURCE, GAS_SOURCE, EMISSIONS_SOURCE, EPA_NATURAL_GAS, parseElectricTariffs, parseGasPrices, resolveEmissions, type ElectricityContext, type GasContext, type LocationEnergyContext } from "@/lib/location-energy";
 
 /** Fixed upstreams, no redirects, no user-controlled URLs, no raw error bodies. */
@@ -42,21 +41,21 @@ async function gas(state: string, key: string | undefined): Promise<GasContext> 
 export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;
   const state = (p.get("state") || "").toUpperCase();
-  const latText = p.get("latitude"), lonText = p.get("longitude"), zip = p.get("zip")?.trim() || null;
+  const latText = p.get("latitude"), lonText = p.get("longitude");
   const latitude = Number(latText), longitude = Number(lonText);
-  if (!latText?.trim() || !lonText?.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || !Object.hasOwn(STATES, state) || zip && !/^\d{5}$/.test(zip)) return Response.json({ error: "Provide valid coordinates, a US state, and optionally a five-digit ZIP code." }, { status: 400 });
+  if (!latText?.trim() || !lonText?.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || !Object.hasOwn(STATES, state)) return Response.json({ error: "Provide valid coordinates and a US state." }, { status: 400 });
   const config = env as unknown as Record<string, string | undefined>;
   const openEiKey = config.OPENEI_API_KEY || process.env.OPENEI_API_KEY;
   const eiaKey = config.EIA_API_KEY || process.env.EIA_API_KEY;
   // Each provider resolves independently so a missing gas key never hides EPA data.
   const [electricResult, gasResult, emissionsResult] = await Promise.allSettled([
     electricity(latitude, longitude, openEiKey), gas(state, eiaKey),
-    Promise.resolve().then(() => resolveEmissions(latitude, longitude, state, zip, egridData, zipData)),
+    Promise.resolve().then(() => resolveEmissions(latitude, longitude, egridData)),
   ]);
   const result: LocationEnergyContext = {
     electricity: electricResult.status === "fulfilled" ? electricResult.value : { status: "error", message: reason(electricResult.reason, "OpenEI"), tariffs: [], sourceUrl: ELECTRICITY_SOURCE },
     gas: gasResult.status === "fulfilled" ? gasResult.value : { status: "error", message: reason(gasResult.reason, "EIA"), prices: [], sourceUrl: GAS_SOURCE, state },
-    emissions: emissionsResult.status === "fulfilled" ? emissionsResult.value : { status: "error", message: "EPA subregion lookup could not be completed.", regions: [], utilities: [], method: zip ? "zip" : "coordinates", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE },
+    emissions: emissionsResult.status === "fulfilled" ? emissionsResult.value : { status: "error", message: "EPA subregion lookup could not be completed.", regions: [], utilities: [], method: "coordinates", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE },
     retrievedAt: new Date().toISOString(),
   };
   return Response.json(result, { headers: { "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });

@@ -23,7 +23,7 @@ export type GasContext = { status: ProviderStatus; message: string; prices: { pe
 export type GasCombustion = { kgCo2PerTherm: number; kgCh4PerTherm: number; kgN2oPerTherm: number; kgCo2ePerTherm: number; gwpCh4: number; gwpN2o: number; thermsPerMcf: number; sourceUrl: string; year: number };
 // EPA 2025 Hub, Table 1: 53.06 kg CO2/MMBtu; HHV 0.001026 MMBtu/scf.
 export const EPA_NATURAL_GAS: GasCombustion = { kgCo2PerTherm: 5.306, kgCh4PerTherm: 0.0001, kgN2oPerTherm: 0.00001, gwpCh4: 28, gwpN2o: 265, kgCo2ePerTherm: 5.306 + 0.0001 * 28 + 0.00001 * 265, thermsPerMcf: 10.26, year: 2025, sourceUrl: "https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf" };
-export type EmissionsContext = { naturalGas: GasCombustion; status: ProviderStatus; message: string; regions: EmissionRegion[]; utilities: { id: string; name: string; subregion: string }[]; method: "zip" | "coordinates"; sourceUrl: string };
+export type EmissionsContext = { naturalGas: GasCombustion; status: ProviderStatus; message: string; regions: EmissionRegion[]; utilities: { id: string; name: string; subregion: string }[]; method: "coordinates"; sourceUrl: string };
 export type LocationEnergyContext = { electricity: ElectricityContext; gas: GasContext; emissions: EmissionsContext; retrievedAt: string };
 export const ELECTRICITY_SOURCE = "https://apps.openei.org/services/doc/rest/util_rates/?version=8";
 export const GAS_SOURCE = "https://www.eia.gov/dnav/ng/ng_pri_sum_a_EPG0_PCS_DMcf_m.htm";
@@ -134,8 +134,6 @@ export function parseGasPrices(payload: unknown, state: string): GasContext["pri
 
 export type GeoGeometry = { type: string; coordinates: number[][][] | number[][][][] };
 export type EgridData = { regions: (EmissionRegion & { geometry: GeoGeometry })[] };
-/** Utility tuples are [EIA ID, provider name, subregion, state]. */
-export type EgridZipData = { utilities: string[][]; zips: Record<string, number[]> };
 const pointInRing = (x: number, y: number, ring: number[][]): boolean => {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -149,23 +147,15 @@ export function pointInGeometry(latitude: number, longitude: number, geometry: G
   const polygons = geometry.type === "Polygon" ? [geometry.coordinates as number[][][]] : geometry.type === "MultiPolygon" ? geometry.coordinates as number[][][][] : [];
   return polygons.some(p => p.length > 0 && pointInRing(longitude, latitude, p[0]) && !p.slice(1).some(hole => pointInRing(longitude, latitude, hole)));
 }
-export function resolveEmissions(latitude: number, longitude: number, state: string, zip: string | null, data: EgridData, zipData: EgridZipData): EmissionsContext {
+export function resolveEmissions(latitude: number, longitude: number, data: EgridData): EmissionsContext {
   let regions = data.regions.filter(r => pointInGeometry(latitude, longitude, r.geometry));
-  let utilities: EmissionsContext["utilities"] = [];
-  let message = "Approximate subregion candidates from the selected city coordinates. Confirm the electricity provider or enter the building ZIP code; service territories can overlap.";
-  if (zip) {
-    const tuples = (zipData.zips[zip] || []).map(i => zipData.utilities[i]).filter(u => u && u[3] === state);
-    if (!tuples.length) return { status: "error", message: "No EPA utility mapping was found for this ZIP and state. Check the ZIP, or clear it to use city-coordinate candidates.", regions: [], utilities: [], method: "zip", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE };
-    utilities = tuples.map(u => ({ id: u[0], name: u[1], subregion: u[2] }));
-    const codes = new Set(utilities.map(u => u.subregion));
-    regions = data.regions.filter(r => codes.has(r.code));
-    message = "EPA ZIP and electricity-provider candidates. Confirm the provider for the building; a ZIP can have multiple service territories.";
-  }
-  if (!regions.length) message = "No EPA subregion could be resolved from these coordinates. Enter a US building ZIP code to look up electricity-provider candidates.";
+  const utilities: EmissionsContext["utilities"] = [];
+  let message = "Approximate subregion candidates from the selected city coordinates. Confirm the electricity provider; service territories can overlap.";
+  if (!regions.length) message = "No EPA subregion could be resolved from these coordinates. Confirm the selected city location or check the provider's subregion.";
   if (regions.length > 1) message += " Multiple subregions match; select the applicable provider/subregion.";
   message += " Factors are annual average electricity CO₂e from eGRID2023 (CO₂, CH₄, N₂O; AR5 100-year GWP), not hourly or future-year projections. Results also include on-site natural gas combustion.";
   return { status: regions.length ? "ok" : "error", message, regions: regions.map(({ geometry: _, ...region }) => {
     const lbCo2ePerMwh = (egridCo2e.rates as Record<string, number>)[region.code];
     return { ...region, lbCo2ePerMwh, kgCo2ePerKwh: Number.isFinite(lbCo2ePerMwh) ? lbCo2ePerMwh * 0.45359237 / 1000 : undefined };
-  }), utilities, method: zip ? "zip" : "coordinates", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE };
+  }), utilities, method: "coordinates", naturalGas: EPA_NATURAL_GAS, sourceUrl: EMISSIONS_SOURCE };
 }

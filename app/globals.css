@@ -330,11 +330,6 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .location-energy h5 { font-size: .9rem; font-weight: 650; margin: 18px 0 9px; }
 .location-energy p { font-size: .875rem; line-height: 1.7; margin: 10px 0; color: #5f7286; }
 .location-energy a { color: #226987; text-decoration: underline; text-underline-offset: 3px; font-size: .875rem; }
-.energy-zip { border-top: 1px solid #e0e8ee; margin-top: 18px; padding-top: 18px; }
-.energy-zip label { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font-size: .875rem; margin-bottom: 8px; }
-.energy-zip label span { color: #687c90; }
-.energy-zip > div { display: flex; gap: 10px; }
-.energy-zip input { width: 145px; padding: 10px 12px; border: 1px solid #b8cbd9; border-radius: 5px; }
 .energy-emissions { padding: 24px; background: #f1f7f6; border-radius: 7px; margin-top: 22px; }
 .energy-select-label { display: block; font-size: .875rem; font-weight: 550; margin: 16px 0; }
 .energy-select-label select { display: block; width: 100%; max-width: 100%; color: #264f67; padding: 11px 12px; background: white; border: 1px solid #b8cbd9; border-radius: 5px; margin-top: 7px; font-weight: 400; }
