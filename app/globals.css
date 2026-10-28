@@ -325,26 +325,6 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 @media(max-width: 760px) { .scenario-grid { grid-template-columns: 1fr; } .comparison-heading { flex-direction: column; } .equipment-scenarios { padding: 22px 20px; } .scenario-card { padding: 18px; } }
 
 .location-energy { margin: 26px 0; padding: 28px 30px; border: 1px solid #d9e3ea; border-radius: 9px; background: white; color: #34516b; }
-<<<<<<< HEAD
-=======
-.comstock-profile { margin: 26px 0; padding: 28px 30px; border: 1px solid #d9e3ea; border-radius: 9px; background: white; color: #34516b; }
-.comstock-profile h3 { font-size: 1.35rem; font-weight: 650; margin: 7px 0; }
-.comstock-profile p { font-size: .875rem; line-height: 1.7; margin: 10px 0; color: #5f7286; }
-.comstock-controls { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 16px; margin: 20px 0; }
-.comstock-controls label { display: block; min-width: min(100%, 300px); font-size: .875rem; font-weight: 550; }
-.comstock-controls select { display: block; width: min(100%, 420px); color: #264f67; padding: 11px 12px; background: white; border: 1px solid #b8cbd9; border-radius: 5px; margin-top: 7px; font-weight: 400; }
-.comstock-controls > span { color: #64748b; font-size: .8rem; }
-.comstock-status { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: .875rem; }
-.comstock-error { padding: 12px 15px; border-radius: 5px; background: #fff6e6; }
-.comstock-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
-.comstock-summary > div { display: flex; flex-direction: column; gap: 6px; padding: 15px; background: #f7faf9; border: 1px solid #dce8e2; border-radius: 7px; }
-.comstock-summary span { color: #5f7286; font-size: .78rem; }
-.comstock-summary strong { color: #246357; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
-.comstock-chart { width: 100%; height: 310px; margin: 12px 0; }
-.comstock-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-top: 1px solid #e0e8ee; padding-top: 12px; }
-.comstock-footer p { flex: 1; min-width: 240px; margin: 0; font-size: .8rem; }
-@media(max-width: 760px) { .comstock-profile { padding: 22px 20px; } .comstock-summary { grid-template-columns: 1fr; } }
->>>>>>> parent of 2b4aaab (Use ComStock data as building analysis inputs)
 .location-energy h3 { font-size: 1.35rem; font-weight: 650; margin: 7px 0; }
 .location-energy h4 { font-size: 1.05rem; font-weight: 650; margin: 0 0 12px; }
 .location-energy h5 { font-size: .9rem; font-weight: 650; margin: 18px 0 9px; }
@@ -441,3 +421,18 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .equipment-selection > strong { font-size:1.2rem; color:#203b56; }
 .equipment-pending, .equipment-scope { padding:12px 14px; border-left:3px solid #b1833b; background:#fff8ed; line-height:1.6; }
 @media(min-width:1100px) { .equipment-scenarios .scenario-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
+.analysis-assumptions { padding: 0; }
+.analysis-assumptions > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 28px 30px; cursor: pointer; list-style: none; color: #203b56; font-size: 1.25rem; font-weight: 650; }
+.analysis-assumptions > summary::-webkit-details-marker { display: none; }
+.analysis-assumptions > summary::before { content: "+"; width: 16px; flex-shrink: 0; font-weight: 400; }
+.analysis-assumptions[open] > summary::before { content: "−"; }
+.analysis-assumptions > summary small { margin-left: auto; font-size: .8rem; font-weight: 400; color: #64748b; }
+.analysis-assumptions > summary:focus-visible { outline: 2px solid #3479a4; outline-offset: -3px; }
+.assumptions-body { padding: 0 30px 28px; }
+.assumptions-mode { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 22px; }
+.assumptions-mode label { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: #34516b; }
+.assumptions-mode input { width: 16px; height: 16px; accent-color: #38685f; }
+.assumptions-values { border: 0; margin: 0; padding: 0; min-width: 0; }
+.assumptions-values:disabled input { background: #f3f6f8; color: #526477; opacity: 1; }
+@media(max-width:600px) { .analysis-assumptions > summary { padding: 24px 20px; } .analysis-assumptions > summary small { margin-left: 28px; } .assumptions-body { padding: 0 20px 24px; } }

@@ -68,12 +68,3 @@ Node >=22.13. Server secrets remain in ignored local environment/hosting configu
 Reproduce ratings: `python scripts/extract-unit-data.py --source PATH_TO_FULL_PDF`. Reproduce heating fits: `python scripts/fit-precedent-heating.py --source PATH`. Checks cover all 1,632 heating points, all 24 nominal power records, fan power reconciliation, part duty, fuel/element heat credit, ventilation, fan-induced cooling, required cooling, automatic names, domains, annual accounting, CSVs and rendered controls. The 55 independent wet-bulb reference states remain in `scripts/fixtures/mixed-air-reference.json`.
 
 References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psychrolib.html; fan inference https://www.energycodes.gov/sites/default/files/2024-08/90.1_Secton_11_and%29_Appendix_G_Review_Manual_V04.pdf; AFUE https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-furnaces. Source provenance and licenses are in `THIRD_PARTY_NOTICES.md`.
-<<<<<<< HEAD
-=======
-
-## ComStock county profiles
-
-The results page can load a 2018 AMY ComStock county aggregate for the selected place. BEAST resolves the selected coordinates to a county with the Census Geocoder, lists the building-type CSV files actually present for that county under the public OEDI `timeseries_aggregates/by_county/upgrade=0` prefix, and downloads only the chosen profile. It summarizes monthly site energy and exposes the original 15-minute CSV for download. The profile is a weighted aggregate for the county's selected building type, not a single building; it is displayed as a reference and does not replace the editable building assumptions used by BEAST's analysis.
-
-The NLR Building Energy Profiles Python toolkit currently supports metadata and individual-building time-series downloads; it does not load the pre-aggregated `timeseries_aggregates/by_county` files. BEAST therefore reads those published aggregate CSVs directly from OEDI. No county profile data are bundled in the repository.
->>>>>>> parent of 2b4aaab (Use ComStock data as building analysis inputs)
