@@ -57,9 +57,37 @@ near(heatingPoint(heating3,47,70).capacityBtuHr,31000);near(heatingPoint(heating
 for(const [outdoor,entering] of [[-8.01,70],[72.01,70],[47,39.99],[47,80.01],[NaN,70]])assert.equal(heatingPoint(heating3,outdoor,entering),null);
 for(const h of HEATING_MODELS)for(let outdoor=-8;outdoor<=72;outdoor+=2)for(let entering=40;entering<=80;entering+=2){const p=heatingPoint(h,outdoor,entering);assert.ok(p.capacityBtuHr>0&&p.powerKw>0&&p.cop>0);}
 const source=parseCsv(readFileSync(resolve(root,'public/references/packaged-heating-source-data.csv'),'utf8'));
-assert.equal(source.length,1633);const fields=source[0],at=(row,key)=>row[fields.indexOf(key)];let flagged=0;
-for(const r of source.slice(1)){const h=HEATING_MODELS.find(m=>m.table===Number(at(r,'table'))),p=heatingPoint(h,Number(at(r,'outdoor_dry_bulb_F')),Number(at(r,'entering_dry_bulb_F')));near(p.capacityBtuHr,Number(at(r,'fitted_net_capacity_Btu_hr')),1e-7);near(p.powerKw,Number(at(r,'fitted_total_power_kW')),1e-9);assert.ok(Math.abs(p.capacityBtuHr/(Number(at(r,'net_capacity_MBh'))*1000)-1)<.05);if(at(r,'source_flag'))flagged++;}
-assert.equal(flagged,4);
+assert.equal(source.length,1629);const fields=source[0],at=(row,key)=>row[fields.indexOf(key)];
+for(const r of source.slice(1)){const h=HEATING_MODELS.find(m=>m.table===Number(at(r,'table'))),p=heatingPoint(h,Number(at(r,'outdoor_dry_bulb_F')),Number(at(r,'entering_dry_bulb_F')));near(p.capacityBtuHr,Number(at(r,'fitted_net_capacity_Btu_hr')),1e-7);near(p.powerKw,Number(at(r,'fitted_total_power_kW')),1e-9);assert.ok(Math.abs(p.capacityBtuHr/(Number(at(r,'net_capacity_MBh'))*1000)-1)<.05);}
+assert.ok(HEATING_MODELS.every(m=>m.warnings.length===0));
+const heatingSamples=new Set(source.slice(1).map(r=>[at(r,'table'),Number(at(r,'outdoor_dry_bulb_F')),Number(at(r,'entering_dry_bulb_F'))].join(':')));
+for(const key of ['59:7:75','70:7:75','71:7:80','73:72:60'])assert.equal(heatingSamples.has(key),false);
+const coolingSource=parseCsv(readFileSync(resolve(root,'public/references/packaged-cooling-source-data.csv'),'utf8'));
+const coolingFields=coolingSource[0],cv=(r,k)=>r[coolingFields.indexOf(k)],acceptedCooling=coolingSource.slice(1).filter(r=>cv(r,'gross_capacity_MBh')!=='');
+assert.equal(acceptedCooling.length,1432);
+assert.ok(COOLING_MODELS.every(m=>m.warnings.length===0));
+for(const r of acceptedCooling){
+ const m=COOLING_MODELS.find(m=>m.table===Number(cv(r,'table'))),out=Number(cv(r,'outdoor_dry_bulb_F')),wet=Number(cv(r,'entering_wet_bulb_F')),dry=Number(cv(r,'entering_dry_bulb_F'));
+ assert.ok(!([19,31].includes(m.table)&&out===115&&wet===61&&dry===85));
+ const point=coolingPoint(m,out,wet,dry);assert.ok(point);
+ near(point.capacityBtuHr,Number(cv(r,'fitted_gross_capacity_MBh'))*1000,1e-6);near(point.shr,Number(cv(r,'fitted_shr')),1e-9);
+ assert.ok(Math.abs(point.capacityBtuHr/(Number(cv(r,'gross_capacity_MBh'))*1000)-1)<.05);
+}
+// Least-squares stationarity verifies the coefficients use the published fitting
+// dataset, independently of the Python solver and its recorded predictions.
+function stationary(rows,termValues,coefs,actual){
+ const gradient=Array(coefs.length).fill(0);
+ for(const r of rows){const terms=termValues(r),error=coefs.reduce((sum,c,i)=>sum+c*terms[i],0)-actual(r);terms.forEach((t,i)=>gradient[i]+=t*error);}
+ gradient.slice(1).forEach(g=>near(g,0,1e-8));
+}
+for(const m of COOLING_MODELS){const rows=acceptedCooling.filter(r=>Number(cv(r,'table'))===m.table);
+ stationary(rows,r=>{const x=(Number(cv(r,'outdoor_dry_bulb_F'))-95)/20,y=(Number(cv(r,'entering_wet_bulb_F'))-67)/6,z=(Number(cv(r,'entering_dry_bulb_F'))-80)/10;return [1,x,y,z,x*x,x*y,x*z,y*y,y*z,z*z];},m.capacity_coefficients,r=>Number(cv(r,'gross_capacity_MBh'))*1000/m.reference_capacity_Btu_hr);
+}
+for(const m of HEATING_MODELS){const rows=source.slice(1).filter(r=>Number(at(r,'table'))===m.table);
+ const terms=r=>{const x=(Number(at(r,'outdoor_dry_bulb_F'))-47)/40,y=(Number(at(r,'entering_dry_bulb_F'))-70)/20;return [1,x,y,x*x,x*y,y*y,x**3,x*x*y,x*y*y,y**3,x**4,x**3*y,x*x*y*y,x*y**3,y**4];};
+ stationary(rows,terms,m.capacity_coefficients,r=>Number(at(r,'net_capacity_MBh'))*1000/m.reference_capacity_Btu_hr);
+ stationary(rows,r=>terms(r).slice(0,6),m.power_coefficients.slice(0,6),r=>Number(at(r,'total_power_kW'))/m.reference_power_kW);
+}
 const expectedPower=[3.36,4.50,5.32,6.54,8.18,9.27,10.73,14.15,16.79,19.43,25.26,27.37];
 assert.equal(UNIT_RATINGS.length,24);
 const expectedHighPower=[2.81,3.83,4.69,5.94,7.33,8.76,10.35,12.4,15.21,18.23,22.02,25.74];
@@ -133,5 +161,12 @@ const comparison=parseCsv(equipmentComparisonCsv([hp,gas,resistance]));compariso
 const {EquipmentScenarios}=load('components/equipment-scenarios.tsx');
 const html=renderToStaticMarkup(createElement(EquipmentScenarios,{choices:[hp.scenario,gasScenario,resistanceScenario],results:[hp,gas,resistance],active:0,onActive:()=>{},onChange:()=>{}}));
 assert.match(html,/Cooling equipment/);assert.match(html,/required/);assert.match(html,/Heat Pump Cooling \+ Natural Gas Heating/);assert.doesNotMatch(html,/Scenario name|Heating only|COP is still awaiting|type="file"/);assert.match(html,/Supply-fan|supply.fan/);
-assert.match(html,/<details/);assert.match(html,/Use defaults/);assert.match(html,/Modify values/);assert.doesNotMatch(html,/Outside supplied|Trane|Precedent|Cooling power and COP available|Boundary estimates included/i);
+assert.doesNotMatch(html,/<details|Use defaults|Modify values|flagged source/i);assert.doesNotMatch(html,/Outside supplied|Trane|Precedent|Cooling power and COP available|Boundary estimates included/i);
 console.log('Equipment checks passed: source heating fits and nominal power, inferred fans, no double counting, gas/resistance fan heat credit, fan-only ventilation and induced cooling, required cooling, derived names, COP, domains, both efficiency families, annual energy, CSVs and rendered controls.');
+
+const {AnalysisAssumptions}=load('components/analysis-assumptions.tsx');
+const buildingHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:DEFAULT_SCHOOL,onSchool:()=>{}}));
+assert.equal((buildingHtml.match(/<details/g)||[]).length,1);
+assert.match(buildingHtml,/Use defaults/);assert.match(buildingHtml,/Modify values/);assert.match(buildingHtml,/class="assumptions-values" disabled=""/);
+const customHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:{...DEFAULT_SCHOOL,heatingF:68},onSchool:()=>{}}));
+assert.doesNotMatch(customHtml,/class="assumptions-values" disabled/);

@@ -1,4 +1,4 @@
-"""Fit the supplied heating tables; retain all entries and their catalog test basis.
+"""Fit the supplied heating tables; use the accepted dataset and catalog test basis.
 
 Usage: python scripts/fit-precedent-heating.py --source PATH [--output PATH]
 Requires numpy and pypdf. Writes auditable JSON/CSV, without changing application files.
@@ -73,6 +73,10 @@ def main():
     parser.add_argument('--output', type=Path, default=ROOT/'outputs/precedent-heating')
     args = parser.parse_args(); args.output.mkdir(parents=True, exist_ok=True)
     models, rows = extract(args.source)
+    omitted = {(59,7,75,19.2), (70,7,75,73.8), (71,7,80,93.1), (73,72,60,354.8)}
+    sample_key = lambda r: (r['table'],r['outdoor_dry_bulb_F'],r['entering_dry_bulb_F'],r['net_capacity_MBh'])
+    assert omitted <= {sample_key(r) for r in rows}
+    rows = [r for r in rows if sample_key(r) not in omitted]
     coefficients, summary, validation = [], [], []
     for number, model in models.items():
         selected = [r for r in rows if r['table'] == number]; a = design(selected)
@@ -98,15 +102,8 @@ def main():
                         actual_capacity_Btu_hr=r['net_capacity_MBh']*1000,predicted_capacity_Btu_hr=float(qv*qref),actual_power_kW=r['total_power_kW'],predicted_power_kW=float(pv*pref)))
         model['interior_plane_validation'] = dict(points=len(qerrors),capacity_relative_rmse_percent=float(100*np.sqrt(np.mean(np.array(qerrors)**2))),power_relative_rmse_percent=float(100*np.sqrt(np.mean(np.array(perrors)**2))))
         for i,r in enumerate(selected):
-            previous = next((v for v in selected if v['outdoor_dry_bulb_F'] == r['outdoor_dry_bulb_F'] and v['entering_dry_bulb_F'] == DB[DB.index(r['entering_dry_bulb_F'])-1]),None) if r['entering_dry_bulb_F'] != 40 else None
-            flags=[]
-            if previous and r['net_capacity_MBh'] > previous['net_capacity_MBh']+.1:
-                flags.append('Capacity increases with entering dry bulb at fixed outdoor temperature; retained as published.')
-            if abs((a@qc)[i]/q[i]-1) > .05: flags.append('Capacity fit residual exceeds 5%; retained as published.')
-            if abs((a@pc)[i]/power[i]-1) > .05: flags.append('Power fit residual exceeds 5%; retained as published.')
             r.update(model_id=model['id'],fitted_net_capacity_Btu_hr=float((a@qc)[i]*qref),fitted_total_power_kW=float((a@pc)[i]*pref),
-                fitted_cop=float((a@qc)[i]*qref/(BTU_PER_KWH*(a@pc)[i]*pref)),source_flag=' '.join(flags))
-        if any(r['source_flag'] for r in selected): model['warnings'].append('Source entries require review; retained without correction. See source-data.csv.')
+                fitted_cop=float((a@qc)[i]*qref/(BTU_PER_KWH*(a@pc)[i]*pref)))
         common = dict(model_id=model['id'],table=number,nominal_tons=model['nominal_tons'],efficiency=model['efficiency'],reference_capacity_Btu_hr=qref,reference_power_kW=pref,
             outdoor_min_F=-8,outdoor_max_F=72,entering_db_min_F=40,entering_db_max_F=80,reference_outdoor_F=47,reference_entering_F=70,nominal_esp_inches=model['nominal_esp_inches'],
             airflow_basis='Published nominal CFM; no airflow/fan correction available in supplied excerpt.',outdoor_RH_percent=70)
@@ -123,7 +120,7 @@ def main():
         terms=TERMS,term_powers=POWERS,transforms=dict(x='(outdoor_dry_bulb_F - 47)/40',y='(entering_dry_bulb_F - 70)/20'),
         formulas=dict(net_capacity_Btu_hr='reference_capacity_Btu_hr * sum(capacity_coefficients[i]*terms[i])',total_power_kW='reference_power_kW * sum(power_coefficients[i]*terms[i])',
             heating_COP='net_capacity_Btu_hr / (3412.141633 * total_power_kW)'),
-        policy=dict(fitting='Anchored least squares: fourth-degree total-degree capacity, second-degree power. All source values retained.',
+        policy=dict(fitting='Anchored least squares: fourth-degree total-degree capacity, second-degree power. Uses the accepted fitting dataset.',
             validation='Interior outdoor/entering plane holdout refits; the 47/70 reference remains a known anchor, so validation is conditional on it.',
             domain='Outdoor -8 to 72 F; entering dry bulb 40 to 80 F. No extrapolation, humidity correction, added defrost or fan term.',
             catalog_basis='Net integrated heating capacity and total power include indoor fan heat/power at nominal CFM and listed ESP; defrost integrated; 70% outdoor RH.',
@@ -133,7 +130,7 @@ def main():
     write_csv(args.output/'curve-fit-coefficients.csv',coefficients);write_csv(args.output/'source-data.csv',rows)
     write_csv(args.output/'fit-summary.csv',summary);write_csv(args.output/'interior-plane-validation.csv',validation)
     (args.output/'README.md').write_text('# Precedent heating fits\n\n'+ '\n\n'.join(f'**{k}:** {v}' for k,v in bundle['policy'].items())+'\n\nTerms: '+', '.join(TERMS)+'\n\nTransforms: x=(outdoor F-47)/40; y=(entering F-70)/20. Both normalized curves equal 1 at the reference. Capacity is in BTU/hr; power is kW; COP is their dimensionless heat/power ratio.\n',encoding='utf-8')
-    print(json.dumps(dict(models=len(models),source_points=len(rows),flagged_points=sum(bool(r['source_flag']) for r in rows),
+    print(json.dumps(dict(models=len(models),source_points=len(rows),
         max_capacity_fit_error_percent=max(m['fit_metrics']['capacity']['max_relative_error_percent'] for m in models.values()),
         max_power_fit_error_percent=max(m['fit_metrics']['power']['max_relative_error_percent'] for m in models.values()),
         max_capacity_validation_rmse_percent=max(m['interior_plane_validation']['capacity_relative_rmse_percent'] for m in models.values())),indent=2))

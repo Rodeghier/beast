@@ -1,5 +1,6 @@
 """Build the BEAST guide for supplied heating/cooling curves and mixed air."""
 from pathlib import Path
+import json
 from xml.sax.saxutils import escape
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib import colors
@@ -10,6 +11,10 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "public/engineering-guide.pdf"
+HEATING_FITS = json.loads((ROOT / "lib/data/precedent-heating.json").read_text(encoding="utf-8"))["models"]
+CAPACITY_ERROR = max(m["fit_metrics"]["capacity"]["max_relative_error_percent"] for m in HEATING_FITS)
+POWER_ERROR = max(m["fit_metrics"]["power"]["max_relative_error_percent"] for m in HEATING_FITS)
+HEATING_VALIDATION = max(m["interior_plane_validation"]["capacity_relative_rmse_percent"] for m in HEATING_FITS)
 FONT, BOLD, MONO = "Helvetica", "Helvetica-Bold", "Courier"
 if Path("C:/Windows/Fonts/arial.ttf").exists():
     pdfmetrics.registerFont(TTFont("GuideSans", "C:/Windows/Fonts/arial.ttf"))
@@ -79,15 +84,15 @@ p("The model has no off-rating cooling-power or fan correction. Both families us
 
 page(4,"Heating curves and catalog basis")
 h("Capacity, total power and COP")
-p("The supplied heating tables 58-73 contain 1,632 capacity/power pairs. Normalize each model at 47 F outdoor / 70 F entering dry bulb. Capacity uses anchored fourth-degree least squares; total power uses an anchored second-degree polynomial, with higher coefficients zero.")
+p("The supplied heating tables 58-73 contain 1,628 capacity/power pairs. Normalize each model at 47 F outdoor / 70 F entering dry bulb. Capacity uses anchored fourth-degree least squares; total power uses an anchored second-degree polynomial, with higher coefficients zero.")
 eq("x = (outdoor DB - 47)/40; y = (entering DB - 70)/20\nTerms = [1,x,y,x^2,xy,y^2,x^3,x^2y,xy^2,y^3,\n         x^4,x^3y,x^2y^2,xy^3,y^4]\nNet unit heat Q_h = Qref x sum(q[i] x term[i])\nTotal unit input P_h = Pref x sum(p[i] x term[i])\nFull-output heating COP = Q_h / (3412.141633 x P_h)")
 p("Both normalized outputs equal 1 at the reference. COP is a ratio of fitted heat and total electrical input, not a separate assumed efficiency. Heating wet bulb is not an input.")
 h("Source conditions and mapping")
 p("Heating capacity is integrated net output. Total power and net capacity already include indoor fan effects at nominal CFM and the table's listed ESP; defrost is integrated and outdoor RH is fixed at 70%. No extra defrost term or outdoor-humidity correction is applied.")
 p("Standard 3/4/5-ton units use tables 58-60; high-efficiency counterparts use 61-63. Standard 10-ton WSK uses table 67; high-efficiency WHK uses table 68. Other sizes share their size-only table across the two families. Dual-fuel equipment is excluded.")
 h("Fit quality and validity")
-p("Heating source coverage is outdoor -8 to 72 F and entering dry bulb 40 to 80 F. Screening estimates hold curve inputs at these limits when actual conditions are outside coverage; see page 6. Maximum source-point capacity error is 4.59%; power error is 3.31%. Interior-plane holdout capacity relative RMSE reaches 2.13%, conditional on retaining the known reference anchor.")
-p("Four source reversals are retained and flagged, including 354.8 MBh at 72 F outdoor / 60 F entering in the 25-ton table. Applying nominal-airflow heating data with maximum cooling airflow remains an uncorrected approximation. For both efficiency families, the inferred fan is separated from integrated heating capacity/power before coil duty scaling; see the next page. The catalog’s fan operating point is not independently reproduced by this estimate.","small")
+p(f"Heating source coverage is outdoor -8 to 72 F and entering dry bulb 40 to 80 F. Screening estimates hold curve inputs at these limits when actual conditions are outside coverage; see page 6. Maximum source-point capacity error is {CAPACITY_ERROR:.2f}%; power error is {POWER_ERROR:.2f}%. Interior-plane holdout capacity relative RMSE reaches {HEATING_VALIDATION:.2f}%, conditional on retaining the known reference anchor.")
+p("Applying nominal-airflow heating data with maximum cooling airflow remains an uncorrected approximation. For both efficiency families, the inferred fan is separated from integrated heating capacity/power before coil duty scaling; see the next page. The catalog’s fan operating point is not independently reproduced by this estimate.","small")
 
 page(5,"Hourly fan heat and heater energy")
 h("Fan schedule and thermal balance")
@@ -109,9 +114,9 @@ h("Sizing and delivery")
 p("For each size, check integer counts starting at the ventilation minimum. Recalculate mixed air and fan heat for each count; check sensible and latent cooling separately. If heat-pump heating is selected, also check net heating capacity. Gas/resistance heater capacity is sized separately after fan heat credit.")
 eq("Available sensible cooling = units x gross capacity x SHR\nAvailable latent cooling = units x gross capacity x (1-SHR)\nGross coil need = max(S_fan/SHR, L/(1-SHR))\nDelivered gross cooling = min(gross need, installed gross capacity)\nUnmet cooling = max(0,S_fan-delivered x SHR)\n              + max(0,L-delivered x (1-SHR))")
 p("Retain the first passing count per size. Check source-covered and boundary-estimated hours; prefer fewer unavailable load checks, fewer units, then less nominal tonnage. No sizing margin is added. If no candidate passes, retain a labeled reference-condition estimate and report unresolved checks. Missing inputs stay unavailable.")
-h("Curve domain and source anomalies")
+h("Curve domain")
 p("Cooling entering WB is 61-73 F and entering DB 75-90 F. Outdoor DB is generally 85-125 F; standard 10-ton ends at 120 F. Both 25-ton fits require outdoor DB + 2 x entering DB <= 295. Screening mode evaluates the nearest covered point in the valid-point convex hull, using the normalized fit coordinates. Polynomials are not extrapolated. Actual weather and mixed air remain in the load calculation. Heating below -8 F may be overstated; extended data are needed for design sizing.")
-p("Manufacturer blanks are missing, not zero. Both 17.5-ton cooling fits retain the flagged 156.6 MBh source entry. Positive demand in a zero-SHR component remains unmet. Excess sensible removal is not corrected by reheat.","small")
+p("Manufacturer blanks are missing, not zero. Positive demand in a zero-SHR component remains unmet. Excess sensible removal is not corrected by reheat.","small")
 
 page(7,"Interpretation, sources and checks")
 h("Building and weather basis")
@@ -123,7 +128,7 @@ p("Total site energy combines electricity kWh x 3412.141633 / 1e6 and gas therms
 p("Annual totals require 8,760 unique, valid, complete hourly energy records. Screening estimates include boundary-held performance. The CSV records estimated-hour counts and the curve temperatures separately from actual weather and mixed air. Missing inputs remain unavailable; they are not zero. Check coverage and unmet loads alongside totals.")
 h("Source and verification trail")
 p('Supplied equipment datasets: cooling tables 10-33; heating tables 58-73; general-data tables 6-7, pages 24-29. Source hashes and dataset provenance are retained with the internal data records. The rating CSV distinguishes published system power from inferred fan values. Fan inference follows the gross/net method in the <link href="https://www.energycodes.gov/sites/default/files/2024-08/90.1_Secton_11_and%29_Appendix_G_Review_Manual_V04.pdf" color="#286E64">DOE submittal review manual</link>. Psychrometrics follow <link href="https://psychrometrics.github.io/psychrolib/_modules/psychrolib.html" color="#286E64">PsychroLib / ASHRAE</link>.',"small")
-p("Checks cover 1,632 heating points, all 24 nominal power values, fan inference, full-output power reconciliation, partial duty, gas/resistance heat credit, fan-only ventilation, fan-induced cooling, required cooling, automatic labels, source domains, both efficiency families, annual energy, CSVs and rendered controls. The guide does not resolve thermal storage, detailed zoning, equipment staging, fan curves or actual controls.","small")
+p("Checks cover 1,628 heating points, all 24 nominal power values, fan inference, full-output power reconciliation, partial duty, gas/resistance heat credit, fan-only ventilation, fan-induced cooling, required cooling, automatic labels, source domains, both efficiency families, annual energy, CSVs and rendered controls. The guide does not resolve thermal storage, detailed zoning, equipment staging, fan curves or actual controls.","small")
 
 def footer(canvas,doc):
     canvas.saveState(); canvas.setStrokeColor(colors.HexColor("#D9E3EA"));canvas.line(54,43,558,43)
