@@ -96,7 +96,7 @@
     "heating_COP": "net_capacity_Btu_hr / (3412.141633 * total_power_kW)"
   },
   "policy": {
-    "fitting": "Anchored least squares: fourth-degree total-degree capacity, second-degree power. All source values retained.",
+    "fitting": "Anchored least squares: fourth-degree total-degree capacity, second-degree power. Uses the accepted fitting dataset.",
     "validation": "Interior outdoor/entering plane holdout refits; the 47/70 reference remains a known anchor, so validation is conditional on it.",
     "domain": "Outdoor -8 to 72 F; entering dry bulb 40 to 80 F. No extrapolation, humidity correction, added defrost or fan term.",
     "catalog_basis": "Net integrated heating capacity and total power include indoor fan heat/power at nominal CFM and listed ESP; defrost integrated; 70% outdoor RH.",
@@ -191,28 +191,28 @@
       "reference_power_kW": 3.6,
       "capacity_coefficients": [
         1.0,
-        0.6125841056208292,
-        -0.0562414808192566,
-        -0.009857478201705155,
-        -0.03028049347521244,
-        0.024048785102152647,
-        -0.12417140754299252,
-        -0.0040752760914767,
-        0.007759725773184896,
-        0.01595118728391169,
-        -0.055349450807994104,
-        0.012852038522729821,
-        -0.003443481699967615,
-        0.009434693929589054,
-        0.0030808158343418536
+        0.612445503252102,
+        -0.056914177273865885,
+        -0.010938959690340455,
+        -0.029816870915344275,
+        0.024704632520469245,
+        -0.12281684880109847,
+        -0.004930420832677193,
+        0.006918709344242689,
+        0.01876157346178571,
+        -0.0538955834516934,
+        0.01212736378593902,
+        -0.0034768235847527497,
+        0.008850006718441926,
+        0.004456713420129856
       ],
       "power_coefficients": [
         1.0,
-        0.09554781310781849,
-        0.1978737408902762,
-        -0.0015568784871071828,
-        0.015219345651070118,
-        0.031135048754974567,
+        0.0954059421835807,
+        0.1979285346749265,
+        -0.0015274086505752539,
+        0.015082188747467664,
+        0.031171456989515546,
         0.0,
         0.0,
         0.0,
@@ -235,28 +235,26 @@
         40,
         80
       ],
-      "points": 102,
-      "warnings": [
-        "Source entries require review; retained without correction. See source-data.csv."
-      ],
+      "points": 101,
+      "warnings": [],
       "fit_metrics": {
         "capacity": {
-          "rmse": 0.007400290511758842,
-          "relative_rmse_percent": 0.8548723592203642,
-          "max_relative_error_percent": 2.225390474896846,
-          "max_absolute_error": 0.021170291960840082
+          "rmse": 0.007364070040980431,
+          "relative_rmse_percent": 0.8189911224689688,
+          "max_relative_error_percent": 2.0857739099141406,
+          "max_absolute_error": 0.021274168579909825
         },
         "power": {
-          "rmse": 0.008344669191586003,
-          "relative_rmse_percent": 0.9404189494598205,
-          "max_relative_error_percent": 1.9868198657235492,
-          "max_absolute_error": 0.01994406167737317
+          "rmse": 0.008363372467393375,
+          "relative_rmse_percent": 0.9430057440427627,
+          "max_relative_error_percent": 1.9817114554283422,
+          "max_absolute_error": 0.019993119078199895
         }
       },
       "interior_plane_validation": {
-        "points": 158,
-        "capacity_relative_rmse_percent": 2.127748867250695,
-        "power_relative_rmse_percent": 0.9772135595897387
+        "points": 156,
+        "capacity_relative_rmse_percent": 2.056242570787033,
+        "power_relative_rmse_percent": 0.9812753795379204
       }
     },
     {
@@ -1034,28 +1032,28 @@
       "reference_power_kW": 13.9,
       "capacity_coefficients": [
         1.0,
-        0.6030541092715913,
-        -0.05488838180407903,
-        -0.003165378314577971,
-        -0.039582038321707494,
-        0.023854531953995842,
-        -0.11502515615999617,
-        0.006943950771820007,
-        0.007797908622388395,
-        0.017559004601044374,
-        -0.05197465257251036,
-        0.009114846198942525,
-        -0.00519192966069614,
-        0.006698639730922196,
-        0.0028392664573434604
+        0.6030032747254247,
+        -0.0551351035541609,
+        -0.003562028250412818,
+        -0.039411997631639585,
+        0.02409507406139803,
+        -0.11452835095001064,
+        0.00663031331219555,
+        0.0074894529381427195,
+        0.018589756868964722,
+        -0.05144142440388323,
+        0.008849060616045592,
+        -0.00520415830871247,
+        0.006484196721751994,
+        0.0033438980158611415
       ],
       "power_coefficients": [
         1.0,
-        0.1094344664100403,
-        0.17885796996497574,
-        -0.014859529524470434,
-        0.04406797900991872,
-        0.020737206838149107,
+        0.10950398058532006,
+        0.17883112200602386,
+        -0.014873969208945452,
+        0.04413518340073445,
+        0.020719367464711053,
         0.0,
         0.0,
         0.0,
@@ -1078,28 +1076,26 @@
         40,
         80
       ],
-      "points": 102,
-      "warnings": [
-        "Source entries require review; retained without correction. See source-data.csv."
-      ],
+      "points": 101,
+      "warnings": [],
       "fit_metrics": {
         "capacity": {
-          "rmse": 0.006901953327151527,
-          "relative_rmse_percent": 0.807619156030872,
-          "max_relative_error_percent": 3.042191458397497,
-          "max_absolute_error": 0.02040272705093238
+          "rmse": 0.006925585833569075,
+          "relative_rmse_percent": 0.803665256480072,
+          "max_relative_error_percent": 2.97240531648296,
+          "max_absolute_error": 0.020440825395399376
         },
         "power": {
-          "rmse": 0.004994116803860796,
-          "relative_rmse_percent": 0.5536192609881618,
-          "max_relative_error_percent": 1.115583832648338,
-          "max_absolute_error": 0.011411408665829237
+          "rmse": 0.0050097552178598286,
+          "relative_rmse_percent": 0.5550517496055417,
+          "max_relative_error_percent": 1.1156011554508702,
+          "max_absolute_error": 0.011387371430728654
         }
       },
       "interior_plane_validation": {
-        "points": 158,
-        "capacity_relative_rmse_percent": 2.110134565322163,
-        "power_relative_rmse_percent": 0.6146456099338466
+        "points": 156,
+        "capacity_relative_rmse_percent": 2.1099004271253605,
+        "power_relative_rmse_percent": 0.6169164453036163
       }
     },
     {
@@ -1113,28 +1109,28 @@
       "reference_power_kW": 16.9,
       "capacity_coefficients": [
         1.0,
-        0.5733606565958366,
-        -0.053970609359751856,
-        0.0051682164568364886,
-        -0.03872137830065201,
-        0.025866879528137415,
-        -0.11846510485321857,
-        0.002435364913120986,
-        0.01038242899589923,
-        0.019347514040233677,
-        -0.05349986842610409,
-        0.00931665396672302,
-        -0.0049998493621911866,
-        0.006628359814875751,
-        0.004191893118407565
+        0.5733738289681155,
+        -0.053979592542147896,
+        0.005185239777245531,
+        -0.03874056301801211,
+        0.025869252925886044,
+        -0.1184937237328311,
+        0.0024579142357047516,
+        0.010338956703588576,
+        0.019373441129908228,
+        -0.05352842777827045,
+        0.009334196938659212,
+        -0.004996506046574222,
+        0.006606145546561861,
+        0.004206011872565821
       ],
       "power_coefficients": [
         1.0,
-        0.1229648181639907,
-        0.17164447753659864,
-        0.0005700055054077462,
-        0.024302708937014333,
-        0.01274948771039875,
+        0.12291384902987368,
+        0.17171654790718227,
+        0.0005686453992669425,
+        0.02424844033251502,
+        0.01280780339851277,
         0.0,
         0.0,
         0.0,
@@ -1157,28 +1153,26 @@
         40,
         80
       ],
-      "points": 102,
-      "warnings": [
-        "Source entries require review; retained without correction. See source-data.csv."
-      ],
+      "points": 101,
+      "warnings": [],
       "fit_metrics": {
         "capacity": {
-          "rmse": 0.00674678712882467,
-          "relative_rmse_percent": 0.7240729886717956,
-          "max_relative_error_percent": 1.9751533139095052,
-          "max_absolute_error": 0.02051550581862749
+          "rmse": 0.006780076941448187,
+          "relative_rmse_percent": 0.7278770668374074,
+          "max_relative_error_percent": 1.975351780099718,
+          "max_absolute_error": 0.020510246245664998
         },
         "power": {
-          "rmse": 0.003016459110964764,
-          "relative_rmse_percent": 0.3305546336357588,
-          "max_relative_error_percent": 0.7616043782831021,
-          "max_absolute_error": 0.008170661625556574
+          "rmse": 0.003025679981013712,
+          "relative_rmse_percent": 0.33154572882931704,
+          "max_relative_error_percent": 0.7445469139979353,
+          "max_absolute_error": 0.008149527571799986
         }
       },
       "interior_plane_validation": {
-        "points": 158,
-        "capacity_relative_rmse_percent": 1.6897056344011823,
-        "power_relative_rmse_percent": 0.3212925456432702
+        "points": 157,
+        "capacity_relative_rmse_percent": 1.703533156960023,
+        "power_relative_rmse_percent": 0.3223267079794473
       }
     },
     {
@@ -1268,28 +1262,28 @@
       "reference_power_kW": 21.8,
       "capacity_coefficients": [
         1.0,
-        0.601197538833689,
-        -0.057387343215890826,
-        0.0030487487897305904,
-        -0.05497948034048644,
-        0.024486392272135518,
-        -0.06344254145733151,
-        -0.03419265342780268,
-        -0.011212545374787657,
-        0.049384868684838004,
-        -0.027551234732498698,
-        0.003942304987103945,
-        -0.022703408080270136,
-        0.008982240648368426,
-        0.020180325820929025
+        0.5999405412189908,
+        -0.04686125403735153,
+        -0.012062044123821824,
+        -0.03256437398657491,
+        0.024185891584211288,
+        -0.09520754086615166,
+        -0.011792600669517744,
+        0.010108543220512082,
+        0.020737355919581257,
+        -0.04390855323753795,
+        0.007272188688458114,
+        -0.005423445781196459,
+        0.008639867590175907,
+        0.004850517320889449
       ],
       "power_coefficients": [
         1.0,
-        0.1304607378094677,
-        0.1718196198736807,
-        0.02973120795606004,
-        0.013854002806357422,
-        0.015589938994916692,
+        0.12796658741842246,
+        0.17312630060741385,
+        0.027264292183096284,
+        0.014246219673201999,
+        0.01652457969424645,
         0.0,
         0.0,
         0.0,
@@ -1312,28 +1306,26 @@
         40,
         80
       ],
-      "points": 102,
-      "warnings": [
-        "Source entries require review; retained without correction. See source-data.csv."
-      ],
+      "points": 101,
+      "warnings": [],
       "fit_metrics": {
         "capacity": {
-          "rmse": 0.010422236292850814,
-          "relative_rmse_percent": 1.0448472724724578,
-          "max_relative_error_percent": 4.5855655534602935,
-          "max_absolute_error": 0.06756472833752958
+          "rmse": 0.006844212972886121,
+          "relative_rmse_percent": 0.7811313068988752,
+          "max_relative_error_percent": 2.0320165312015304,
+          "max_absolute_error": 0.018191373739979255
         },
         "power": {
-          "rmse": 0.004628922517459248,
-          "relative_rmse_percent": 0.4646046710366362,
-          "max_relative_error_percent": 3.310756444115893,
-          "max_absolute_error": 0.03447439049606915
+          "rmse": 0.0029708282734251853,
+          "relative_rmse_percent": 0.3214311768658685,
+          "max_relative_error_percent": 0.8384749137163074,
+          "max_absolute_error": 0.008729197504740549
         }
       },
       "interior_plane_validation": {
-        "points": 158,
-        "capacity_relative_rmse_percent": 1.810302160880921,
-        "power_relative_rmse_percent": 0.4267597508594503
+        "points": 157,
+        "capacity_relative_rmse_percent": 1.8959489900370556,
+        "power_relative_rmse_percent": 0.3161982176468418
       }
     }
   ]

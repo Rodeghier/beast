@@ -1,16 +1,12 @@
 "use client";
-import { useId, useState } from "react";
-import { coolingFor, scenarioName, newScenario, EQUIPMENT_NAMES, type EquipmentScenario, type HeatingEquipment } from "@/lib/equipment";
+import { useId } from "react";
+import { coolingFor, scenarioName, EQUIPMENT_NAMES, type EquipmentScenario, type HeatingEquipment } from "@/lib/equipment";
 import { unitRatingFor } from "@/lib/unit-ratings";
 import type { EquipmentResult } from "@/lib/equipment-model";
-import { InputModeChoice, InputSection } from "./input-section";
 function EquipmentEditor({value,onChange}:{value:EquipmentScenario;onChange:(v:EquipmentScenario)=>void}) {
  const id=useId(),cooling=coolingFor(value);
- const [customChoice,setCustom]=useState(false);
- const custom=customChoice||value.efficiency!=="standard"||!cooling;
  return <>
-  <InputModeChoice custom={custom} onChange={next=>{setCustom(next);if(!next)onChange({...newScenario(value.heating),cooling:"heat-pump"});}}/>
-  <fieldset className="equipment-fields" disabled={!custom}><legend className="sr-only">Equipment choices</legend>
+  <fieldset className="equipment-fields"><legend className="sr-only">Equipment choices</legend>
   <label htmlFor={`${id}-heating`}>Heating equipment<select id={`${id}-heating`} value={value.heating} onChange={e=>{const heating=e.target.value as HeatingEquipment;onChange({...value,heating,cooling:heating==="heat-pump"?"heat-pump":value.heating==="heat-pump"?null:value.cooling});}}>{Object.entries(EQUIPMENT_NAMES).map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>
   {value.heating!=="heat-pump"?<label htmlFor={`${id}-cooling`}>Cooling equipment · required<select id={`${id}-cooling`} form="analysis-inputs" required value={cooling??""} onChange={e=>onChange({...value,cooling:e.target.value==="heat-pump"?"heat-pump":null})}><option value="" disabled>Select cooling equipment</option><option value="heat-pump">Rooftop Packaged Heat Pump</option></select></label>:<p><strong>Cooling:</strong> Rooftop Packaged Heat Pump</p>}
   {cooling&&<label htmlFor={`${id}-family`}>Heat-pump efficiency family<select id={`${id}-family`} value={value.efficiency} onChange={e=>onChange({...value,efficiency:e.target.value as EquipmentScenario["efficiency"]})}><option value="standard">Standard efficiency</option><option value="high">High efficiency</option></select></label>}
@@ -22,13 +18,13 @@ export function EquipmentScenarios({choices,onChange,results=[],active,onActive,
  return <section className="equipment-scenarios" aria-label="Equipment scenarios"><h3>Equipment comparison</h3>
  {onAdd&&<button type="button" className="button secondary add-curve" disabled={choices.length>=3} onClick={onAdd}>Add equipment combination ({choices.length}/3)</button>}
  <div className="scenario-grid">{choices.map((choice,i)=>{const result=results[i],s=result?.selection,rating=s?unitRatingFor(s.model):null;return <div className="scenario-card equipment-editor" key={i}><div className="scenario-title"><h4>{scenarioName(choice)}</h4>{onRemove&&choices.length>1&&<button type="button" className="button text-button" onClick={()=>onRemove(i)}>Remove</button>}</div>
- <InputSection title="Equipment inputs" description={`${choice.efficiency==="high"?"High":"Standard"} efficiency`}><EquipmentEditor value={choice} onChange={v=>onChange(i,v)}/></InputSection>
+ <EquipmentEditor value={choice} onChange={v=>onChange(i,v)}/>
  {s&&<div className="equipment-selection"><strong>{s.count} × {s.model.nominal_tons} ton cooling units</strong><p>{s.totalTons.toLocaleString()} nominal tons total · {s.supplyCfm.toLocaleString()} CFM</p><p>{(s.referenceCoolingBtuHr/1000).toLocaleString(undefined,{maximumFractionDigits:1})} MBh gross cooling at reference conditions.</p>
  {rating&&<p>{(s.count*rating.cooling_system_power_kW).toFixed(2)} kW nominal total cooling input; {(s.count*rating.inferred_supply_fan_power_kW).toFixed(2)} kW estimated supply fan, already included in that total.</p>}
  {choice.heating==="heat-pump"&&<p>{(s.referenceHeatingBtuHr/1000).toLocaleString(undefined,{maximumFractionDigits:1})} MBh net heating at 47°F outdoor / 70°F entering dry bulb.</p>}
  <p>Within source coverage: {s.verifiedCoolingHours.toLocaleString()} cooling hours{choice.heating==="heat-pump"&&` · ${s.verifiedHeatingHours.toLocaleString()} heating hours`}.</p>
  {!!(s.unverifiedHeatingHours+s.unverifiedCoolingHours)&&<p className="model-error" role="status"><strong>Incomplete sizing coverage:</strong> {s.unverifiedHeatingHours.toLocaleString()} heating and {s.unverifiedCoolingHours.toLocaleString()} cooling hours could not be checked. Review the input data and exported status details.</p>}
- {!!(s.model.warnings.length+(choice.heating==="heat-pump"?s.heatingModel.warnings.length:0))&&<p className="model-error">Selected fits contain flagged source values. Review the source data and fit reports.</p>}</div>}
+ </div>}
  {result&&choice.heating!=="heat-pump"&&result.heatingCapacityBtuHr!==null&&<p className="equipment-selection"><strong>{(result.heatingCapacityBtuHr/1000).toLocaleString(undefined,{maximumFractionDigits:1})} MBh heater output</strong><br/>Peak heating demand after fan heat credit.</p>}
  {result?.error&&<p className="model-error" role="alert">{result.error}</p>}
  {result&&result.summary.completeHours>0&&<p>{result.summary.completeHours.toLocaleString()} complete energy hours. Electricity: {result.summary.electricity?.toLocaleString(undefined,{maximumFractionDigits:1})??"Unavailable"} kWh; supply fan: {result.summary.fanElectricity?.toLocaleString(undefined,{maximumFractionDigits:1})??"Unavailable"} kWh across hours with fan data. Corresponding fan use is counted once in complete-hour electricity. Gas: {result.summary.gasTherms?.toLocaleString(undefined,{maximumFractionDigits:1})??"Unavailable"} therms.</p>}

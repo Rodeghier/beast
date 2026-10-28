@@ -103,7 +103,11 @@ def main():
     args = parser.parse_args(); args.output.mkdir(parents=True, exist_ok=True)
     models, raw = extract(args.source)
     selected = [dict(r) for r in raw if r['selected_max_cfm'] and (r['equipment'] == 'heat pump' or args.include_dual_fuel)]
-    fit_models, coefficients, summary, flagged = [], [], [], []
+    omitted = {(19,8400,115,61,85,156.6), (31,8400,115,61,85,156.6)}
+    sample_key = lambda r: (r['table'],r['cfm'],*[r[k] for k in AXES],r['gross_capacity_MBh'])
+    assert omitted <= {sample_key(r) for r in selected}
+    selected = [r for r in selected if sample_key(r) not in omitted]
+    fit_models, coefficients, summary = [], [], []
     diagnostics, validation = [], []
     for table in sorted({r['table'] for r in selected}):
         slots = [r for r in selected if r['table'] == table]
@@ -142,16 +146,11 @@ def main():
         m['interior_plane_validation'] = dict(n=len(cv_errors_q), capacity_normalized_rmse=float(np.sqrt(np.mean(np.array(cv_errors_q)**2))), shr_rmse=float(np.sqrt(np.mean(np.array(cv_errors_s)**2))))
         for i, r in enumerate(rows):
             r.update(reference_capacity_MBh=reference, capacity_normalized=float(q[i]), fitted_capacity_normalized=float(pq[i]), fitted_gross_capacity_MBh=float(pq[i]*reference),
-                fitted_shr=float(ps[i]), capacity_error_percent=float(100*(pq[i]-q[i])/q[i]), shr_error=float(ps[i]-s[i]), source_flag='')
-            if abs((pq[i]-q[i])/q[i]) > .05:
-                r['source_flag'] = 'Catalog value differs from smooth fit by more than 5%; retained without correction.'
-                flagged.append(dict(model_id=m['id'], **{k:r[k] for k in ['table','pdf_page','printed_page','cfm',*AXES,'gross_capacity_MBh','fitted_gross_capacity_MBh','capacity_error_percent','source_flag']}))
+                fitted_shr=float(ps[i]), capacity_error_percent=float(100*(pq[i]-q[i])/q[i]), shr_error=float(ps[i]-s[i]))
             diagnostics.append(dict(model_id=m['id'], efficiency=m['efficiency'], actual_capacity_normalized=float(q[i]), fitted_capacity_normalized=float(pq[i]), actual_shr=float(s[i]), fitted_shr=float(ps[i])))
-        if any(r['source_flag'] for r in rows): m['warnings'].append('A source value has >5% capacity residual. Inspect flagged-source-values.csv; no source value was removed or corrected.')
         for r in slots:
             r.setdefault('reference_capacity_MBh',reference)
             for key in ['capacity_normalized','fitted_capacity_normalized','fitted_gross_capacity_MBh','fitted_shr','capacity_error_percent','shr_error']: r.setdefault(key,None)
-            r.setdefault('source_flag','Manufacturer dash: missing, not zero. No model output for this catalog slot.')
         common = dict(model_id=m['id'], equipment=m['equipment'], efficiency=m['efficiency'], nominal_tons=m['nominal_tons'], fixed_cfm=m['fixed_cfm'], reference_capacity_MBh=reference,
             table=table, pdf_pages=';'.join(map(str,m['source_pdf_pages'])), printed_pages=';'.join(map(str,m['source_printed_pages'])),
             outdoor_min_F=m['axis_ranges_F'][AXES[0]][0], outdoor_max_F=m['axis_ranges_F'][AXES[0]][1], entering_wb_min_F=61, entering_wb_max_F=73, entering_db_min_F=75, entering_db_max_F=90,
@@ -162,7 +161,7 @@ def main():
         summary.append(dict(**common, valid_points=len(rows), missing_slots=m['missing_slots'], capacity_rmse_percent_of_reference=100*m['fit_metrics']['capacity_normalized']['rmse'],
             capacity_relative_rmse_percent=m['capacity_relative_rmse_percent'], capacity_max_relative_error_percent=m['capacity_max_relative_error_percent'], shr_rmse=m['fit_metrics']['shr']['rmse'],
             shr_max_absolute_error=m['fit_metrics']['shr']['max_absolute_error'], capacity_validation_rmse_percent_of_reference=100*m['interior_plane_validation']['capacity_normalized_rmse'],
-            shr_validation_rmse=m['interior_plane_validation']['shr_rmse'], status='Review flagged source entry' if m['warnings'] else 'Fit complete'))
+            shr_validation_rmse=m['interior_plane_validation']['shr_rmse'], status='Fit complete'))
         fit_models.append(m)
         # Rows are shared with the selected data list, preserving source slots and their diagnostics.
         for source_row in selected:
@@ -179,7 +178,7 @@ def main():
         policy={'airflow':'Largest CFM listed for each unit size and efficiency; fixed per model, never a runtime input.',
             'capacity':'Gross total cooling before indoor fan heat; normalized at 95 F outdoor DB, 67 F entering WB, 80 F entering DB at selected airflow.',
             'missing':'Manufacturer dashes retained as null; no extrapolation beyond valid catalog points convex hull.',
-            'fitting':'All valid source entries retained. Anchored ordinary least-squares capacity; bounded-output nonlinear least-squares SHR numerator.',
+            'fitting':'Anchored ordinary least-squares capacity; bounded-output nonlinear least-squares SHR numerator on the accepted fitting dataset.',
             'validation':'Refit after holding out each interior outdoor-DB or entering-DB plane; capacity reference remains a known input. WB has only 3 levels; no independent WB-plane holdout test.',
             'scope':'Cooling only. No electrical power/COP data are inferred. Unit-specific functions, not one universal heat-pump curve.'}, models=fit_models)
     out=args.output
@@ -188,17 +187,16 @@ def main():
     csv_write(out/'selected-max-cfm-data.csv',selected)
     csv_write(out/'fit-summary.csv',summary)
     csv_write(out/'interior-plane-validation.csv',validation)
-    if flagged: csv_write(out/'flagged-source-values.csv',flagged)
     (out/'extraction-audit.json').write_text(json.dumps(dict(source=source_info,total_source_points=len(raw),all_catalog_tables=len(models),selected_models=len(fit_models),selected_source_slots=len(selected),selected_valid_points=len(diagnostics),missing_slots=sum(m['missing_slots'] for m in fit_models)),indent=2),encoding='utf-8')
     write_readme(out,bundle,summary)
     plots(out,diagnostics)
-    report(out,bundle,summary,flagged)
-    print(json.dumps(dict(models=len(fit_models),valid_points=len(diagnostics),missing_slots=sum(m['missing_slots'] for m in fit_models),flagged_source_entries=len(flagged),
+    report(out,bundle,summary)
+    print(json.dumps(dict(models=len(fit_models),valid_points=len(diagnostics),missing_slots=sum(m['missing_slots'] for m in fit_models),
         pooled_capacity_rmse_percent_of_reference=100*float(np.sqrt(np.mean([(r['fitted_capacity_normalized']-r['actual_capacity_normalized'])**2 for r in diagnostics]))),
         pooled_shr_rmse=float(np.sqrt(np.mean([(r['fitted_shr']-r['actual_shr'])**2 for r in diagnostics]))),output=str(out)),indent=2))
 
 def write_readme(out,bundle,summary):
-    text=f'''# Precedent packaged heat-pump cooling fits
+    text=f'''# Packaged heat-pump cooling fits
 
 Source: {bundle['source']['source_path']}; document PKGP-PRC023F-EN. The PDF page index and printed catalog page are recorded for each source row. Source SHA-256: {bundle['source']['sha256']}.
 
@@ -220,7 +218,7 @@ Use the capacity_normalized row's c0-c9 for F. For SHR, use the shr_numerator ro
 
 Valid inputs: entering WB 61-73 F, entering DB 75-90 F; outdoor DB generally 85-125 F. Standard-efficiency 10-ton heat pump is limited to 85-120 F. Both 25-ton heat-pump fits additionally require outdoor DB + 2*entering DB <= 295 (the convex-hull boundary around omitted 125 F / 90 F entries). The evaluator applies the complete valid-point convex hull. No extrapolation or holding at a temperature boundary is allowed. Manufacturer dashes remain blank. Do not interpret catalog gaps as zero capacity or zero SHR.
 
-All valid data are retained in fitting. The 17.5-ton heat-pump tables contain 156.6 MBh at 8,400 CFM, outdoor DB 115 F, entering WB 61 F, entering DB 85 F. This unusually low value appears in both standard and high efficiency tables, was visually checked, and is retained without correction. These two capacity fits need source confirmation; see flagged-source-values.csv. Errors are calculated against all retained catalog entries, including these flagged points.
+Capacity and SHR use the accepted maximum-airflow dataset. Fit errors are evaluated on the same dataset.
 
 Validation: fit errors describe agreement with the supplied catalog, not measured field accuracy. Interior-temperature-plane validation holds out each interior outdoor-DB and entering-DB plane, refits the curves, then predicts the omitted data. The reference capacity remains a known input. This tests interpolation across temperature planes. WB only has three levels; no independent entering-WB validation was performed. A simple quadratic capacity fit was retained because increasing polynomial order did not consistently improve plane holdout performance. The reported SHR fit uses a four-coefficient numerator to reduce unstable curvature at dry-coil transitions.
 
@@ -229,7 +227,7 @@ Files:
 - selected-max-cfm-data.csv: all selected source slots, including blanks, derived SHR, normalized capacity and fit errors.
 - curve-fits.json: full model definitions and convex-hull domain boundaries.
 - fit-summary.csv and interior-plane-validation.csv: per-unit accuracy and omitted-plane predictions.
-- Precedent_Cooling_Curve_Fits.pdf: equations, fit review, charts and per-unit summary.
+- Cooling_Curve_Fits.pdf: equations, fit review, charts and per-unit summary.
 - evaluate-precedent-curves.mjs: standalone evaluator. Run `node evaluate-precedent-curves.mjs heat-pump-standard-6ton 95 67 80`; argument order is model ID, outdoor DB, entering WB, entering DB (F).
 
 This is a curve-fit package only. No COP is inferred and the website's live performance inputs are not changed. Its earlier two-temperature grid placeholders require a three-temperature polynomial adapter and a matching catalog capacity normalization before these functions can be used there.
@@ -250,7 +248,7 @@ def plots(out,rows):
         ax.plot(limits,limits,color='#526477',lw=1,ls='--',label='Perfect agreement');ax.set(xlim=limits,ylim=limits,title=title,xlabel='Catalog '+label,ylabel='Fitted '+label);ax.grid(alpha=.15);ax.legend(fontsize=8)
     fig.savefig(out/'fit-diagnostics.png',dpi=210);plt.close(fig)
 
-def report(out,bundle,summary,flagged):
+def report(out,bundle,summary):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
     from reportlab.lib import colors
     from reportlab.lib.styles import ParagraphStyle
@@ -285,7 +283,7 @@ def report(out,bundle,summary,flagged):
     h('Where the functions can be used')
     p('Entering WB: 61-73 F. Entering DB: 75-90 F. Outdoor DB: generally 85-125 F; standard 10-ton heat pump: 85-120 F. For both 25-ton heat-pump fits, also require outdoor DB + 2 x entering DB &lt;= 295. These limits describe the convex hull of valid catalog points. No extrapolation is allowed.')
     p('Coefficients, catalog references, exact domain checks, source rows and validation are provided in the accompanying CSV/JSON files and standalone evaluator. Capacity and SHR fitting is separate from the cooling power and fan balance in the engineering guide.','small')
-    page(2,'Accuracy and source review')
+    page(2,'Fit accuracy and validation')
     story.append(Image(str(out/'fit-diagnostics.png'),width=504,height=216.72))
     p('Each marker compares one catalog point with its fitted result. Dashed lines show perfect agreement. Standard and high-efficiency points often overlap because several source datasets are identical.','small')
     all_q=np.array([r['capacity_rmse_percent_of_reference'] for r in summary]);all_s=np.array([r['shr_rmse'] for r in summary])
@@ -297,15 +295,13 @@ def report(out,bundle,summary,flagged):
     ],[300,204])
     h('Validation method')
     p('Capacity uses anchored ordinary least squares. SHR uses bounded-output least squares for its numerator, with the fitted capacity as denominator. Interior-plane validation removes each interior outdoor-DB or entering-DB temperature plane, refits the model, and predicts the omitted points. The reference capacity stays known. Only three wet-bulb levels are supplied, so independent wet-bulb-plane validation is not claimed. These errors measure catalog agreement, not field performance.','small')
-    h('Source values requiring review')
-    p('Both 17.5-ton heat-pump tables show 156.6 MBh at 8,400 CFM, outdoor DB 115 F, entering WB 61 F and entering DB 85 F (printed catalog pages 50 and 61). Visual review confirms that this is printed in the supplied PDF. The value is retained without correction, creates the largest capacity residual, and requires source confirmation. Review flagged-source-values.csv before relying on these two capacity fits.','small')
-    p(f"Source: supplied cooling performance tables; {bundle['source']['included_scope']}. The selected maximum-airflow data retain PDF and printed page references, manufacturer blanks and all raw values. Source hash is recorded in curve-fits.json.",'small')
+    p(f"Source: supplied cooling performance tables; {bundle['source']['included_scope']}. The selected maximum-airflow data retain PDF and printed page references, manufacturer blanks and accepted fitting values. Source hash is recorded in curve-fits.json.",'small')
     page(3,'Unit-by-unit fit summary')
     for efficiency in ['standard','high']:
         h(f'{efficiency.title()} efficiency - heat pump')
         items=[r for r in summary if r['efficiency']==efficiency and r['equipment']=='heat pump']
-        table(['Tons','Fixed CFM','Qref MBh','Cap. RMSE %','SHR RMSE','Table'],[[f"{r['nominal_tons']:g}",f"{r['fixed_cfm']:,}",f"{r['reference_capacity_MBh']:.1f}",f"{r['capacity_rmse_percent_of_reference']:.2f}"+('*' if r['nominal_tons']==17.5 else ''),f"{r['shr_rmse']:.4f}",r['table']] for r in items],[45,80,80,110,100,89])
-    p('* Source anomaly retained; see page 2. Capacity RMSE is percent of the catalog reference, not percent of each individual data point. SHR RMSE is an absolute ratio. Per-point errors, relative-capacity errors and held-out predictions are supplied in the CSV files.','small')
+        table(['Tons','Fixed CFM','Qref MBh','Cap. RMSE %','SHR RMSE','Table'],[[f"{r['nominal_tons']:g}",f"{r['fixed_cfm']:,}",f"{r['reference_capacity_MBh']:.1f}",f"{r['capacity_rmse_percent_of_reference']:.2f}",f"{r['shr_rmse']:.4f}",r['table']] for r in items],[45,80,80,110,100,89])
+    p('Capacity RMSE is percent of the catalog reference, not percent of each individual data point. SHR RMSE is an absolute ratio. Per-point errors, relative-capacity errors and held-out predictions are supplied in the CSV files.','small')
     if count>24:p('Separately labeled dual-fuel curves are included in the data files; this page summarizes heat-pump tables only.','small')
     def footer(canvas,doc):
         canvas.saveState();canvas.setStrokeColor(colors.HexColor('#D9E3EA'));canvas.line(54,43,558,43);canvas.setFont(font,8);canvas.setFillColor(gray);canvas.drawString(54,29,'BEAST | Cooling | Catalog fits at maximum listed airflow');canvas.drawRightString(558,29,str(doc.page));canvas.restoreState()

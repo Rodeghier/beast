@@ -16,7 +16,6 @@ import { EquipmentScenarios } from "@/components/equipment-scenarios";
 import { LoadSummary, formatLoad } from "@/components/load-summary";
 import { AnalysisAssumptions } from "@/components/analysis-assumptions";
 import { LocationEnergy } from "@/components/location-energy";
-import { InputModeChoice, InputSection } from "@/components/input-section";
 
 const DOCS = "https://developer.nlr.gov/docs/climate/sup3rcc/sup3rcc-conus-ecearth3cc-ssp245-r1i1p1f1-v0-2-2-download/";
 type Result = { place: Place; year: number; data: ClimateData; csv: string };
@@ -41,7 +40,6 @@ export default function Home() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [year, setYear] = useState("2025");
-  const [customYear, setCustomYear] = useState(false);
   const [tab, setTab] = useState("query");
   const [stage, setStage] = useState<Stage>("idle");
   const [error, setError] = useState("");
@@ -146,7 +144,7 @@ export default function Home() {
         async execute(input) {
           const q = input as { city: string; state: string; year: number };
           if (!q || typeof q.city !== "string" || q.city.trim().length < 1 || q.city.length > 100 || !Object.hasOwn(STATES, q.state) || !Number.isInteger(q.year) || q.year < MIN_YEAR || q.year > MAX_YEAR) throw new Error("Enter a city, a US state code, and a year from 2015 to 2059.");
-          setCity(q.city); setState(q.state); setYear(String(q.year)); setCustomYear(q.year!==2025);
+          setCity(q.city); setState(q.state); setYear(String(q.year));
           const response = await startQuery(q);
           await new Promise(resolve => setTimeout(resolve, 0)); return response;
         },
@@ -185,13 +183,13 @@ export default function Home() {
       <Tabs value={tab} onValueChange={setTab} className="workspace">
         <div className="tabs-bar"><TabsList aria-label="BEAST workspace" variant="line" className="workspace-tabs"><TabsTrigger value="query"><SlidersHorizontal size={17}/>Analysis inputs</TabsTrigger><TabsTrigger value="data" disabled={(!pending && !result) || !!validateSchool(school)}><Table2 size={17}/>Results{result && <span className="tab-count">{total.toLocaleString()}</span>}</TabsTrigger></TabsList><span className="coverage"><Globe2 size={15}/>US cities & towns</span></div>
         <TabsContent value="query" className="query-panel"><div className="query-grid">
-          <section className="form-section"><InputSection title="Location and year" description={city && state ? `${city}, ${state} · ${year}` : "Choose a location"} initiallyOpen>
+          <section className="form-section"><div className="section-heading"><span className="section-icon"><MapPin size={22}/></span><div><h2>Location and year</h2></div></div>
             <form id="analysis-inputs" onSubmit={e => { e.preventDefault(); void startQuery({ city, state, year: Number(year) }); }}>
               <div className="form-location-row"><div className="form-field"><label htmlFor="city">City or town</label><input id="city" name="city" value={city} onChange={e => setCity(e.target.value)} placeholder="Enter city or town" required minLength={1} maxLength={100} autoComplete="address-level2" disabled={busy}/></div><div className="form-field"><label htmlFor="state">State</label><Choice id="state" label="State" value={state} onChange={setState} disabled={busy}>{Object.entries(STATES).map(([code, name]) => <SelectItem key={code} value={code}>{name}</SelectItem>)}</Choice></div></div>
-              <InputModeChoice custom={customYear} disabled={busy} onChange={next=>{setCustomYear(next);if(!next)setYear("2025");}}/><div className="form-field year-field"><label htmlFor="year">Weather year</label><Choice id="year" label="Year" value={year} onChange={setYear} disabled={busy || !customYear}>{Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, i) => MIN_YEAR + i).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</Choice><p className="field-hint">Available years: 2015–2059</p></div>
+              <div className="form-field year-field"><label htmlFor="year">Weather year</label><Choice id="year" label="Year" value={year} onChange={setYear} disabled={busy}>{Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, i) => MIN_YEAR + i).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</Choice><p className="field-hint">Available years: 2015–2059</p></div>
               {state && !supportsClimate(state) && <div className="coverage-note" role="status"><Info size={17}/><span>We can locate cities in {STATES[state]}, but this Sup3rCC dataset has no climate data there.</span></div>}
               <div className="coordinate-note"><MapPin size={17}/><span>Search cities and towns in all 50 states and Washington, DC.</span></div>
-            </form></InputSection>
+            </form>
           </section><aside className="dataset-section"><div className="eyebrow">WEATHER DATA</div><h3>Hourly climate projections</h3><p className="dataset-description">2-meter temperature, relative humidity, and hourly DHI / DNI / GHI.</p><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Air temperature</strong><span>Degrees Fahrenheit · °F</span></div></div><div className="variable"><span className="variable-icon humidity"><Droplets size={20}/></span><div><strong>Dew point</strong><span>Derived from temperature + RH · °F</span></div></div><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Solar irradiance</strong><span>DHI · DNI · GHI in W/m²</span></div></div><dl className="dataset-meta"><div><dt>Climate model</dt><dd>EC-Earth3-CC</dd></div><div><dt>Scenario</dt><dd>SSP2-4.5</dd></div></dl></aside>
         </div><AnalysisAssumptions school={school} onSchool={setSchool}/><EquipmentScenarios choices={systems} onChange={updateSystem} results={[]} active={activeSystem} onActive={setActiveSystem} onAdd={() => setSystems(current => current.length < 3 ? [...current, newScenario()] : current)} onRemove={index => { setSystems(current => current.filter((_, i) => i !== index)); setActiveSystem(0); }}/><div className="continue-actions">{error && <p className="model-error" role="alert">{error}</p>}<button className="button primary" type="submit" form="analysis-inputs" disabled={busy || !city.trim() || !state}>Continue to results<ArrowRight size={18}/></button></div></TabsContent>
         <TabsContent value="data" className="data-panel">

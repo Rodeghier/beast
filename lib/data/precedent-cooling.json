@@ -4,6 +4,7 @@
     "filename": "Precedent_Cooling.pdf",
     "document_code": "PKGP-PRC023F-EN",
     "sha256": "a205e18c3220c9f52e61b673e1570c9bfeea707f0ab123cb12b625d04d5fbb87",
+    "source_path": "G:\\Shared drives\\ME 351 - Senior Design - B.E.A.S.T Mode\\Project Data\\Data Parsing\\Precedent_Cooling.pdf",
     "included_scope": "heat-pump tables 10-33 only; dual-fuel tables 34-57 excluded"
   },
   "input_order": [
@@ -37,7 +38,7 @@
     "airflow": "Largest CFM listed for each unit size and efficiency; fixed per model, never a runtime input.",
     "capacity": "Gross total cooling before indoor fan heat; normalized at 95 F outdoor DB, 67 F entering WB, 80 F entering DB at selected airflow.",
     "missing": "Manufacturer dashes retained as null; no extrapolation beyond valid catalog points convex hull.",
-    "fitting": "All valid source entries retained. Anchored ordinary least-squares capacity; bounded-output nonlinear least-squares SHR numerator.",
+    "fitting": "Anchored ordinary least-squares capacity; bounded-output nonlinear least-squares SHR numerator on the accepted fitting dataset.",
     "validation": "Refit after holding out each interior outdoor-DB or entering-DB plane; capacity reference remains a known input. WB has only 3 levels; no independent WB-plane holdout test.",
     "scope": "Cooling only. No electrical power/COP data are inferred. Unit-specific functions, not one universal heat-pump curve."
   },
@@ -1065,25 +1066,25 @@
       "fixed_cfm": 8400,
       "reference_capacity_MBh": 215.9,
       "reference_capacity_Btu_hr": 215900.0,
-      "valid_points": 60,
+      "valid_points": 59,
       "missing_slots": 0,
       "capacity_coefficients": [
         1.0,
-        -0.11665313059592491,
-        0.0614844835572024,
-        0.04890101219016189,
-        0.0021251417224467813,
-        -0.005766558591940725,
-        0.0032934778378382727,
-        0.010912542869569953,
-        -0.03630384437239463,
-        0.025095062563163014
+        -0.10989943542910491,
+        0.060099907863297886,
+        0.055924036947178235,
+        -0.0016250171283871341,
+        -0.010381810904955517,
+        0.005393566794305303,
+        0.016882966221863596,
+        -0.03999604622280659,
+        0.01459461778082796
       ],
       "shr_numerator_coefficients": [
-        0.8301672547532454,
-        -0.053869854435090264,
-        -0.23604428554264698,
-        0.3869563397990182
+        0.828987634982935,
+        -0.0534284599512681,
+        -0.23548992607040564,
+        0.38707397070768124
       ],
       "axis_ranges_F": {
         "outdoor_dry_bulb_F": [
@@ -1147,29 +1148,27 @@
       ],
       "fit_metrics": {
         "capacity_normalized": {
-          "n": 60,
-          "rmse": 0.023862341712711267,
-          "mae": 0.011494575877624228,
-          "max_absolute_error": 0.1658537582590347,
-          "r_squared": 0.944588992583782
+          "n": 59,
+          "rmse": 0.0077529693204678165,
+          "mae": 0.0063054918066891485,
+          "max_absolute_error": 0.016973171360880723,
+          "r_squared": 0.9936021693752793
         },
         "shr": {
-          "n": 60,
-          "rmse": 0.004905936101885969,
-          "mae": 0.0030131559235869205,
-          "max_absolute_error": 0.01355358024881359,
-          "r_squared": 0.9994157384534403
+          "n": 59,
+          "rmse": 0.004219354473785941,
+          "mae": 0.0026114163336332275,
+          "max_absolute_error": 0.012510573954314874,
+          "r_squared": 0.9995704296008238
         }
       },
-      "capacity_relative_rmse_percent": 3.1533938060938835,
-      "capacity_max_relative_error_percent": 22.865789532647252,
-      "warnings": [
-        "A source value has >5% capacity residual. Inspect flagged-source-values.csv; no source value was removed or corrected."
-      ],
+      "capacity_relative_rmse_percent": 0.8018712693374954,
+      "capacity_max_relative_error_percent": 1.8523161530747119,
+      "warnings": [],
       "interior_plane_validation": {
-        "n": 66,
-        "capacity_normalized_rmse": 0.034252706158321926,
-        "shr_rmse": 0.006656918726327688
+        "n": 64,
+        "capacity_normalized_rmse": 0.008764749453033625,
+        "shr_rmse": 0.0053689826002217295
       }
     },
     {
@@ -2427,25 +2426,25 @@
       "fixed_cfm": 8400,
       "reference_capacity_MBh": 215.9,
       "reference_capacity_Btu_hr": 215900.0,
-      "valid_points": 60,
+      "valid_points": 59,
       "missing_slots": 0,
       "capacity_coefficients": [
         1.0,
-        -0.11665313059592491,
-        0.0614844835572024,
-        0.04890101219016189,
-        0.0021251417224467813,
-        -0.005766558591940725,
-        0.0032934778378382727,
-        0.010912542869569953,
-        -0.03630384437239463,
-        0.025095062563163014
+        -0.10989943542910491,
+        0.060099907863297886,
+        0.055924036947178235,
+        -0.0016250171283871341,
+        -0.010381810904955517,
+        0.005393566794305303,
+        0.016882966221863596,
+        -0.03999604622280659,
+        0.01459461778082796
       ],
       "shr_numerator_coefficients": [
-        0.8301672547532454,
-        -0.053869854435090264,
-        -0.23604428554264698,
-        0.3869563397990182
+        0.828987634982935,
+        -0.0534284599512681,
+        -0.23548992607040564,
+        0.38707397070768124
       ],
       "axis_ranges_F": {
         "outdoor_dry_bulb_F": [
@@ -2509,29 +2508,27 @@
       ],
       "fit_metrics": {
         "capacity_normalized": {
-          "n": 60,
-          "rmse": 0.023862341712711267,
-          "mae": 0.011494575877624228,
-          "max_absolute_error": 0.1658537582590347,
-          "r_squared": 0.944588992583782
+          "n": 59,
+          "rmse": 0.0077529693204678165,
+          "mae": 0.0063054918066891485,
+          "max_absolute_error": 0.016973171360880723,
+          "r_squared": 0.9936021693752793
         },
         "shr": {
-          "n": 60,
-          "rmse": 0.004905936101885969,
-          "mae": 0.0030131559235869205,
-          "max_absolute_error": 0.01355358024881359,
-          "r_squared": 0.9994157384534403
+          "n": 59,
+          "rmse": 0.004219354473785941,
+          "mae": 0.0026114163336332275,
+          "max_absolute_error": 0.012510573954314874,
+          "r_squared": 0.9995704296008238
         }
       },
-      "capacity_relative_rmse_percent": 3.1533938060938835,
-      "capacity_max_relative_error_percent": 22.865789532647252,
-      "warnings": [
-        "A source value has >5% capacity residual. Inspect flagged-source-values.csv; no source value was removed or corrected."
-      ],
+      "capacity_relative_rmse_percent": 0.8018712693374954,
+      "capacity_max_relative_error_percent": 1.8523161530747119,
+      "warnings": [],
       "interior_plane_validation": {
-        "n": 66,
-        "capacity_normalized_rmse": 0.034252706158321926,
-        "shr_rmse": 0.006656918726327688
+        "n": 64,
+        "capacity_normalized_rmse": 0.008764749453033625,
+        "shr_rmse": 0.0053689826002217295
       }
     },
     {

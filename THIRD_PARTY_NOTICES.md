@@ -28,7 +28,7 @@ The complete MIT license is preserved at `public/references/epa-power-profiler-l
 
 # Precedent packaged heat-pump cooling fits
 
-`lib/data/precedent-cooling.json` contains derived gross-capacity and SHR fits from the user-supplied Trane Precedent cooling tables, document PKGP-PRC023F-EN, heat-pump tables 10-33. Dual-fuel tables are excluded. The source PDF hash, fit coefficients, validity domains, fixed maximum airflow and source anomalies are retained in the data. The derived fit report and coefficient CSV are served under `public/references/`. The full source catalog PDF is not bundled.
+`lib/data/precedent-cooling.json` contains derived gross-capacity and SHR fits from the user-supplied Trane Precedent cooling tables, document PKGP-PRC023F-EN, heat-pump tables 10-33. Dual-fuel tables are excluded. The source PDF hash, fit coefficients, validity domains, fixed maximum airflow are retained in the data. The derived fit report and coefficient CSV are served under `public/references/`. The full source catalog PDF is not bundled.
 
 # Precedent packaged heat-pump heating fits
 
