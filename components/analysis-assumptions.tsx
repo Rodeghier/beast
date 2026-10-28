@@ -1,28 +1,33 @@
 "use client";
 
-import { useId, useState } from "react";
-import { DEFAULT_SCHOOL, SCHOOL_FIELDS, type SchoolAssumptions } from "@/lib/school";
+import { useState } from "react";
+import { DEFAULT_SCHOOL, SCHOOL_AREA, SCHOOL_FIELDS, type SchoolAssumptions } from "@/lib/school";
+import { InputModeChoice, InputSection } from "./input-section";
+
+function AssumptionGroup({ group, school, onSchool }: {
+  group: typeof SCHOOL_FIELDS[number]; school: SchoolAssumptions; onSchool: (value: SchoolAssumptions) => void;
+}) {
+  const [custom, setCustom] = useState(() => group.fields.some(({key}) => school[key] !== DEFAULT_SCHOOL[key]));
+  return <InputSection title={group.title} description={custom ? "Custom values" : "Default values"}>
+    <InputModeChoice custom={custom} onChange={next => {
+      setCustom(next);
+      if (!next) onSchool({ ...school, ...Object.fromEntries(group.fields.map(({key}) => [key,DEFAULT_SCHOOL[key]])) });
+    }}/>
+    <fieldset className="assumption-group" disabled={!custom}>
+      <legend className="sr-only">{group.title}</legend><div className="assumption-grid">{group.fields.map(field => <div className="form-field" key={field.key}>
+        <label htmlFor={`input-${field.key}`}>{field.label}<span className="input-unit">{field.unit}</span></label>
+        <input form="analysis-inputs" id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step={field.step} value={Number.isFinite(school[field.key]) ? school[field.key] : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>
+      </div>)}</div>
+    </fieldset>
+  </InputSection>;
+}
 
 export function AnalysisAssumptions({ school, onSchool }: {
   school: SchoolAssumptions; onSchool: (value: SchoolAssumptions) => void;
 }) {
-  const id = useId();
-  const [custom, setCustom] = useState(() => Object.keys(DEFAULT_SCHOOL).some(key => school[key as keyof SchoolAssumptions] !== DEFAULT_SCHOOL[key as keyof SchoolAssumptions]));
-  return <details className="analysis-assumptions" onInvalidCapture={event => { event.currentTarget.open = true; }}>
-    <summary><span>Building characteristics and assumptions</span><small>{custom ? "Custom values" : "Default values"}</small></summary>
-    <div className="assumptions-body">
-    <div className="assumptions-mode" role="radiogroup" aria-label="Building input values">
-      <label><input type="radio" name={id} checked={!custom} onChange={() => { setCustom(false); onSchool({ ...DEFAULT_SCHOOL }); }}/>Use defaults</label>
-      <label><input type="radio" name={id} checked={custom} onChange={() => setCustom(true)}/>Modify values</label>
-    </div>
-    <fieldset className="assumptions-values" disabled={!custom}><legend className="sr-only">Building input values</legend>
-    {SCHOOL_FIELDS.map(group => <fieldset className="assumption-group" key={group.title}>
-      <legend>{group.title}</legend><div className="assumption-grid">{group.fields.map(field => <div className="form-field" key={field.key}>
-        <label htmlFor={`input-${field.key}`}>{field.label}<span className="input-unit">{field.unit}</span></label>
-        <input form="analysis-inputs" id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step={field.step} value={Number.isFinite(school[field.key]) ? school[field.key] : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>
-      </div>)}</div>
-    </fieldset>)}
-    </fieldset>
-    </div>
-  </details>;
+  return <section className="analysis-assumptions" aria-label="Building characteristics and assumptions">
+    <h2>Building characteristics and assumptions</h2>
+    <p>{SCHOOL_AREA.toLocaleString()} ft² building</p>
+    {SCHOOL_FIELDS.map(group => <AssumptionGroup key={group.title} group={group} school={school} onSchool={onSchool}/>)}
+  </section>;
 }

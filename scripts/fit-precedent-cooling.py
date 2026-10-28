@@ -268,7 +268,7 @@ def report(out,bundle,summary,flagged):
     def h(s):story.append(Spacer(1,8));p(s,'h')
     def page(n,title):
         if n>1:story.append(PageBreak())
-        p(f'BEAST / PRECEDENT COOLING / CURVE FITS / {n:02d}','tag');p(title,'title')
+        p(f'BEAST / COOLING / CURVE FITS / {n:02d}','tag');p(title,'title')
     def eq(s):
         t=Table([[Paragraph(line,styles['eq'])] for line in s.splitlines()],colWidths=[504]);t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),light),('LEFTPADDING',(0,0),(-1,-1),10),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]));story.append(t);story.append(Spacer(1,8))
     def table(headers,rows,widths):
@@ -284,7 +284,7 @@ def report(out,bundle,summary,flagged):
     p('Q_reference is each unit\'s catalog capacity at 95 F outdoor DB, 67 F entering WB and 80 F entering DB, at the selected maximum airflow. It is neither nominal tonnage times 12,000 nor the peak building load. Capacity is normalized to exactly 1 at that reference. The four b coefficients are part of the SHR function; they introduce no additional operating input.','small')
     h('Where the functions can be used')
     p('Entering WB: 61-73 F. Entering DB: 75-90 F. Outdoor DB: generally 85-125 F; standard 10-ton heat pump: 85-120 F. For both 25-ton heat-pump fits, also require outdoor DB + 2 x entering DB &lt;= 295. These limits describe the convex hull of valid catalog points. No extrapolation is allowed.')
-    p('Coefficients, catalog references, exact domain checks, source rows and validation are provided in the accompanying CSV/JSON files and standalone evaluator. This package does not infer COP or automatically populate the website.','small')
+    p('Coefficients, catalog references, exact domain checks, source rows and validation are provided in the accompanying CSV/JSON files and standalone evaluator. Capacity and SHR fitting is separate from the cooling power and fan balance in the engineering guide.','small')
     page(2,'Accuracy and source review')
     story.append(Image(str(out/'fit-diagnostics.png'),width=504,height=216.72))
     p('Each marker compares one catalog point with its fitted result. Dashed lines show perfect agreement. Standard and high-efficiency points often overlap because several source datasets are identical.','small')
@@ -299,7 +299,7 @@ def report(out,bundle,summary,flagged):
     p('Capacity uses anchored ordinary least squares. SHR uses bounded-output least squares for its numerator, with the fitted capacity as denominator. Interior-plane validation removes each interior outdoor-DB or entering-DB temperature plane, refits the model, and predicts the omitted points. The reference capacity stays known. Only three wet-bulb levels are supplied, so independent wet-bulb-plane validation is not claimed. These errors measure catalog agreement, not field performance.','small')
     h('Source values requiring review')
     p('Both 17.5-ton heat-pump tables show 156.6 MBh at 8,400 CFM, outdoor DB 115 F, entering WB 61 F and entering DB 85 F (printed catalog pages 50 and 61). Visual review confirms that this is printed in the supplied PDF. The value is retained without correction, creates the largest capacity residual, and requires source confirmation. Review flagged-source-values.csv before relying on these two capacity fits.','small')
-    p(f"Source: Precedent_Cooling.pdf, Trane document PKGP-PRC023F-EN; {bundle['source']['included_scope']}. The selected maximum-airflow data retain PDF and printed page references, manufacturer blanks and all raw values. Source hash is recorded in curve-fits.json.",'small')
+    p(f"Source: supplied cooling performance tables; {bundle['source']['included_scope']}. The selected maximum-airflow data retain PDF and printed page references, manufacturer blanks and all raw values. Source hash is recorded in curve-fits.json.",'small')
     page(3,'Unit-by-unit fit summary')
     for efficiency in ['standard','high']:
         h(f'{efficiency.title()} efficiency - heat pump')
@@ -308,8 +308,8 @@ def report(out,bundle,summary,flagged):
     p('* Source anomaly retained; see page 2. Capacity RMSE is percent of the catalog reference, not percent of each individual data point. SHR RMSE is an absolute ratio. Per-point errors, relative-capacity errors and held-out predictions are supplied in the CSV files.','small')
     if count>24:p('Separately labeled dual-fuel curves are included in the data files; this page summarizes heat-pump tables only.','small')
     def footer(canvas,doc):
-        canvas.saveState();canvas.setStrokeColor(colors.HexColor('#D9E3EA'));canvas.line(54,43,558,43);canvas.setFont(font,8);canvas.setFillColor(gray);canvas.drawString(54,29,'BEAST | Precedent cooling | Catalog fits at maximum listed airflow');canvas.drawRightString(558,29,str(doc.page));canvas.restoreState()
-    SimpleDocTemplate(str(out/'Precedent_Cooling_Curve_Fits.pdf'),pagesize=(612,792),leftMargin=54,rightMargin=54,topMargin=45,bottomMargin=58,
-        title='Precedent Packaged Heat Pump Cooling - Capacity and SHR Fits',author='BEAST',subject='Three-temperature cooling fits at maximum listed airflow').build(story,onFirstPage=footer,onLaterPages=footer)
+        canvas.saveState();canvas.setStrokeColor(colors.HexColor('#D9E3EA'));canvas.line(54,43,558,43);canvas.setFont(font,8);canvas.setFillColor(gray);canvas.drawString(54,29,'BEAST | Cooling | Catalog fits at maximum listed airflow');canvas.drawRightString(558,29,str(doc.page));canvas.restoreState()
+    SimpleDocTemplate(str(out/'Cooling_Curve_Fits.pdf'),pagesize=(612,792),leftMargin=54,rightMargin=54,topMargin=45,bottomMargin=58,
+        title='Packaged Heat Pump Cooling - Capacity and SHR Fits',author='BEAST',subject='Three-temperature cooling fits at maximum listed airflow').build(story,onFirstPage=footer,onLaterPages=footer)
 
 if __name__=='__main__': main()
