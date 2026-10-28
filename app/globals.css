@@ -325,28 +325,6 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 @media(max-width: 760px) { .scenario-grid { grid-template-columns: 1fr; } .comparison-heading { flex-direction: column; } .equipment-scenarios { padding: 22px 20px; } .scenario-card { padding: 18px; } }
 
 .location-energy { margin: 26px 0; padding: 28px 30px; border: 1px solid #d9e3ea; border-radius: 9px; background: white; color: #34516b; }
-.comstock-profile { margin: 26px 0; padding: 28px 30px; border: 1px solid #d9e3ea; border-radius: 9px; background: white; color: #34516b; }
-.comstock-profile h3 { font-size: 1.35rem; font-weight: 650; margin: 7px 0; }
-.comstock-profile p { font-size: .875rem; line-height: 1.7; margin: 10px 0; color: #5f7286; }
-.comstock-controls { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 16px; margin: 20px 0; }
-.comstock-controls label { display: block; min-width: min(100%, 300px); font-size: .875rem; font-weight: 550; }
-.comstock-controls select { display: block; width: min(100%, 420px); color: #264f67; padding: 11px 12px; background: white; border: 1px solid #b8cbd9; border-radius: 5px; margin-top: 7px; font-weight: 400; }
-.comstock-controls > span { color: #64748b; font-size: .8rem; }
-.comstock-status { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: .875rem; }
-.comstock-error { padding: 12px 15px; border-radius: 5px; background: #fff6e6; }
-.comstock-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
-.comstock-summary > div { display: flex; flex-direction: column; gap: 6px; padding: 15px; background: #f7faf9; border: 1px solid #dce8e2; border-radius: 7px; }
-.comstock-summary span { color: #5f7286; font-size: .78rem; }
-.comstock-summary strong { color: #246357; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
-.comstock-chart { width: 100%; height: 310px; margin: 12px 0; }
-.comstock-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-top: 1px solid #e0e8ee; padding-top: 12px; }
-.comstock-footer p { flex: 1; min-width: 240px; margin: 0; font-size: .8rem; }
-.comstock-input-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin: 18px 0; padding: 15px; background: #f7faf9; border: 1px solid #dce8e2; border-radius: 7px; }
-.comstock-input-choice strong { color: #34516b; font-size: .9rem; }
-.comstock-input-choice label { display: inline-flex; align-items: center; gap: 7px; font-size: .85rem; color: #34516b; }
-.comstock-input-choice input { accent-color: #38685f; }
-.comstock-source-note { padding: 12px 15px; border-left: 3px solid #38685f; background: #f4f8f6; }
-@media(max-width: 760px) { .comstock-profile { padding: 22px 20px; } .comstock-summary { grid-template-columns: 1fr; } }
 .location-energy h3 { font-size: 1.35rem; font-weight: 650; margin: 7px 0; }
 .location-energy h4 { font-size: 1.05rem; font-weight: 650; margin: 0 0 12px; }
 .location-energy h5 { font-size: .9rem; font-weight: 650; margin: 18px 0 9px; }

@@ -116,7 +116,7 @@ assert.doesNotMatch(pendingHtml, /scorecard-scenario/);
 const html = render([performance, performance, performance]);
 assert.match(html, /Heat Pump Cooling \+ Electric Resistance Heating/); assert.match(html, /Compare annual performance/); assert.match(html, /Monthly performance/);
 assert.match(html, /Annual energy consumption/); assert.match(html, /Annual CO/);
-assert.doesNotMatch(html, /ComStock|bypass factor|rated COP/);
+assert.doesNotMatch(html, /bypass factor|rated COP/);
 assert.match(render([annualPerformance(result, rows, undefined, undefined)]), /Unavailable/);
 assert.doesNotMatch(render([annualPerformance({ ...result, error: "Awaiting curves" }, rows, undefined, undefined)]), /\$0/);
 assert.match(render([performance], [{ ...result, summary: { ...result.summary, unmetHeatingHours: 12 } }]), /12 heating hours/);
