@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * BUILDING LOAD DISPLAY. Uses summarizeLoads to find peaks and plot thermal
+ * loads. Cooling is stored negative; these are demands, not electrical use.
+ */
+
+
 import { useMemo } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";

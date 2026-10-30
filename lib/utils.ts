@@ -1,3 +1,8 @@
+/**
+ * UI CLASS-NAME HELPER. Combines CSS class names for visual components.
+ * There are no engineering calculations in this module.
+ */
+
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 

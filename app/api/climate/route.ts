@@ -1,3 +1,10 @@
+/**
+ * SERVER WEATHER CONNECTION. GET validates a location/year, reads credentials
+ * from the server environment, requests the hourly provider CSV and returns it.
+ * It does not calculate building loads. API keys remain on the server.
+ * The browser parses this response using lib/csv.ts.
+ */
+
 import { env } from "cloudflare:workers";
 import { MIN_YEAR, MAX_YEAR, STATES, supportsClimate } from "@/lib/climate";
 
@@ -12,12 +19,16 @@ export async function GET(request: Request) {
   if (state && !supportsClimate(state)) return Response.json({ error: `The supplied Sup3rCC dataset does not cover ${STATES[state]}. Climate CSVs are available only for the contiguous 48 states and Washington, DC.`, code: "OUTSIDE_DATASET_COVERAGE" }, { status: 422 });
   const lat = Number(p.get("latitude")); const lon = Number(p.get("longitude")); const year = Number(p.get("year"));
   if (!p.get("latitude") || !p.get("longitude") || !Number.isFinite(lat) || !Number.isFinite(lon) || lat < 24 || lat > 50 || lon < -125 || lon > -66 || !Number.isInteger(year) || year < MIN_YEAR || year > MAX_YEAR) return Response.json({ error: "Choose a location in the contiguous United States and a year from 2015 to 2059." }, { status: 400 });
+  // Credentials are read here on the server. Never move this provider request
+  // into page.tsx with a literal API key in the browser bundle.
   const config = env as unknown as Record<string, string | undefined>;
   const key = config.NLR_API_KEY || process.env.NLR_API_KEY;
   const email = config.NLR_EMAIL || process.env.NLR_EMAIL;
   if (!key || !email) return Response.json({ error: "The climate data connection is not configured. Please contact the site owner." }, { status: 503 });
   const url = new URL("https://developer.nlr.gov/api/climate/ncdb/v2/climate/sup3rcc-conus-ecearth3cc-ssp245-r1i1p1f1-v0-2-2-download.csv");
   url.search = new URLSearchParams({ api_key: key, names: String(year), leap_day: "false", interval: "60", utc: "false", full_name: config.NLR_FULL_NAME || process.env.NLR_FULL_NAME || "", email, affiliation: config.NLR_AFFILIATION || process.env.NLR_AFFILIATION || "", mailing_list: "false", reason: "Academic", attributes: "temperature_2m,relativehumidity_2m,dhi,dni,ghi", wkt: `POINT(${lon} ${lat})` }).toString();
+  // Timeout/phase tracking is for reliable downloads and diagnosis; it does not
+  // change the requested engineering timestep or weather values.
   const started = Date.now();
   let phase = "preparing";
   const signal = AbortSignal.timeout(150000);

@@ -1,4 +1,9 @@
 """Extract supplied standard/high heat-pump nominal ratings: --source PATH. Requires pypdf."""
+# OFFLINE NOMINAL RATING IMPORT. Unlike the fitting scripts, this script writes
+# application JSON and the public rating CSV directly. Back up or review those
+# outputs before running it with a different catalog. The gross/net difference
+# provides an inferred fan component, not a measured operating fan curve.
+
 from pathlib import Path
 import argparse, csv, hashlib, json
 from pypdf import PdfReader
@@ -20,6 +25,7 @@ for efficiency,page,prefix,table in families:
     if len(reader.pages)==6:
         notes=reader.pages[page+2].extract_text();assert 'Gross capacity does not include the effect of fan motor heat' in notes and 'AHRI capacity is net' in notes
     for index,(size,model,qg,qn,p,flow) in enumerate(zip(sizes,ids,gross,net,power,flows)):
+        # The gross-minus-net capacity difference estimates fan heat in BTU/hr; divide by BTU/kWh for kW.
         nominal,ahri=map(int,flow.split('/'));fan_heat=qg-qn;fan_kw=fan_heat/BTU_PER_KWH;assert 0<fan_kw<p
         # Motor nameplate output is reference data only; it is not fan electrical input at this airflow/ESP.
         motor_hp=([.75,1,1,2.9,2.9,2.9,2.9,2.9,2.9,2.9,2.9,2.9] if efficiency=='standard' else [2.9,2.9,2.9,2.9,2.9,2.9,4.2,2.9,2.9,2.9,2.9,2.9])[index]

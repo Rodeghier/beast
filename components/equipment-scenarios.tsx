@@ -1,4 +1,11 @@
 "use client";
+
+/**
+ * EQUIPMENT INPUTS AND SELECTION DISPLAY. Selects types/family and displays
+ * results supplied by the parent. onChange sends user choices back to page.tsx;
+ * this component does not independently size units or calculate energy.
+ */
+
 import { useId } from "react";
 import { coolingFor, scenarioName, EQUIPMENT_NAMES, type EquipmentScenario, type HeatingEquipment } from "@/lib/equipment";
 import { unitRatingFor } from "@/lib/unit-ratings";

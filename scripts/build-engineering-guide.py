@@ -1,4 +1,8 @@
 """Build the BEAST guide for supplied heating/cooling curves and mixed air."""
+# REFERENCE PDF BUILDER. Writes public/engineering-guide.pdf from the content
+# below and installed curve metadata. It documents the equations; it does not
+# run a building simulation or modify the fitted coefficients.
+
 from pathlib import Path
 import json
 from xml.sax.saxutils import escape

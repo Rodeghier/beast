@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * APPLICATION COORDINATOR. This React component connects inputs to the model.
+ * State stores user choices and downloaded weather. Memoized values calculate
+ * loads, unit selections and equipment results. JSX below return draws the page.
+ * Start at schoolRows/packagedSelections/comparisonResults to follow engineering
+ * data; startQuery/fetchClimate handle network access. Calculations live in lib/.
+ */
+
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Droplets, ExternalLink, Globe2, Info, LoaderCircle, MapPin, SlidersHorizontal, Table2, Thermometer, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,10 +60,16 @@ export default function Home() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState("25");
   const [elapsed, setElapsed] = useState(0);
+  // React state is the input worksheet. Call its setter to replace values; direct
+  // mutation can leave the screen and the calculated results out of sync.
   const [school, setSchool] = useState<SchoolAssumptions>({ ...DEFAULT_SCHOOL });
+  // Engineering pipeline step 1: weather + assumptions -> hourly building loads.
+  // useMemo recomputes when the listed input objects change; it is a performance cache.
   const schoolRows = useMemo(() => result && !validateSchool(school) ? simulateSchool(result.data.rows, school, solarLocation(result.data.metadata)) : [], [result, school]);
   const [systems, setSystems] = useState<EquipmentScenario[]>(() => [newScenario("heat-pump"), newScenario("gas"), newScenario("resistance")]);
   const [activeSystem, setActiveSystem] = useState(0);
+  // Steps 2 and 3: size each distinct equipment request once, then simulate each
+  // combination. Gas/resistance may reuse cooling sizing but still have different energy.
   const sizingRequests=systems.map(s=>`${s.heating==="heat-pump"?"heat-pump":"gas"}:${s.efficiency}:${!!coolingFor(s)}:${curveRangeMode(s)}`).join("|");
   const packagedSelections=useMemo(()=>{
     const cache=new Map<string,ReturnType<typeof autosizePackaged>>();
@@ -85,6 +100,8 @@ export default function Home() {
   useEffect(() => () => operation.current?.abort(), []);
   useEffect(() => { if (tab === "data") window.scrollTo({ top: 0, behavior: "auto" }); }, [tab, stage]);
 
+  // Network step: request weather from our server route, parse it, and store it.
+  // AbortSignal prevents a superseded search from overwriting a newer selection.
   const fetchClimate = useCallback(async (selected: Place, requestedYear: number, controller: AbortController) => {
     setPlace(selected);
     if (!supportsClimate(selected.stateCode)) {
@@ -101,6 +118,8 @@ export default function Home() {
     return { city: selected.name, state: selected.state, year: requestedYear, rows: data.rows.length, latitude: selected.latitude, longitude: selected.longitude };
   }, []);
 
+  // Entry point for Continue to results: validate choices, resolve coordinates,
+  // ask the user to disambiguate matching places if needed, then request weather.
   const startQuery = useCallback(async (query: { city: string; state: string; year: number }) => {
     if (!query.city.trim() || !Object.hasOwn(STATES, query.state)) {
       setError("Enter a city or town and select a state.");
@@ -161,6 +180,8 @@ export default function Home() {
     try { await fetchClimate(selected, pending.year, controller); }
     catch (cause) { if (!controller.signal.aborted) { setError(cause instanceof Error ? cause.message : "Unable to load the data."); setStage("error"); } }
   }
+  // Exports use calculated result objects. A Blob is an in-memory file; the
+  // temporary object URL lets the browser download it without a database write.
   function download(source = false) {
     if (!result) return;
     const csv = source || !curveResult ? result.csv : equipmentResultsCsv(schoolRows, school, curveResult, `${result.place.name}, ${result.place.state}`, `${timezone}; local standard time`, solarLocation(result.data.metadata));
@@ -176,6 +197,8 @@ export default function Home() {
   const zone = result?.data.metadata["Local Time Zone"] ?? result?.data.metadata["Time Zone"];
   const timezone = zone && Number.isFinite(Number(zone)) ? `UTC${Number(zone) >= 0 ? "+" : "−"}${Math.abs(Number(zone))}` : "Local standard time";
 
+  // Everything below is JSX: a description of the screen, not another load solver.
+  // The displayed values come from the calculation objects assembled above.
   return <div className="app-shell">
     <header className="site-header"><div className="header-inner"><a className="brand" href="/" aria-label="BEAST home"><span className="brand-mark"><Table2 size={21}/></span>BEAST</a><span className="header-label">HVAC ENERGY ANALYSIS</span><a className="source-link header-guide" href="/engineering-guide.pdf" target="_blank" rel="noreferrer">Engineering guide <Download size={14}/></a><a className="source-link" href={DOCS} target="_blank" rel="noreferrer">About the data <ExternalLink size={14}/></a></div></header>
     <main>

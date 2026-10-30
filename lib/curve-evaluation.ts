@@ -1,3 +1,11 @@
+/**
+ * TEMPERATURE RANGE POLICY. Wraps the strict source evaluators.
+ * Strict mode leaves unsupported points unavailable. Bounded screening mode
+ * uses covered curve conditions while preserving actual weather and mixed air
+ * for the building loads. Returned curve temperatures document that distinction.
+ * This file changes where a curve is evaluated, not its coefficients.
+ */
+
 import type { CurveRangeMode } from "./equipment";
 import { coolingPoint, type CoolingModel } from "./packaged-cooling";
 import { heatingPoint, type HeatingModel } from "./packaged-heating";
@@ -5,6 +13,8 @@ import { heatingPoint, type HeatingModel } from "./packaged-heating";
 export const CURVE_RANGE_BASIS = "Outside the supplied temperature range, screening mode holds performance at the nearest covered curve conditions. Actual weather and mixed air still determine loads. Boundary values are estimates, not measured performance; cold-weather heating can be overstated. Source-only mode leaves these results unavailable.";
 const clamp = (v: number, range: number[]) => Math.max(range[0], Math.min(range[1], v));
 type Plane = { normal: number[]; offset: number };
+// Cache the geometric domain for each model object so repeated hourly evaluation
+// does not rebuild the same temperature-boundary equations.
 const planes = new WeakMap<CoolingModel, Plane[]>();
 // Distance uses the fit's normalized temperature coordinates. Preserve the full
 // source hull, including the 25-ton sloping face; an axis box alone is insufficient.
@@ -19,6 +29,8 @@ function closestCoolingInput(model: CoolingModel, input: number[]): number[] | n
     }
     hull = [...unique.values()]; planes.set(model,hull);
   }
+  // Work in the same normalized coordinates as the polynomial. Projection finds
+  // the closest covered point in this scaled distance, not Euclidean degrees F.
   let point = [(input[0]-95)/20,(input[1]-67)/6,(input[2]-80)/10];
   const corrections = hull.map(()=>[0,0,0]);
   // Dykstra's projection onto the intersection of the catalog's halfspaces.
@@ -37,6 +49,8 @@ function closestCoolingInput(model: CoolingModel, input: number[]): number[] | n
 }
 
 /** Strict source evaluators stay unchanged. Only this explicit policy bounds inputs. */
+// Try actual conditions first. If covered, return the source result unchanged.
+// Only bounded mode proceeds to limit/project the curve-evaluation temperatures.
 export function operatingCoolingPoint(model: CoolingModel, outdoorF: number, wetF: number, dryF: number, mode: CurveRangeMode) {
   if (![outdoorF,wetF,dryF].every(Number.isFinite)) return null;
   const source = coolingPoint(model,outdoorF,wetF,dryF);
@@ -52,6 +66,8 @@ export function operatingCoolingPoint(model: CoolingModel, outdoorF: number, wet
   return point ? {...point,boundaryEstimate:true,curveOutdoorF:input[0],curveWetF:input[1],curveDryF:input[2]} : null;
 }
 
+// The heating domain is rectangular, so simple axis limits suffice.
+// The original outdoor/entering temperatures remain available in the hourly data.
 export function operatingHeatingPoint(model: HeatingModel, outdoorF: number, dryF: number, mode: CurveRangeMode) {
   if (![outdoorF,dryF].every(Number.isFinite)) return null;
   const source = heatingPoint(model,outdoorF,dryF);
