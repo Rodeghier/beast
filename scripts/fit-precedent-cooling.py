@@ -3,6 +3,11 @@
 Requires numpy, scipy, matplotlib, pypdf and reportlab. No website data is changed.
 Run with --source PATH [--output PATH] [--include-dual-fuel].
 """
+# OFFLINE COOLING DATA PREPARATION. This script reads a supplied PDF, selects
+# the fitting dataset, solves coefficients, validates them and writes a report.
+# It is not called by the website when a user runs a simulation. Outputs stay
+# in the --output directory until promoted into lib/data and public/references.
+
 from pathlib import Path
 import argparse, csv, hashlib, json, re, sys, zipfile
 
@@ -17,6 +22,7 @@ from pypdf import PdfReader
 TERMS = ['1', 'x', 'y', 'z', 'x^2', 'x*y', 'x*z', 'y^2', 'y*z', 'z^2']
 AXES = ['outdoor_dry_bulb_F', 'entering_wet_bulb_F', 'entering_dry_bulb_F']
 
+# Read PDF tables into ordinary Python dictionaries. Extraction is separate from fitting.
 def extract(source):
     models, rows = {}, []
     current = ambient = cfm = pending = None
@@ -63,11 +69,13 @@ def extract(source):
         r['selected_max_cfm'] = r['cfm'] == maximum[r['table']]
     return models, rows
 
+# Build one matrix row per sample: [1,x,y,z,x*x,x*y,x*z,y*y,y*z,z*z].
 def design(rows):
     values = np.array([[r[k] for k in AXES] for r in rows], dtype=float)
     x, y, z = ((values - [95, 67, 80]) / [20, 6, 10]).T
     return np.column_stack([np.ones_like(x), x, y, z, x*x, x*y, x*z, y*y, y*z, z*z])
 
+# Solve the anchored capacity polynomial, then the SHR numerator using that capacity.
 def solve(a, capacity, shr):
     assert np.linalg.matrix_rank(a[:, 1:]) == 9
     c = np.r_[1., np.linalg.lstsq(a[:, 1:], capacity - 1, rcond=None)[0]]
@@ -115,6 +123,7 @@ def main():
         reference_row = next(r for r in rows if tuple(r[k] for k in AXES) == (95, 67, 80))
         reference = reference_row['gross_capacity_MBh']; a = design(rows)
         q = np.array([r['gross_capacity_MBh']/reference for r in rows]); s = np.array([r['shr'] for r in rows])
+        # Fit one catalog table at a time; different unit sizes keep separate coefficients.
         c, b = solve(a, q, s); pq, ps = predict(a, c, b)
         m = {**models[table], 'id': f"{models[table]['equipment'].replace(' ', '-')}-{models[table]['efficiency']}-{models[table]['nominal_tons']:g}ton",
             'fixed_cfm': slots[0]['cfm'], 'reference_capacity_MBh': reference, 'reference_capacity_Btu_hr': reference*1000,
@@ -130,6 +139,7 @@ def main():
         m['capacity_max_relative_error_percent'] = float(100*max(abs((pq-q)/q)))
         m['warnings'] = []
         cv_errors_q, cv_errors_s = [], []
+        # Validation refits after withholding an interior temperature plane; this tests interpolation.
         for axis in [AXES[0], AXES[2]]:
             # Interior planes only: retained training points still bracket the held-out temperature.
             for value in sorted(set(r[axis] for r in rows))[1:-1]:

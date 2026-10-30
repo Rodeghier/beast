@@ -7,6 +7,10 @@ The original archive stays outside the site; only compact derived data is shippe
 import datetime
 import io
 import json
+# OFFLINE CITY DATA GENERATOR. Reads a local GeoNames archive and writes the
+# state-partitioned place records used by lib/places.ts. A simulation does not
+# download this archive. Coordinate lookup is separate from weather coverage.
+
 from pathlib import Path
 import re
 import sys

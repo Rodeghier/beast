@@ -1,24 +1,24 @@
 # GitHub source package
 
-Extract `hvac-analysis-github.zip` and upload its files and folders to the root of your GitHub repository. Include the hidden configuration files, especially `.openai/hosting.json`, which Vite imports. If you encounter GitHub's upload file-count limit, upload in batches or use GitHub Desktop.
+Upload the repository source using Git or GitHub Desktop. Include `wrangler.jsonc`, `vite.config.ts`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` and the safe placeholder file `.env.example` along with the application files.
 
-The ZIP includes the current site's existing NLR API key and request metadata in `.env`, as requested. Keep this archive and any repository containing those credentials private. The OpenEI key has not been configured; `.env.example` lists their variable names.
+Keep actual API credentials in ignored `.env` files for local use and in your hosting service's server-side secret settings for production. `.env.example` lists the expected variable names without credentials.
 
-`.env` remains in `.gitignore`, so Git and GitHub Desktop do not commit it automatically. It is included in the ZIP for local setup. If you choose to upload it manually, use a private repository. API keys must also be configured in the hosting service's server environment; GitHub repository contents do not automatically set deployed runtime secrets.
+Do not upload `.env`, installed dependencies, local tool caches or build output. GitHub repository contents do not automatically set deployed runtime secrets.
 
-The complete source includes application code, solar-load calculations, packaged heating/cooling fits and mixed-air calculations, EPA emissions data, rate connections, verification scripts, and the engineering guide. It excludes installed dependencies, Git history, build output, and machine-local runtime state. The original Site deployment ID is removed from this exported copy.
+The source includes application code, solar-load calculations, packaged heating/cooling fits and mixed-air calculations, EPA emissions data, rate connections, verification scripts, and the engineering guide. Hosting is configured directly through `wrangler.jsonc`.
 
 ## Run locally
 
-Use Node.js 24 or later and the pnpm version specified in `package.json`.
+Use Node.js 22.13 or later and the pnpm version specified in `package.json`.
 
 ```bash
 corepack enable
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-The development application uses port 5173. Run `pnpm build` to build it.
+Copy `.env.example` to `.env` and enter your credentials before downloading weather. The development application uses port 5173. Run `pnpm build` to build it and `pnpm start` to preview the production build. See [Local setup and hosting](docs/HOSTING.md) for full instructions.
 
 ## Edit the code
 

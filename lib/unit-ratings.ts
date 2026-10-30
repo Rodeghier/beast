@@ -1,3 +1,10 @@
+/**
+ * NOMINAL POWER AND FAN LOOKUP. Finds a rating by size and efficiency family.
+ * The JSON contains published total cooling kW and an inferred supply-fan
+ * component. Fan kW is not added on top of total system kW; equipment-model.ts
+ * separates the components before applying coil duty.
+ */
+
 import data from "./data/precedent-unit-ratings.json";
 import type { CoolingModel } from "./packaged-cooling";
 export const UNIT_RATINGS=data.models;

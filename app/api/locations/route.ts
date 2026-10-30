@@ -1,3 +1,8 @@
+/**
+ * SERVER PLACE SEARCH. Converts a city/state query into candidate coordinates
+ * using lib/places.ts. Multiple matches are returned for the user to choose.
+ */
+
 import { STATES, normalizePlace } from "@/lib/climate";
 import { findPlaces } from "@/lib/places";
 

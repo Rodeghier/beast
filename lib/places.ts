@@ -1,3 +1,9 @@
+/**
+ * LOCAL CITY SEARCH. Loads only the chosen state, decodes its compact records,
+ * then tries exact names, aliases, prefixes and finally close spellings.
+ * This runs in the locations API; it is not a weather download or geocoder call.
+ */
+
 import { STATES, normalizePlace, type Place } from "./climate";
 import { PLACE_LOADERS } from "./place-loaders";
 

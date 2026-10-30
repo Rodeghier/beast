@@ -1,5 +1,7 @@
 # BEAST
 
+For an engineering-oriented introduction to the code, start with [Repository Reading Guide](docs/REPOSITORY_GUIDE.md) or its [Word handbook](docs/BEAST_Repository_Guide.docx). Source comments explain calculation stages, units and data flow.
+
 Building Energy Analysis Selection Tool: hourly building loads, selected heating/cooling equipment, supply-fan energy and heat, and utility/emissions comparisons.
 
 ## Equipment and names
@@ -55,14 +57,16 @@ Annual totals require 8,760 unique, valid, complete hourly energy records. Missi
 
 ## Configuration and verification
 
-Node >=22.13. Server secrets remain in ignored local environment/hosting configuration: NLR API key and metadata, optional OpenEI and EIA keys. This checkout has no linked Sites deployment.
+Node >=22.13 and pnpm 11.25.0. Install with `pnpm install --frozen-lockfile`, copy `.env.example` to `.env` and enter your server credentials, then run `pnpm dev`. The local application uses port 5173. `pnpm build` produces `dist/`; `pnpm start` previews that build locally. Server secrets remain in ignored `.env` files or Cloudflare secret settings: NLR API key and metadata, optional OpenEI and EIA keys.
+
+Build and hosting use Vinext and Cloudflare directly. See [Local setup and hosting](docs/HOSTING.md) for configuration, secret setup and deployment commands. No external site builder, sign-in service or hosting manifest is required.
 
 - `node node_modules/typescript/bin/tsc --noEmit`
 - `node scripts/check-equipment-model.mjs`
 - `node scripts/check-school-model.mjs`
 - `node scripts/check-beast-scorecard.mjs`
 - `node scripts/check-location-energy.mjs`
-- `node scripts/run-framework.mjs build`
+- `pnpm build`
 - `python scripts/build-engineering-guide.py` (render and inspect the PDF)
 
 Reproduce ratings: `python scripts/extract-unit-data.py --source PATH_TO_FULL_PDF`. Reproduce heating fits: `python scripts/fit-precedent-heating.py --source PATH`. Checks cover all 1,628 heating points, all 24 nominal power records, fan power reconciliation, part duty, fuel/element heat credit, ventilation, fan-induced cooling, required cooling, automatic names, domains, annual accounting, CSVs and rendered controls. The 55 independent wet-bulb reference states remain in `scripts/fixtures/mixed-air-reference.json`.

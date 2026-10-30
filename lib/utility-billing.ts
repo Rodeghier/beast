@@ -1,3 +1,11 @@
+/**
+ * ANNUAL ENERGY AND BILLING. Applies prices to already-calculated equipment
+ * kWh and therms. tierCharge handles cumulative limits, electricityBill handles
+ * monthly tariff logic, and annualPerformance combines energy/cost/emissions.
+ * A missing cost input can block cost while energy remains available.
+ * One-hour kWh equals average kW numerically; it is not subhourly billing demand.
+ */
+
 import { energyEmissions } from "./emissions";
 import type { ClimateRow } from "./csv";
 import type { ElectricTariff, EmissionRegion, GasContext, GasCombustion, RateTier } from "./location-energy";
@@ -14,6 +22,8 @@ export type AnnualPerformance = {
 };
 
 /** Cumulative tier maxima; reset consumption for every billing month/TOU period. */
+// Example: 0.10 per unit up to 100, then 0.20 thereafter. A quantity of 150
+// costs 100*0.10 + 50*0.20, not 150*0.20. max values are cumulative limits.
 export function tierCharge(quantity: number, tiers: RateTier[]): number {
   if (!tiers.length || !Number.isFinite(quantity) || quantity < 0) throw new Error("Invalid tier quantity or missing tiers.");
   let previous = 0, cost = 0;
@@ -56,6 +66,8 @@ function energyTierCharge(quantity: number, tiers: RateTier[], days: number, pea
   return tierCharge(quantity, applicable);
 }
 
+// manualRate, when supplied, replaces the API tariff calculation. Otherwise
+// validate the tariff before calculating monthly energy, demand and fixed charges.
 export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | undefined, manualRate?: number): ElectricityBill {
   const fail = (reason: string): ElectricityBill => ({ months: [], total: null, reason, warnings: [] });
   if (manualRate !== undefined) {
@@ -80,6 +92,8 @@ export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | u
   try {
     const year = hours[0].year;
     const months = Array.from({ length: 12 }, (_, month) => {
+      // Separate accumulators are needed because kWh are summed within TOU periods,
+      // whereas billing demand is the largest hourly-average kW within a period.
       const energy = new Map<number, number>(), demand = new Map<number, number>();
       let peak = 0, kwh = 0;
       for (const row of hours.filter(h => h.month === month + 1)) {
@@ -97,6 +111,8 @@ export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | u
         }
       }
       const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      // Add monthly fuel adjustment once to total monthly kWh. Fixed charges and
+      // minimum-bill top-ups are separate terms; a top-up is only the remaining shortfall.
       const energyCharge = [...energy].reduce((sum, [p, quantity]) => sum + energyTierCharge(quantity, tariff.energyRates![p], days, peak), 0) + kwh * (tariff.fuelAdjustmentsMonthly?.[month] ?? 0);
       let demandCharge = [...demand].reduce((sum, [p, quantity]) => sum + tierCharge(quantity, tariff.demandRates![p]), 0);
       if (tariff.flatDemandRates) {
@@ -123,6 +139,8 @@ export function electricityBill(hours: BillingHour[], tariff: ElectricTariff | u
 }
 
 /** Annual totals require a complete energy record; gas and electricity are independent inputs. */
+// Gate annual metrics on complete equipment energy and calendar coverage first.
+// Then calculate monthly site energy, utility cost and emissions independently.
 export function annualPerformance(result: EquipmentResult, rows: ClimateRow[], tariff: ElectricTariff | undefined, region: EmissionRegion | undefined, gas?:GasContext, combustion?:GasCombustion, manualRate?: number): AnnualPerformance {
   const dates = new Set(rows.map(row => `${row.year}-${row.month}-${row.day}-${row.hour}`));
   const calendar = rows.every(row => {
@@ -137,6 +155,8 @@ export function annualPerformance(result: EquipmentResult, rows: ClimateRow[], t
   }
   const hours=rows.map((row,i)=>({...row,electricity:result.rows[i].electricity!}));
   const electricBill:ElectricityBill=hours.every(h=>h.electricity===0)?{months:Array.from({length:12},()=>({energy:0,demand:0,fixed:0,minimum:0,total:0})),total:0,reason:null,warnings:["No modeled electricity use; no separate electricity account charges assigned."]}:electricityBill(hours,tariff,manualRate);
+  // EIA records are sorted newest first. Each modeled calendar month uses the
+  // newest supplied price for that month; it need not be from the weather year.
   const prices=[...(gas?.status==="ok"?gas.prices:[])].sort((a,b)=>b.period.localeCompare(a.period));
   const conversion=combustion&&Number.isFinite(combustion.thermsPerMcf)&&combustion.thermsPerMcf>0?combustion.thermsPerMcf:null;
   const months=Array.from({length:12},(_,month):MonthlyPerformance=>{

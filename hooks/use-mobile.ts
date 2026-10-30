@@ -1,3 +1,8 @@
+/**
+ * RESPONSIVE DISPLAY HOOK. Detects a viewport breakpoint for layout behavior.
+ * Screen width is not an input to the engineering model.
+ */
+
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768

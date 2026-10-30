@@ -1,3 +1,8 @@
+/**
+ * PAGE SHELL. Supplies HTML/body, site metadata and global styles around the
+ * active page. This file contains no engineering calculations.
+ */
+
 import type { Metadata } from "next";
 import "./globals.css";
 

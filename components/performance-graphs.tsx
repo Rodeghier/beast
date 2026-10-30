@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * CHART DISPLAY. Converts supplied annual/monthly results into chart series.
+ * Changing colors or labels here should not change engineering calculations.
+ */
+
+
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";

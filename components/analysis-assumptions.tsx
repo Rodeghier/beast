@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * BUILDING INPUT EDITOR. The only collapsible default/custom input panel.
+ * school is the current input object. onSchool sends a replacement object to
+ * app/page.tsx. Default mode resets the whole input set; custom mode enables
+ * editing. The actual load equations remain in lib/school.ts.
+ */
+
+
 import { useId, useState } from "react";
 import { DEFAULT_SCHOOL, SCHOOL_FIELDS, type SchoolAssumptions } from "@/lib/school";
 
@@ -7,6 +15,8 @@ export function AnalysisAssumptions({ school, onSchool }: {
   school: SchoolAssumptions; onSchool: (value: SchoolAssumptions) => void;
 }) {
   const id = useId();
+  // State remembers whether the form is editable. Returning to defaults sends a
+  // fresh copy of DEFAULT_SCHOOL to the parent, resetting all building groups together.
   const [custom, setCustom] = useState(() => SCHOOL_FIELDS.some(group => group.fields.some(({key}) => school[key] !== DEFAULT_SCHOOL[key])));
   return <details className="analysis-assumptions" onInvalidCapture={event => { event.currentTarget.open = true; }}>
     <summary><span>Building characteristics and assumptions</span><small>{custom ? "Custom values" : "Default values"}</small></summary>

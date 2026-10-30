@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * ALTERNATE BUILDING EDITOR. This component is retained in the repository, but
+ * the current page imports AnalysisAssumptions instead. Check imports before
+ * editing a component: a file can exist without being part of the active screen.
+ */
+
+
 import { useEffect, useId, useState } from "react";
 import { Building2, Check, Info, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
