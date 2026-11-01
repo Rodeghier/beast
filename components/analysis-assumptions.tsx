@@ -25,6 +25,7 @@ export function AnalysisAssumptions({ school, onSchool }: {
         <label><input type="radio" name={id} checked={!custom} onChange={() => { setCustom(false); onSchool({ ...DEFAULT_SCHOOL }); }}/>Use defaults</label>
         <label><input type="radio" name={id} checked={custom} onChange={() => setCustom(true)}/>Modify values</label>
       </div>
+      <p className="assumption-intro">Total floor area includes all conditioned floors. Floors have equal areas; conditioned height is per floor.</p>
       <fieldset className="assumptions-values" disabled={!custom}><legend className="sr-only">Building input values</legend>
         {SCHOOL_FIELDS.map(group => <fieldset className="assumption-group" key={group.title}>
           <legend>{group.title}</legend><div className="assumption-grid">{group.fields.map(field => <div className="form-field" key={field.key}>

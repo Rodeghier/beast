@@ -72,6 +72,37 @@ try {
   close(hot.sensibleCooling, -225000); close(hot.totalCooling, -225000); assert.equal(hot.heating, 0);
   const cold = m.simulateSchool([row(m.celsius(20), 0)], bare)[0];
   close(cold.heating, 750000); assert.equal(cold.sensibleCooling, 0);
+  // Independent area/geometry examples. Total floor area includes every floor;
+  // floor count changes the footprint and exterior walls, not the total volume.
+  const small = { ...bare, floorAreaFt2: 10_000, ceilingFt: 10, stories: 1 };
+  close(m.simulateSchool([row(m.celsius(90), 0)], small)[0].sensibleCooling, -15000);
+  close(m.simulateSchool([row(m.celsius(20), 0)], small)[0].heating, 50000);
+  const air = { ...small, people: 10, ventilationPerson: 10, ventilationArea: 0.1, infiltrationAch: 0.6 };
+  const oneFloor = m.simulateSchool([row(20)], air)[0];
+  const fourFloors = m.simulateSchool([row(20)], { ...air, stories: 4 })[0];
+  close(oneFloor.infiltrationCfm, 1000); close(oneFloor.ventilationCfm, 1100);
+  close(fourFloors.infiltrationCfm, 1000); close(fourFloors.ventilationCfm, 1100);
+  const doubleArea = m.simulateSchool([row(20)], { ...air, floorAreaFt2: 20_000 })[0];
+  close(doubleArea.infiltrationCfm, 2000); close(doubleArea.ventilationCfm, 2100);
+  assert.equal(doubleArea.occupants, oneFloor.occupants);
+  const gainInputs = { ...small, lightingW: 1, equipmentW: 2 };
+  close(m.simulateSchool([row(m.celsius(75), 0)], gainInputs)[0].sensibleCooling, -30000 * m.BTU_PER_WH);
+  close(m.simulateSchool([row(m.celsius(75), 0)], { ...gainInputs, floorAreaFt2: 20000 })[0].sensibleCooling, -60000 * m.BTU_PER_WH);
+  const glazingFloors = m.simulateSchool([diffuse], { ...small, ...geometry, floorAreaFt2: 10000, stories: 4 }, site)[0];
+  close(glazingFloors.windowSolarGain, glazing.windows * 2);
+  const roofInputs = { ...small, windowPercent: 0, wallU: 0, roofU: 0.04, solarAbsorptance: 0.6, outdoorFilm: 3 };
+  close(m.simulateSchool([diffuse], roofInputs, site)[0].opaqueSolarGain, roof.opaque);
+  close(m.simulateSchool([diffuse], { ...roofInputs, stories: 4 }, site)[0].opaqueSolarGain, roof.opaque / 4);
+  const exportInputs = { ...small, floorAreaFt2: 12345, stories: 3 };
+  const areaCsv = parseCsv(m.schoolCsv([cold], exportInputs, "Test", "UTC"));
+  const metadata = Object.fromEntries(areaCsv[0].map((key, i) => [key, areaCsv[1][i]]));
+  assert.equal(metadata.Floor_area_ft2, "12345"); assert.equal(metadata.Number_of_floors, "3");
+  assert.equal(metadata.Building_footprint_ft2, "4115"); assert.equal(metadata.Conditioned_volume_ft3, "123450");
+  for (const floorAreaFt2 of [0, -1, NaN, Infinity, undefined, 10_000_001]) {
+    assert.ok(m.validateSchool({ ...small, floorAreaFt2 }));
+    assert.throws(() => m.simulateSchool([row(20)], { ...small, floorAreaFt2 }));
+  }
+  for (const stories of [0, -1, 1.5, NaN, 31]) assert.ok(m.validateSchool({ ...small, stories }));
   const neutral = m.simulateSchool([row(m.celsius(72), 0)], bare)[0];
   assert.equal(neutral.heating, 0); assert.equal(neutral.totalCooling, 0);
   const latent = m.simulateSchool([row(m.celsius(75), 50)], { ...bare, people: 1200, sensiblePerson: 0 })[0];

@@ -186,9 +186,9 @@ An `EquipmentScenario` is an input choice, not a calculated result. It identifie
 
 ## 6 Reading the building load model
 
-Open `lib/school.ts` and locate these symbols in order: `SCHOOL_AREA`, `DEFAULT_SCHOOL`, `SCHOOL_FIELDS`, `validateSchool`, `simulateSchool`, `summarizeLoads` and `schoolCsv`.
+Open `lib/school.ts` and locate these symbols in order: `DEFAULT_SCHOOL`, `SCHOOL_FIELDS`, `validateSchool`, `simulateSchool`, `summarizeLoads` and `schoolCsv`.
 
-The modeled floor area is the constant `SCHOOL_AREA`, currently 150,000 ft². The internal filename reflects an earlier building use; it is the active single-zone building model. A floor-area change is therefore different from changing a value in `DEFAULT_SCHOOL`: the constant is used by ventilation, envelope, internal gains, geometry and exported metadata.
+The total conditioned floor area is `floorAreaFt2` in `DEFAULT_SCHOOL`, initially 150,000 ft². It is editable alongside `stories` (number of floors) and `ceilingFt` (conditioned height per floor). Area includes all floors combined. The footprint is area divided by floors, and conditioned volume is area times height per floor. Do not multiply that volume by floors again. The internal filename reflects an earlier building use; it is the active single-zone building model.
 
 `DEFAULT_SCHOOL` contains thermostat, occupancy, outdoor-air, internal-gain and solar-geometry assumptions. `SCHOOL_FIELDS` provides form labels, units, limits and input increments. If you add an editable assumption, you need its model field and its form definition, not just a new textbox.
 
@@ -512,7 +512,7 @@ Edit `DEFAULT_SCHOOL` in `lib/school.ts`. If the allowed range or field label ch
 
 ### Change floor area
 
-The current area is `SCHOOL_AREA`, not an editable assumption. Before turning it into an input, trace every use in building loads, solar geometry and exported metadata. Introduce the field consistently rather than changing only the displayed floor-area text.
+Edit total conditioned floor area and number of floors in the Building size and geometry input group after selecting Modify values. `floorAreaFt2` drives envelope UA, area-based ventilation, infiltration volume, lighting, equipment gains and solar geometry. `stories` divides total area into equal floor plates and sets total exterior height; it does not multiply total area or occupancy. People remain an independently entered building total. For a different default, edit `DEFAULT_SCHOOL.floorAreaFt2` and `DEFAULT_SCHOOL.stories`. Exports include total area, floors, footprint and conditioned volume.
 
 ### Change a heat or moisture equation
 

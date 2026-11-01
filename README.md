@@ -49,7 +49,7 @@ Cooling domain: entering WB 61–73°F, entering DB 75–90°F, outdoor generall
 
 ## Building, annual energy and interpretation
 
-The editable building remains a 150,000 ft² hourly steady-state single zone with weekday occupancy, reduced summer use, setback temperatures, internal gains and Sup3rCC solar gains. Infiltration plus scheduled ventilation affect building loads. Roofs use GHI; walls use projected DNI plus sky/ground components at the dataset grid location and fixed local time. There is no thermal storage, detailed zoning, economizer or controls simulation. Sup3rCC is modeled climate, not observed weather. Lighting and plug electricity are excluded from these equipment totals.
+The building is an hourly steady-state single zone with editable total conditioned floor area and number of floors (defaults: 150,000 ft² across two equal floors) with weekday occupancy, reduced summer use, setback temperatures, internal gains and Sup3rCC solar gains. Infiltration plus scheduled ventilation affect building loads. Roofs use GHI; walls use projected DNI plus sky/ground components at the dataset grid location and fixed local time. There is no thermal storage, detailed zoning, economizer or controls simulation. Sup3rCC is modeled climate, not observed weather. Lighting and plug electricity are excluded from these equipment totals.
 
 Annual site energy = electricity kWh × 3412.141633 / 1e6 + gas therms × 0.1 MMBtu/therm. Electricity cost uses supported OpenEI tariff terms or an entered rate; gas cost uses an EIA monthly state commercial benchmark. EPA eGRID and gas-combustion factors give CO₂e. Fan electricity is part of equipment electricity, including for gas heating. Missing tariffs/prices/factors block only dependent metrics.
 
@@ -75,4 +75,4 @@ References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psyc
 
 ## Input controls
 
-Building characteristics and assumptions is a single collapsible panel with one default/custom choice. Defaults restore the complete building input set; custom mode enables editing. Location, year, equipment, utility and ZIP inputs are directly editable. Required building fields reveal the panel on validation. UI copy describes current behavior; implementation history stays outside the website.
+Building characteristics and assumptions is a single collapsible panel with one default/custom choice. Defaults restore the complete building input set; custom mode enables editing. Location, year, equipment, utility and ZIP inputs are directly editable. The first input group contains total conditioned floor area, number of floors, height per floor, plan aspect ratio and rotation. Total area includes all floors; conditioned volume is total area times height per floor, and occupancy remains an independently entered building total. Required building fields reveal the panel on validation. UI copy describes current behavior; implementation history stays outside the website.
