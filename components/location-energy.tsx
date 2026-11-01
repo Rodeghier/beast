@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * RESULTS DATA CONTROLLER. Fetches location prices/EPA context, manages tariff
+ * and manual-rate selections, and calls annualPerformance after Load results.
+ * Display helpers below show provider details and export hourly emissions.
+ */
+
+
 import { useEffect, useMemo, useState } from "react";
 import { Download, RefreshCw } from "lucide-react";
 import type { Place } from "@/lib/climate";
@@ -77,7 +84,11 @@ export function LocationEnergy({ place, year, results, rows }: { place: Place; y
   }, [place.latitude, place.longitude, place.stateCode, retry]);
   const region = data?.emissions.regions.find(r => r.code === regionCode);
   const tariff = data?.electricity.tariffs.find(r => r.id === tariffId);
+  // The displayed annual metrics apply only after the selected tariff/region
+  // have been explicitly loaded. Editing a selection clears the applied state.
   const ready = !!applied && !loading && applied.tariffId === tariffId && applied.regionCode === regionCode;
+  // This call applies billing/emission factors to the existing equipment energy.
+  // It does not rerun building loads or change the selected unit capacity.
   const performance = useMemo(() => ready ? results.map(result => annualPerformance(result, rows, tariff, region, data?.gas, data?.emissions.naturalGas, manualEnabled ? manualRate : undefined)) : [], [ready, results, rows, tariff, region, data, manualEnabled, manualRate]);
   function exportEmissions() {
     if (!data) return;

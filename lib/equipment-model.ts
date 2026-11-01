@@ -1,3 +1,13 @@
+/**
+ * EQUIPMENT SELECTION AND HOURLY ENERGY. This is the main equipment worksheet.
+ * Read fanAdjustedLoads -> autosizePackaged -> simulateEquipment -> CSV exports.
+ * SchoolRow supplies thermal demands; PackagedSelection supplies size/count;
+ * EquipmentHour supplies delivered/unmet loads, kWh and therms for one hour.
+ * null means unavailable, never a substitute for zero. All installed values
+ * include unit count; curve evaluators and nominal ratings are per unit.
+ * See docs/REPOSITORY_GUIDE.md sections 8 through 12 for a worked trace.
+ */
+
 import { parseCsv } from "./csv";
 import { schoolCsv, type SchoolAssumptions, type SchoolRow } from "./school";
 import type { SolarLocation } from "./solar";
@@ -10,7 +20,11 @@ import { unitRatingFor, COOLING_POWER_BASIS } from "./unit-ratings";
 
 export const BTU_PER_KWH=3412.141633;
 export const EQUIPMENT_MODEL_VERSION="equipment-mixed-air-4.0";
+// Selection is an installed combination, not a single unit. Reference capacities
+// are summed across units; source/estimated/unavailable hour counts describe coverage.
 export type PackagedSelection={model:CoolingModel; heatingModel:HeatingModel; count:number; totalTons:number; supplyCfm:number; referenceCoolingBtuHr:number; referenceHeatingBtuHr:number; verifiedCoolingHours:number; estimatedCoolingHours:number; unverifiedCoolingHours:number; verifiedHeatingHours:number; estimatedHeatingHours:number; unverifiedHeatingHours:number; rangeMode:CurveRangeMode; heatingAirflowApproximation:boolean; includesHeatPumpHeating:boolean; provisional:boolean; basis:string};
+// Every row is one hour. electricity fields are kWh for that hour; fanHeat and
+// capacity/delivered/unmet fields are BTU/hr. COP and SHR are dimensionless.
 export type EquipmentHour={electricity:number|null;heatingElectricity:number|null;coolingElectricity:number|null;fanElectricity:number|null;fanHeat:number|null;gasTherms:number|null;
   availableHeating:number|null;availableCooling:number|null;deliveredHeating:number|null;deliveredCooling:number|null;unmetHeating:number|null;unmetCooling:number|null;
   heatingCop:number|null;coolingCop:number|null;coolingOperatingCop:number|null;coolingShr:number|null;enteringWetBulbF:number|null;enteringDryBulbF:number|null;outdoorAirFraction:number|null;supplyCfm:number|null;
@@ -23,6 +37,8 @@ const validCooling=(r:SchoolRow)=>finite(r.sensibleCooling)&&finite(r.latentCool
 const needsCooling=(r:SchoolRow)=>validCooling(r)&&(r.sensibleCooling!<0||r.latentCooling!<0);
 /** Full-hour supply-fan operation on a heating, cooling or scheduled ventilation call. */
 export const fanRuns=(r:SchoolRow)=>r.ventilationCfm>0||(finite(r.heating)&&r.heating>0)||needsCooling(r);
+// Convert stored cooling signs into positive equipment demands, then credit fan
+// heat against heating and add it to the signed sensible cooling balance.
 export function fanAdjustedLoads(r:SchoolRow,fanHeat:number) {
   const heat=finite(r.heating)?Math.max(0,r.heating-fanHeat):null;
   // The signed balance retains thermostat deadband during fan-only ventilation.
@@ -30,7 +46,12 @@ export function fanAdjustedLoads(r:SchoolRow,fanHeat:number) {
   return {heat,sensible,latent:validCooling(r)?-r.latentCooling!:null};
 }
 
+// Enumerate catalog sizes and integer unit counts. Each candidate changes supply
+// airflow, so mixed entering conditions must be recalculated before capacity checks.
+// The objective is fewer unavailable checks, then fewer units, then fewer nominal tons.
 export function autosizePackaged(rows:SchoolRow[],school:SchoolAssumptions,efficiency:"standard"|"high",heating:HeatingEquipment="heat-pump",rangeMode:CurveRangeMode="bounded"):PackagedSelection|null {
+  // Cache air-property inputs, and check the largest demands first. A candidate
+  // that fails an early peak can be rejected without evaluating the remaining hours.
   const contexts=rows.map(r=>airContext(r,school));
   const loadHours=rows.map((r,i)=>({r,i})).filter(({r})=>validCooling(r)&&fanRuns(r)).sort((a,b)=>a.r.sensibleCooling!+a.r.latentCooling!-b.r.sensibleCooling!-b.r.latentCooling!);
   const heatHours=heating==="heat-pump"?rows.map((r,i)=>({r,i})).filter(({r})=>finite(r.heating)&&r.heating>0).sort((a,b)=>b.r.heating!-a.r.heating!):[];
@@ -44,6 +65,8 @@ export function autosizePackaged(rows:SchoolRow[],school:SchoolAssumptions,effic
     const reference=coolingPoint(model,95,67,80)!;
     const rating=unitRatingFor(model),unitFan=rating?.inferred_supply_fan_heat_Btu_hr??0;
     const minCount=Math.max(1,Math.ceil(peakVent/model.fixed_cfm));
+    // Reference-condition capacity estimates a search scale, not the final answer.
+    // Heating, sensible cooling, latent cooling and ventilation can set different minima.
     const referenceCount=Math.max(minCount,...loadHours.map(({r})=>Math.ceil(Math.max(-r.sensibleCooling!/Math.max(1,reference.capacityBtuHr*reference.shr-unitFan),-r.latentCooling!/(reference.capacityBtuHr*(1-reference.shr))))),...heatHours.map(({r})=>Math.ceil(r.heating!/heatingModel.reference_capacity_Btu_hr)));
     const make=(count:number,verified:number,estimated:number,unknown:number,verifiedHeat:number,estimatedHeat:number,unverifiedHeat:number,basis:string):PackagedSelection=>({model,heatingModel,count,totalTons:count*model.nominal_tons,supplyCfm:count*model.fixed_cfm,
       referenceCoolingBtuHr:count*model.reference_capacity_Btu_hr,referenceHeatingBtuHr:count*heatingModel.reference_capacity_Btu_hr,verifiedCoolingHours:verified,unverifiedCoolingHours:unknown,
@@ -55,6 +78,8 @@ export function autosizePackaged(rows:SchoolRow[],school:SchoolAssumptions,effic
     const upper=Math.min(10000,Math.max(minCount+50,referenceCount*16));
     for(let count=minCount;count<=upper;count++) {
       const supply=count*model.fixed_cfm;let verified=0,estimated=0,unknown=unknownLoads,failed=false;
+      // Cooling pass: fan-adjusted sensible and latent demand must each fit their
+      // respective portions of gross coil capacity. Total capacity alone is insufficient.
       for(const {r,i} of loadHours) {
         const loads=fanAdjustedLoads(r,count*unitFan);
         if(loads.sensible===0&&loads.latent===0)continue;
@@ -67,6 +92,8 @@ export function autosizePackaged(rows:SchoolRow[],school:SchoolAssumptions,effic
       }
       if(failed)continue;
       let verifiedHeat=0,estimatedHeat=0,unverifiedHeat=unknownHeat;
+      // Heating pass is used only for heat-pump heating. Gas/resistance heater sizes
+      // are calculated separately after supply-fan heat has reduced the building demand.
       for(const {r,i} of heatHours){
         const mixed=mixAir(contexts[i],supply),point=mixed&&finite(r.temperatureF)?operatingHeatingPoint(heatingModel,r.temperatureF,mixed.dryF,rangeMode):null;
         if(!point){unverifiedHeat++;continue;}
@@ -83,6 +110,8 @@ export function autosizePackaged(rows:SchoolRow[],school:SchoolAssumptions,effic
   return candidates.sort(order)[0]??fallback.sort(order)[0]??null;
 }
 
+// Apply one installed selection to all hours. preparedSelection allows the UI
+// to reuse a sizing result; undefined requests sizing, while explicit null does not.
 export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scenario:EquipmentScenario,preparedSelection?:PackagedSelection|null):EquipmentResult {
   const packaged=scenario.heating==="heat-pump",hasCooling=coolingFor(scenario)!==null;
   const rangeMode=curveRangeMode(scenario);
@@ -90,9 +119,13 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
   const rating=selection?unitRatingFor(selection.model):null;
   const ratedFanHeat=selection&&rating?selection.count*rating.inferred_supply_fan_heat_Btu_hr:null;
   const ratedFanKw=selection&&rating?selection.count*rating.inferred_supply_fan_power_kW:null;
+  // Gas/resistance heater capacity is the largest remaining heating demand after
+  // installed fan heat credit. Heat-pump reference capacity comes from its selection.
   const peakHeat=rows.some(r=>finite(r.heating))?Math.max(0,...rows.map(r=>finite(r.heating)?Math.max(0,r.heating-(ratedFanHeat??0)):0)):null;
   const heatingCapacityBtuHr=packaged?selection?.referenceHeatingBtuHr??null:peakHeat;
   const error=!hasCooling?"Choose cooling equipment (required).":scenario.heating==="gas"&&!validGasEfficiency(scenario.gasEfficiencyPercent)?"Enter natural-gas heating efficiency (AHUE / AFUE) above 0% and at or below 100%.":null;
+  // Hourly worksheet starts here. issues collects text explaining assumptions or
+  // unavailable dependent values; it is exported with the numeric results.
   const output=rows.map((r):EquipmentHour=>{
     const issues:string[]=[];
     const runs=fanRuns(r);
@@ -107,6 +140,9 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
       if(r.heating===0) {heatingElectricity=0;deliveredHeating=0;unmetHeating=0;}
       else if(!hp)issues.push("Heating operating point is outside the supplied data or mixed-air inputs are unavailable.");
       else if(rating&&adjusted&&ratedFanKw!==null&&ratedFanHeat!==null){
+        // Heating catalog output/input already include fan effects. Remove the inferred
+        // fan components to get coil-only capacity/power, duty-scale those, then count the
+        // full-hour operating fan exactly once in the building heat and electrical balance.
         const coilCapacity=Math.max(0,availableHeating!-ratedFanHeat),coilNeed=adjusted.heat!;
         const deliveredCoil=Math.min(coilNeed,coilCapacity),duty=coilCapacity>0?deliveredCoil/coilCapacity:0;
         const nonfanPower=selection!.count*hp.powerKw-ratedFanKw;
@@ -118,6 +154,8 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
       }else issues.push("Heating electricity requires the selected unit's separate supply-fan estimate.");
     }else if(adjusted&&finite(adjusted.heat)){
       availableHeating=heatingCapacityBtuHr;
+      // For gas/resistance, cap heater delivery at its selected output. Gas efficiency
+      // converts delivered heater heat to therms; resistance converts it directly to kWh.
       const heaterOutput=Math.min(adjusted.heat,heatingCapacityBtuHr??0);
       deliveredHeating=Math.min(r.heating,heaterOutput+fanHeat!);unmetHeating=Math.max(0,r.heating-deliveredHeating);
       if(scenario.heating==="resistance"){heatingElectricity=heaterOutput/BTU_PER_KWH;heatingCop=r.heating>0?1:null;}
@@ -135,11 +173,15 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
       else if(!cold||!selection)issues.push("Cooling operating point is outside the supplied data or mixed-air inputs are unavailable.");
       else{
         const sensible=adjusted.sensible!,latent=adjusted.latent!;
+        // Choose duty from the more demanding sensible or latent requirement. The
+        // compressor duty cannot exceed 1; excess component demands become unmet loads.
         const need=Math.max(sensible>0?sensible/cold.shr:0,latent>0?latent/(1-cold.shr):0);
         const duty=Math.min(1,need/availableCooling!);
         deliveredCooling=availableCooling!*duty;
         unmetCooling=Math.max(0,sensible-deliveredCooling*cold.shr)+Math.max(0,latent-deliveredCooling*(1-cold.shr));
         coolingElectricity=selection.count*rating.cooling_non_supply_fan_power_kW*duty;
+        // Full-output COP uses available net cooling and nominal total kW. Operating COP
+        // uses actual delivered net cooling and duty-scaled cooling plus full-hour fan kWh.
         coolingCop=Math.max(0,availableCooling!-ratedFanHeat!)/(BTU_PER_KWH*selection.count*rating.cooling_system_power_kW);
         const modeElectricity=coolingElectricity+fanElectricity!;
         coolingOperatingCop=modeElectricity>0?Math.max(0,deliveredCooling-fanHeat!)/(BTU_PER_KWH*modeElectricity):null;
@@ -149,22 +191,30 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
     }
     if(runs&&rating&&!issues.includes(COOLING_POWER_BASIS))issues.push(COOLING_POWER_BASIS);
     if(error)issues.push(error);
+    // If any required electrical component is unknown, total electricity stays null.
+    // Do not replace these nulls with zero to force a complete annual result.
     const electricity=hasCooling&&heatingElectricity!==null&&coolingElectricity!==null&&fanElectricity!==null?heatingElectricity+coolingElectricity+fanElectricity:null;
     return {electricity,heatingElectricity,coolingElectricity,fanElectricity,fanHeat,gasTherms,availableHeating,availableCooling,deliveredHeating,deliveredCooling,unmetHeating,unmetCooling,heatingCop,coolingCop,coolingOperatingCop,coolingShr,
       enteringWetBulbF:mixed?.wetF??null,enteringDryBulbF:mixed?.dryF??null,outdoorAirFraction:mixed?.outdoorFraction??null,supplyCfm:selection?.supplyCfm??null,
       heatingBoundaryEstimate:hp?.boundaryEstimate??false,coolingBoundaryEstimate:cold?.boundaryEstimate??false,heatingCurveOutdoorF:hp?.curveOutdoorF??null,heatingCurveDryF:hp?.curveDryF??null,
       coolingCurveOutdoorF:cold?.curveOutdoorF??null,coolingCurveWetF:cold?.curveWetF??null,coolingCurveDryF:cold?.curveDryF??null,status:issues.join(" ")||"Calculated from selected heating/cooling equipment and supply-fan balance."};
   });
+  // Available-hour component sums can have different coverage. Annual totals are
+  // allowed only when all required energy records and the calendar are complete.
   const completeHours=output.filter(r=>finite(r.electricity)&&finite(r.gasTherms)).length;
   const sum=(key:"electricity"|"gasTherms"|"heatingElectricity"|"coolingElectricity"|"fanElectricity"|"unmetHeating"|"unmetCooling")=>output.some(r=>finite(r[key]))?output.reduce((s,r)=>s+(r[key]??0),0):null;
   return {scenario,selection,heatingCapacityBtuHr,error,rows:output,summary:{electricity:sum("electricity"),gasTherms:sum("gasTherms"),heatingElectricity:sum("heatingElectricity"),coolingElectricity:sum("coolingElectricity"),fanElectricity:sum("fanElectricity"),completeHours,fullYear:!error&&completeHours===8760&&completeCalendar(rows),unmetHeatingBtu:sum("unmetHeating"),unmetCoolingBtu:sum("unmetCooling"),unmetHeatingHours:output.filter(r=>(r.unmetHeating??0)>1).length,unmetCoolingHours:output.filter(r=>(r.unmetCooling??0)>1).length,unknownHeatingHours:output.filter(r=>r.unmetHeating===null).length,unknownCoolingHours:output.filter(r=>r.unmetCooling===null).length,estimatedHeatingHours:output.filter(r=>r.heatingBoundaryEstimate).length,estimatedCoolingHours:output.filter(r=>r.coolingBoundaryEstimate).length}};
 }
+// Require 8760 unique hourly timestamps in one year, with no February 29.
+// A matching record count alone would not catch duplicate or invalid timestamps.
 export function completeCalendar(rows:SchoolRow[]):boolean {
   return rows.length===8760&&new Set(rows.map(r=>`${r.year}-${r.month}-${r.day}-${r.hour}`)).size===8760&&rows.every(r=>{
     const d=new Date(Date.UTC(r.year,r.month-1,r.day,r.hour));return r.year===rows[0].year&&r.minute===0&&Number.isInteger(r.hour)&&r.hour>=0&&r.hour<24&&d.getUTCMonth()===r.month-1&&d.getUTCDate()===r.day&&!(r.month===2&&r.day===29);
   });
 }
 const line=(values:unknown[])=>values.map(v=>v==null?"":`"${String(v).replaceAll('"','""')}"`).join(",");
+// Append equipment data to the building CSV. keys and headers must remain in
+// the same order; add an output to both lists when extending the export.
 export function equipmentResultsCsv(rows:SchoolRow[],school:SchoolAssumptions,result:EquipmentResult,location:string,zone:string,site?:SolarLocation|null):string {
   const original=parseCsv(schoolCsv(rows,school,location,zone,site)),s=result.selection,rating=s?unitRatingFor(s.model):null;
   const metadata={Equipment_model:EQUIPMENT_MODEL_VERSION,Scenario:scenarioName(result.scenario),Heating_equipment:EQUIPMENT_NAMES[result.scenario.heating],Scope:result.scenario.heating==="heat-pump"?"Heat pump heating and cooling with catalog fan/power balance":"Selected heat-pump cooling with separate heater and supply fan",

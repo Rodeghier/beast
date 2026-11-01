@@ -1,3 +1,9 @@
+/**
+ * EMISSIONS MULTIPLICATION. Electricity uses kg CO2e/kWh; gas uses kg CO2e/therm.
+ * The functions return kg CO2e. Annual scorecards convert kg to metric tonnes.
+ * A zero-use fuel contributes zero even without a factor; positive use needs one.
+ */
+
 import type { EquipmentResult } from "./equipment-model";
 import type { EmissionRegion, GasCombustion } from "./location-energy";
 export function energyEmissions(electricity:number|null, gasTherms:number|null, region:EmissionRegion|null|undefined, gas:GasCombustion|null|undefined) {

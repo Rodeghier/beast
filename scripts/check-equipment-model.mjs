@@ -1,3 +1,10 @@
+/**
+ * OFFLINE VERIFICATION. Runs assertions against the actual source functions.
+ * A failed assertion stops the command and points to the check that disagreed.
+ * These checks are independent of a live provider connection. Read the handbook
+ * for which engineering assumptions each check covers.
+ */
+
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -170,3 +177,19 @@ assert.equal((buildingHtml.match(/<details/g)||[]).length,1);
 assert.match(buildingHtml,/Use defaults/);assert.match(buildingHtml,/Modify values/);assert.match(buildingHtml,/class="assumptions-values" disabled=""/);
 const customHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:{...DEFAULT_SCHOOL,heatingF:68},onSchool:()=>{}}));
 assert.doesNotMatch(customHtml,/class="assumptions-values" disabled/);
+// Geometry is editable through the existing building panel and carried into
+// equipment sizing and exported metadata, rather than being display-only.
+for(const key of ['floorAreaFt2','stories','ceilingFt']) assert.equal((buildingHtml.match(new RegExp(`id="input-${key}"`,'g'))||[]).length,1);
+assert.match(buildingHtml,/Total conditioned floor area/); assert.match(buildingHtml,/Number of floors/);
+const customAreaHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:{...DEFAULT_SCHOOL,floorAreaFt2:10000,stories:1},onSchool:()=>{}}));
+assert.doesNotMatch(customAreaHtml,/class="assumptions-values" disabled/);
+assert.match(customAreaHtml,/id="input-floorAreaFt2"[^>]*value="10000"/);
+const smallBuilding={...DEFAULT_SCHOOL,floorAreaFt2:1000,stories:1,people:0,infiltrationAch:0,ventilationArea:0,ventilationPerson:0,lightingW:0,equipmentW:0};
+const smallWeather=[{year:2025,month:1,day:7,hour:12,minute:0,temperature:celsius(20),humidity:0,dhi:0,dni:0,ghi:0}];
+const smallLoads=simulateSchool(smallWeather,smallBuilding),largerBuilding={...smallBuilding,floorAreaFt2:2000};
+const smallGas=simulateEquipment(smallLoads,smallBuilding,gasScenario);
+const largerGas=simulateEquipment(simulateSchool(smallWeather,largerBuilding),largerBuilding,gasScenario);
+near(largerGas.heatingCapacityBtuHr-smallGas.heatingCapacityBtuHr,5000);
+const sizeExport=parseCsv(equipmentResultsCsv(smallLoads,smallBuilding,smallGas,'Test','UTC'));
+assert.equal(sizeExport[1][sizeExport[0].indexOf('Floor_area_ft2')],'1000');
+assert.equal(sizeExport[1][sizeExport[0].indexOf('Number_of_floors')],'1');

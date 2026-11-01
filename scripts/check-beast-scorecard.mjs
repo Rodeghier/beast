@@ -1,3 +1,10 @@
+/**
+ * OFFLINE VERIFICATION. Runs assertions against the actual source functions.
+ * A failed assertion stops the command and points to the check that disagreed.
+ * These checks are independent of a live provider connection. Read the handbook
+ * for which engineering assumptions each check covers.
+ */
+
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";

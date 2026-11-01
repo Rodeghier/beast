@@ -1,3 +1,10 @@
+/**
+ * WEATHER IMPORT. parseCsv handles the text format; parseClimateCsv interprets
+ * the provider columns and metadata as typed hourly records.
+ * ClimateRow.temperature is Celsius, humidity is percent RH, and solar inputs
+ * are W/m2. Missing readings become null rather than zero.
+ */
+
 export type ClimateRow = { year: number; month: number; day: number; hour: number; minute: number; temperature: number | null; humidity: number | null; dhi: number | null; dni: number | null; ghi: number | null };
 export type ClimateData = { metadata: Record<string, string>; rows: ClimateRow[] };
 
@@ -22,6 +29,8 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
+// A provider CSV has metadata lines before the hourly table. Locate the actual
+// time header rather than assuming the first line is data.
 export function parseClimateCsv(csv: string, requestedYear: number): ClimateData {
   const records = parseCsv(csv);
   const normal = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -39,6 +48,8 @@ export function parseClimateCsv(csv: string, requestedYear: number): ClimateData
     const unit = metadata[key]?.toLowerCase().replace(/[²^\s]/g, m => m === "²" ? "2" : "");
     if (unit && unit !== "w/m2") throw new Error(`Unsupported ${key}: expected W/m².`);
   }
+  // Return null for blank/sentinel readings. This deliberately distinguishes
+  // missing temperature/RH/irradiance from a legitimate measured zero.
   const rawNumber = (value: string | undefined) => !value?.trim() || /^(na|n\/a|nan|null|-+|none)$/i.test(value) ? null : Number(value);
   const rows = records.slice(headerIndex + 1).map((r, i): ClimateRow => {
     const values = indices.map(index => rawNumber(r[index]));

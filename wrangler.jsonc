@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Vite generates dist/server/wrangler.json from this source configuration.
+  // Set the Worker name for your own Cloudflare account before deploying.
+  "name": "beast",
+  "main": "vinext/server/fetch-handler",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"]
+}

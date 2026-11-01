@@ -1,3 +1,10 @@
+/**
+ * SOLAR HEAT GAINS. Turns weather irradiance and simple rectangular geometry into
+ * window and opaque-surface heat gains in BTU/hr. Input irradiance is W/m2.
+ * Read solarLocation -> sunVector -> wallIrradiance -> solarGains.
+ * The envelope UA in school.ts still handles ordinary temperature conduction.
+ */
+
 import type { ClimateRow } from "./csv";
 
 export type SolarLocation = { latitude: number; longitude: number; utcOffset: number };
@@ -5,6 +12,8 @@ export type SolarInputs = { stories: number; aspectRatio: number; rotationDeg: n
 const RAD = Math.PI / 180;
 const W_M2_TO_BTU_H_FT2 = 0.316998331;
 
+// Read coordinates and time offset from weather-file metadata, which can differ
+// from the searched city center. Missing metadata cannot be guessed.
 export function solarLocation(metadata: Record<string, string>): SolarLocation | null {
   const raw = [metadata.Latitude, metadata.Longitude, metadata["Local Time Zone"] ?? metadata["Time Zone"]];
   if (raw.some(v => v === undefined || v.trim() === "")) return null;
@@ -14,6 +23,8 @@ export function solarLocation(metadata: Record<string, string>): SolarLocation |
 
 // NOAA fractional-year approximation; east/north/up unit vector. The hourly
 // interval midpoint is used, with the CSV's fixed standard-time UTC offset.
+// Returns east, north and up components of a unit vector toward the sun.
+// The time used is the midpoint of the one-hour weather interval.
 export function sunVector(row: Pick<ClimateRow, "year" | "month" | "day" | "hour" | "minute">, site: SolarLocation) {
   const day = (Date.UTC(row.year, row.month - 1, row.day) - Date.UTC(row.year, 0, 0)) / 86400000;
   const days = (Date.UTC(row.year + 1, 0, 1) - Date.UTC(row.year, 0, 1)) / 86400000;
@@ -28,6 +39,8 @@ export function sunVector(row: Pick<ClimateRow, "year" | "month" | "day" | "hour
 
 // Isotropic sky + ground reflection on a vertical face. GHI is the measured
 // horizontal total and is never added to DNI as if both were normal irradiance.
+// Project direct normal irradiance onto one vertical face, then add isotropic
+// sky diffuse and ground-reflected terms. Negative beam incidence contributes zero.
 export function wallIrradiance(dhi: number, dni: number, ghi: number, albedo: number, azimuthDeg: number, sun: ReturnType<typeof sunVector>) {
   const incidence = sun.east * Math.sin(azimuthDeg * RAD) + sun.north * Math.cos(azimuthDeg * RAD);
   return (sun.up > 0 ? dni * Math.max(0, incidence) : 0) + dhi / 2 + ghi * albedo / 2;
@@ -38,6 +51,8 @@ export function solarGains(row: ClimateRow, a: SolarInputs, area: number, site?:
   if ([row.dhi, row.dni, row.ghi].some(v => v === null || v === undefined || !Number.isFinite(v) || v < 0)) return missing;
   if (row.dhi === 0 && row.dni === 0 && row.ghi === 0) return { total: 0, windows: 0, opaque: 0, status: "Zero irradiance" };
   if (!site) return { ...missing, status: "Missing solar location or time-zone metadata" };
+  // A rectangular floor plate is inferred from area/stories and length/width ratio.
+  // The four faces are rotated together by the building rotation input.
   const roof = area / a.stories, length = Math.sqrt(roof * a.aspectRatio), width = roof / length;
   const height = a.stories * a.ceilingFt, sun = sunVector(row, site), glass = a.windowPercent / 100;
   let windows = 0, walls = 0;
@@ -47,6 +62,8 @@ export function solarGains(row: ClimateRow, a: SolarInputs, area: number, site?:
     windows += faceArea * glass * a.shgc * a.shadeFactor * incident;
     walls += faceArea * (1 - glass) * a.wallU * a.solarAbsorptance * incident / a.outdoorFilm;
   }
+  // Opaque sol-air gains use absorptance * irradiance / exterior film coefficient.
+  // This added solar term is separate from the ordinary envelope-UA conduction term.
   const opaque = walls + roof * a.roofU * a.solarAbsorptance * row.ghi! * W_M2_TO_BTU_H_FT2 / a.outdoorFilm;
   return { total: windows + opaque, windows, opaque, status: "Sup3rCC solar; steady-state glazing and sol-air correction" };
 }

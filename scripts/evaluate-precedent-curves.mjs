@@ -1,3 +1,9 @@
+/**
+ * STANDALONE CURVE EVALUATOR. Reads a fitting-package JSON bundle and evaluates
+ * one cooling point. It may require an ignored outputs artifact; the website
+ * uses lib/packaged-cooling.ts with its committed application dataset instead.
+ */
+
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';

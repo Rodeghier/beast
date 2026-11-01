@@ -1,3 +1,10 @@
+/**
+ * UTILITY AND EMISSIONS DATA CONTRACTS. This module validates provider data
+ * and describes tariffs, monthly gas prices and EPA regions. It does not fetch
+ * network data or calculate a complete bill. The API route fetches data;
+ * utility-billing.ts and emissions.ts apply it to equipment energy.
+ */
+
 import egridCo2e from "./data/egrid-co2e-2023.json";
 /** Public provider data only. API credentials never belong in these types. */
 export type ProviderStatus = "ok" | "missing_key" | "error";
@@ -31,6 +38,8 @@ export const EMISSIONS_SOURCE = "https://www.epa.gov/egrid/summary-data";
 
 type RecordValue = Record<string, unknown>;
 const record = (v: unknown): RecordValue => v !== null && typeof v === "object" && !Array.isArray(v) ? v as RecordValue : {};
+// Normalize provider numbers without turning a blank value into zero.
+// Number("") would otherwise produce zero in JavaScript.
 export function finiteNumber(v: unknown): number | null {
   if (typeof v !== "number" && (typeof v !== "string" || !v.trim())) return null;
   const n = Number(v); return Number.isFinite(n) ? n : null;
@@ -63,6 +72,8 @@ const numericMonths = (v: unknown): number[] | null => Array.isArray(v) && v.len
 const meaningful = (v: unknown): boolean => Array.isArray(v) ? v.some(meaningful) : v && typeof v === "object" ? Object.values(v).some(meaningful) : typeof v === "number" ? v !== 0 : typeof v === "string" ? !!v.trim() && v.trim() !== "0" : v === true;
 
 /** Keep rate candidates separate; no implicit tariff or service-provider choice. */
+// Translate the provider JSON into a predictable internal tariff structure.
+// Keep unsupported/incomplete clauses visible so the billing code can decline them.
 export function parseElectricTariffs(payload: unknown, effectiveOn = Date.now() / 1000): ElectricTariff[] {
   const items = record(payload).items;
   if (!Array.isArray(items)) return [];
@@ -112,6 +123,8 @@ export function parseElectricTariffs(payload: unknown, effectiveOn = Date.now() 
   return out.sort((a, b) => a.utility.localeCompare(b.utility) || a.name.localeCompare(b.name));
 }
 
+// Select commercial state delivered-gas prices, preserving their source periods
+// and dollars/Mcf units. The billing module performs the therm/Mcf conversion.
 export function parseGasPrices(payload: unknown, state: string): GasContext["prices"] {
   const values = record(record(payload).response).data;
   if (!Array.isArray(values)) return [];
@@ -147,6 +160,8 @@ export function pointInGeometry(latitude: number, longitude: number, geometry: G
   const polygons = geometry.type === "Polygon" ? [geometry.coordinates as number[][][]] : geometry.type === "MultiPolygon" ? geometry.coordinates as number[][][][] : [];
   return polygons.some(p => p.length > 0 && pointInRing(longitude, latitude, p[0]) && !p.slice(1).some(hole => pointInRing(longitude, latitude, hole)));
 }
+// Find the EPA polygon containing the coordinates and attach its emission factor.
+// This selects data; multiplication by energy occurs in emissions.ts.
 export function resolveEmissions(latitude: number, longitude: number, data: EgridData): EmissionsContext {
   let regions = data.regions.filter(r => pointInGeometry(latitude, longitude, r.geometry));
   const utilities: EmissionsContext["utilities"] = [];

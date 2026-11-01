@@ -1,3 +1,9 @@
+/**
+ * SERVER PRICE AND EPA CONNECTION. Fetches electricity tariffs and state gas
+ * prices, and resolves the bundled EPA region. Providers resolve independently
+ * so one failed lookup does not erase the others. No equipment sizing is done here.
+ */
+
 import { env } from "cloudflare:workers";
 import { STATES } from "@/lib/climate";
 import egridData from "@/lib/data/egrid-2023.json";

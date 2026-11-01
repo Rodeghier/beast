@@ -1,5 +1,7 @@
 # BEAST
 
+For an engineering-oriented introduction to the code, start with [Repository Reading Guide](docs/REPOSITORY_GUIDE.md) or its [Word handbook](docs/BEAST_Repository_Guide.docx). Source comments explain calculation stages, units and data flow.
+
 Building Energy Analysis Selection Tool: hourly building loads, selected heating/cooling equipment, supply-fan energy and heat, and utility/emissions comparisons.
 
 ## Equipment and names
@@ -47,7 +49,7 @@ Cooling domain: entering WB 61–73°F, entering DB 75–90°F, outdoor generall
 
 ## Building, annual energy and interpretation
 
-The editable building remains a 150,000 ft² hourly steady-state single zone with weekday occupancy, reduced summer use, setback temperatures, internal gains and Sup3rCC solar gains. Infiltration plus scheduled ventilation affect building loads. Roofs use GHI; walls use projected DNI plus sky/ground components at the dataset grid location and fixed local time. There is no thermal storage, detailed zoning, economizer or controls simulation. Sup3rCC is modeled climate, not observed weather. Lighting and plug electricity are excluded from these equipment totals.
+The building is an hourly steady-state single zone with editable total conditioned floor area and number of floors (defaults: 150,000 ft² across two equal floors) with weekday occupancy, reduced summer use, setback temperatures, internal gains and Sup3rCC solar gains. Infiltration plus scheduled ventilation affect building loads. Roofs use GHI; walls use projected DNI plus sky/ground components at the dataset grid location and fixed local time. There is no thermal storage, detailed zoning, economizer or controls simulation. Sup3rCC is modeled climate, not observed weather. Lighting and plug electricity are excluded from these equipment totals.
 
 Annual site energy = electricity kWh × 3412.141633 / 1e6 + gas therms × 0.1 MMBtu/therm. Electricity cost uses supported OpenEI tariff terms or an entered rate; gas cost uses an EIA monthly state commercial benchmark. EPA eGRID and gas-combustion factors give CO₂e. Fan electricity is part of equipment electricity, including for gas heating. Missing tariffs/prices/factors block only dependent metrics.
 
@@ -55,14 +57,16 @@ Annual totals require 8,760 unique, valid, complete hourly energy records. Missi
 
 ## Configuration and verification
 
-Node >=22.13. Server secrets remain in ignored local environment/hosting configuration: NLR API key and metadata, optional OpenEI and EIA keys. This checkout has no linked Sites deployment.
+Node >=22.13 and pnpm 11.25.0. Install with `pnpm install --frozen-lockfile`, copy `.env.example` to `.env` and enter your server credentials, then run `pnpm dev`. The local application uses port 5173. `pnpm build` produces `dist/`; `pnpm start` previews that build locally. Server secrets remain in ignored `.env` files or Cloudflare secret settings: NLR API key and metadata, optional OpenEI and EIA keys.
+
+Build and hosting use Vinext and Cloudflare directly. See [Local setup and hosting](docs/HOSTING.md) for configuration, secret setup and deployment commands. No external site builder, sign-in service or hosting manifest is required.
 
 - `node node_modules/typescript/bin/tsc --noEmit`
 - `node scripts/check-equipment-model.mjs`
 - `node scripts/check-school-model.mjs`
 - `node scripts/check-beast-scorecard.mjs`
 - `node scripts/check-location-energy.mjs`
-- `node scripts/run-framework.mjs build`
+- `pnpm build`
 - `python scripts/build-engineering-guide.py` (render and inspect the PDF)
 
 Reproduce ratings: `python scripts/extract-unit-data.py --source PATH_TO_FULL_PDF`. Reproduce heating fits: `python scripts/fit-precedent-heating.py --source PATH`. Checks cover all 1,628 heating points, all 24 nominal power records, fan power reconciliation, part duty, fuel/element heat credit, ventilation, fan-induced cooling, required cooling, automatic names, domains, annual accounting, CSVs and rendered controls. The 55 independent wet-bulb reference states remain in `scripts/fixtures/mixed-air-reference.json`.
@@ -71,4 +75,4 @@ References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psyc
 
 ## Input controls
 
-Building characteristics and assumptions is a single collapsible panel with one default/custom choice. Defaults restore the complete building input set; custom mode enables editing. Location, year, equipment, utility and ZIP inputs are directly editable. Required building fields reveal the panel on validation. UI copy describes current behavior; implementation history stays outside the website.
+Building characteristics and assumptions is a single collapsible panel with one default/custom choice. Defaults restore the complete building input set; custom mode enables editing. Location, year, equipment, utility and ZIP inputs are directly editable. The first input group contains total conditioned floor area, number of floors, height per floor, plan aspect ratio and rotation. Total area includes all floors; conditioned volume is total area times height per floor, and occupancy remains an independently entered building total. Required building fields reveal the panel on validation. UI copy describes current behavior; implementation history stays outside the website.

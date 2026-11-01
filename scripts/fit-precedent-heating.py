@@ -3,6 +3,11 @@
 Usage: python scripts/fit-precedent-heating.py --source PATH [--output PATH]
 Requires numpy and pypdf. Writes auditable JSON/CSV, without changing application files.
 """
+# OFFLINE HEATING DATA PREPARATION. This script creates capacity and total-power
+# fits from the accepted heating dataset. Its output JSON is read at runtime by
+# packaged-heating.ts only after it is copied into lib/data. Total power and
+# net heat follow the catalog fan/defrost basis.
+
 from pathlib import Path
 import argparse, csv, hashlib, json, re, sys
 
@@ -46,11 +51,13 @@ def extract(source):
         assert len(subset) == 102
     return models, rows
 
+# Create the temperature-power terms in exactly the order consumed by the TypeScript evaluator.
 def design(rows):
     x = (np.array([r['outdoor_dry_bulb_F'] for r in rows])-47)/40
     y = (np.array([r['entering_dry_bulb_F'] for r in rows])-70)/20
     return np.column_stack([x**i*y**j for i,j in POWERS])
 
+# Fix the normalized reference coefficient at 1; solve the remaining terms by least squares.
 def fit(a, values, degree):
     n = (degree+1)*(degree+2)//2
     assert np.linalg.matrix_rank(a[:, 1:n]) == n-1
@@ -113,6 +120,7 @@ def main():
                 output_units='BTU/hr net heating' if name=='capacity_normalized' else 'kW total input',fit_error_units='Normalized curve output; relative errors in percent',
                 cop_equation='net_capacity_Btu_hr / (3412.141633 * total_power_kW)',**{f'c{i}':float(v) for i,v in enumerate(values)},**metric))
         summary.append(dict(**common,**{f'capacity_{k}':v for k,v in qm.items()},**{f'power_{k}':v for k,v in pm.items()},**{f'validation_{k}':v for k,v in model['interior_plane_validation'].items()},warnings=' '.join(model['warnings'])))
+        # Dense-domain positivity check: heat and input power must remain positive between source points.
         grid = [dict(outdoor_dry_bulb_F=o,entering_dry_bulb_F=d) for o in np.linspace(-8,72,161) for d in np.linspace(40,80,81)]
         dense = design(grid); assert np.all(dense@qc>0) and np.all(dense@pc>0)
     bundle=dict(schema='precedent-heating-polynomial-1.0',source=dict(filename='Heating_Cap.pdf',document_code='PKGP-PRC023F-EN',

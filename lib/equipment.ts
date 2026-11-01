@@ -1,3 +1,10 @@
+/**
+ * EQUIPMENT INPUT DEFINITIONS. Type declarations describe allowed choices,
+ * like checking the keys and possible values of a Python dictionary.
+ * The combination name is derived from heating and cooling choices.
+ * No building loads or hourly energy are calculated here.
+ */
+
 export type HeatingEquipment = "heat-pump" | "gas" | "resistance";
 export type CoolingEquipment = "heat-pump";
 export type CurveRangeMode = "bounded" | "strict";

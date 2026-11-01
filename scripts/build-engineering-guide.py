@@ -1,4 +1,8 @@
 """Build the BEAST guide for supplied heating/cooling curves and mixed air."""
+# REFERENCE PDF BUILDER. Writes public/engineering-guide.pdf from the content
+# below and installed curve metadata. It documents the equations; it does not
+# run a building simulation or modify the fitted coefficients.
+
 from pathlib import Path
 import json
 from xml.sax.saxutils import escape
@@ -57,7 +61,7 @@ p("There is no editable scenario-name field. Labels follow cooling and heating s
 h("Supplied data and coverage")
 p("The supplied cooling tables provide 24 standard/high efficiency cooling-capacity and SHR fit pairs. The supplied heating tables provide 16 heating-capacity/total-power tables. The supplied unit ratings provide nominal cooling system power and gross/net rated cooling capacities for 24 model ratings across both efficiency families, from 3 to 25 tons.")
 p("Both standard and high efficiency use their own supplied nominal cooling system power. The full source also lists fan motor nameplate horsepower; that is retained as reference data and not treated as operating electrical watts. All rating-based power and fan estimates remain provisional because an airflow/operating-condition correction is unavailable.")
-p("Model: equipment-mixed-air-4.0. Building: building-solar-3.0. These are equipment screening estimates, not a detailed controls or sizing simulation.","small")
+p("Model: equipment-mixed-air-4.0. Building: building-solar-2.1. These are equipment screening estimates, not a detailed controls or sizing simulation.","small")
 
 page(2,"Calculated mixed-air conditions")
 h("Outdoor air and return air")
@@ -120,7 +124,7 @@ p("Manufacturer blanks are missing, not zero. Positive demand in a zero-SHR comp
 
 page(7,"Interpretation, sources and checks")
 h("Building and weather basis")
-p("The editable building is a 150,000 square-foot single zone with hourly steady-state loads. Occupancy follows Monday-Friday hours, reduced summer occupancy and unoccupied setpoints. Internal gains and Sup3rCC solar radiation contribute to loads; lighting and plug electricity are excluded from equipment totals.")
+p("Total conditioned floor area and number of floors are editable; defaults are 150,000 square feet and two equal floors. Area includes all floors. Footprint = area / floors; conditioned volume = area x height per floor. Area scales conduction, infiltration, area-based ventilation and internal gains. Occupant count remains an entered building total. Hourly single-zone loads include scheduled occupancy and solar gains; lighting and plug electricity are excluded from equipment totals.")
 eq("K = envelope UA + 1.08 x building outdoor CFM\nHeating load = max(0,K x (heating setpoint-outdoor F)-gains)\nSigned sensible cooling B_cool = K x (outdoor F-cooling setpoint)\n                               + gains")
 p("Building outdoor airflow includes infiltration plus occupied ventilation. Only ventilation enters the equipment mixer. Latent loads follow outdoor-air and occupant moisture gains at the indoor RH target. Solar uses dataset coordinates and fixed local time, with GHI on roofs and projected DNI plus sky/ground radiation on walls.")
 h("Annual metrics and missing data")

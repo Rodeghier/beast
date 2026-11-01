@@ -1,3 +1,9 @@
+/**
+ * ANNUAL RESULT DISPLAY. Receives modeled equipment and billing results.
+ * Formatting helpers add units and currency; they do not calculate HVAC loads.
+ * Unavailable inputs remain visible as unavailable rather than zero.
+ */
+
 import { scenarioName } from "@/lib/equipment";
 import type { EquipmentResult } from "@/lib/equipment-model";
 import type { AnnualPerformance } from "@/lib/utility-billing";

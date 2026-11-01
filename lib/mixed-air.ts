@@ -1,3 +1,10 @@
+/**
+ * COIL ENTERING AIR. Mixes scheduled ventilation with modeled return air.
+ * Temperatures at the public function boundary are Fahrenheit; psychrometric
+ * equations below use Celsius, kg water/kg dry air and kJ/kg dry air.
+ * Infiltration affects building loads but does not pass through this mixer.
+ */
+
 import { celsius, fahrenheit, humidityRatio, saturationPressure, type SchoolAssumptions, type SchoolRow } from "./school";
 
 export const MIXING_PRESSURE_PA = 101325;
@@ -9,6 +16,8 @@ export function humidityRatioAtWetBulb(dryC: number, wetC: number): number | nul
   return wetC>=0 ? ((2501-2.326*wetC)*ws-1.006*(dryC-wetC))/(2501+1.86*dryC-4.186*wetC)
     : ((2830-.24*wetC)*ws-1.006*(dryC-wetC))/(2830+1.86*dryC-2.1*wetC);
 }
+// Invert the humidity-ratio relation by bisection. Wet bulb is bounded by dry bulb;
+// supersaturated/invalid inputs return null. Wet bulbs are not averaged directly.
 export function wetBulbF(dryF: number, w: number): number | null {
   const dry=celsius(dryF), saturated=saturatedRatio(dry);
   if (!Number.isFinite(w) || w<0 || saturated===null || w>saturated+1e-10) return null;
@@ -22,6 +31,9 @@ export function wetBulbF(dryF: number, w: number): number | null {
 }
 export const enthalpy = (dryC: number,w: number) => 1.006*dryC+w*(2501+1.86*dryC);
 export type AirContext = { outdoorF: number; outdoorW: number; outdoorH: number; returnF: number; returnW: number; returnH: number; ventilationCfm: number };
+// Prepare the outdoor and return states once the building conditions are known.
+// Return DB is the free-float estimate limited by active thermostat setpoints;
+// return RH uses the entered indoor target, not a dynamic humidity simulation.
 export function airContext(row: SchoolRow, school: SchoolAssumptions): AirContext | null {
   if (row.temperatureF===null || row.freeFloatF===null || !Number.isFinite(row.ventilationCfm) || row.ventilationCfm<0) return null;
   const outdoorW=humidityRatio(row.temperature,row.humidity), returnF=Math.min(row.coolingSetpointF,Math.max(row.heatingSetpointF,row.freeFloatF));
@@ -31,9 +43,13 @@ export function airContext(row: SchoolRow, school: SchoolAssumptions): AirContex
 }
 export function mixAir(context: AirContext | null, supplyCfm: number) {
   if (!context || !Number.isFinite(supplyCfm) || supplyCfm<=0 || supplyCfm+1e-7<context.ventilationCfm) return null;
+  // Mechanical ventilation divided by installed supply CFM gives the mixing fraction.
+  // CFM fractions approximate dry-air mass fractions at standard conditions.
   const fraction=context.ventilationCfm/supplyCfm;
   const humidity=(1-fraction)*context.returnW+fraction*context.outdoorW;
   const h=(1-fraction)*context.returnH+fraction*context.outdoorH;
+  // Mix W and h first, then solve temperature from the enthalpy equation.
+  // The supply fan is accounted for later; do not add its heat here a second time.
   const dryF=fahrenheit((h-2501*humidity)/(1.006+1.86*humidity));
   const wetF=wetBulbF(dryF,humidity);
   if (wetF===null) return null;
