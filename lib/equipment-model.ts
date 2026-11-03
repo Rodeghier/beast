@@ -160,7 +160,7 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
   const coolingCapacityTons=coolingEquipment==="air-cooled-chiller"?peakCoolingBtuHr/12000:null;
   const boilerEfficiencyLabel=boilerModel?.efficiencyMetric??"boiler efficiency";
   const error=!hasCooling?"Choose cooling equipment (required).":scenario.heating==="gas"&&boilerModel?.sizeClass==="small"&&!validGasEfficiency(scenario.gasEfficiencyPercent)?`Enter boiler ${boilerEfficiencyLabel} above 0% and at or below 100%.`:scenario.heating==="gas"&&boilerModel?.sizeClass==="large"&&scenario.boilerFiringMode==="modulating"?"Modulating CBLE-4D performance data is not available yet.":coolingEquipment==="heat-pump"&&scenario.stage==="variable"?"Variable-speed heat-pump performance data is not available yet.":coolingEquipment==="heat-pump"&&selection===null?`No equipment models are available for the selected ${scenario.stage==="single"?"single-stage":"multi-stage"} option and efficiency family.`:null;
-  const stageFractions=selection?compressorStages(selection.model.efficiency,selection.model.nominal_tons):[];
+  const stageFractions=selection?compressorStages(scenario.efficiency,selection.model.nominal_tons):[];
   const minimumStage=stageFractions[0]??1;
   let heatingCyclingCallHours=0,heatingBelowMinimumHours=0,coolingCyclingCallHours=0,coolingBelowMinimumHours=0;
   // Hourly worksheet starts here. issues collects text explaining assumptions or
@@ -185,7 +185,7 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
         const coilCapacity=Math.max(0,availableHeating!-ratedFanHeat),coilNeed=adjusted.heat!;
         const deliveredCoil=Math.min(coilNeed,coilCapacity),duty=coilCapacity>0?deliveredCoil/coilCapacity:0;
         if(coilNeed>0&&coilCapacity>0){heatingCyclingCallHours++;if(duty<minimumStage-1e-9)heatingBelowMinimumHours++;}
-        const stages=compressorStages(selection!.model.efficiency,selection!.model.nominal_tons);
+        const stages=compressorStages(scenario.efficiency,selection!.model.nominal_tons);
         const powerFraction=stagedPowerFraction(duty,stages);
         const nonfanPower=selection!.count*hp.powerKw-ratedFanKw;
         if(nonfanPower<0)issues.push("Inferred supply-fan input exceeds catalog heating power; heating electricity unavailable.");
@@ -245,7 +245,7 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
         if(duty>0){coolingCyclingCallHours++;if(duty<minimumStage-1e-9)coolingBelowMinimumHours++;}
         deliveredCooling=availableCooling!*duty;
         unmetCooling=Math.max(0,sensible-deliveredCooling*cold.shr)+Math.max(0,latent-deliveredCooling*(1-cold.shr));
-        const stages=compressorStages(selection.model.efficiency,selection.model.nominal_tons);
+        const stages=compressorStages(scenario.efficiency,selection.model.nominal_tons);
         coolingElectricity=selection.count*rating.cooling_non_supply_fan_power_kW*stagedPowerFraction(duty,stages);
         if(stages.length>1)issues.push("Multi-stage cooling input is estimated proportional to catalog stage capacity; cycling degradation applies below minimum stage.");
         // Full-output COP uses available net cooling and nominal total kW. Operating COP
@@ -270,7 +270,7 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
   // Available-hour component sums can have different coverage. Annual totals are
   // allowed only when all required energy records and the calendar are complete.
   const completeHours=output.filter(r=>finite(r.electricity)&&finite(r.gasTherms)&&finite(r.boilerFuelConsumption)&&finite(r.boilerFuelInputBtu)).length;
-  const sum=(key:"electricity"|"gasTherms"|"heatingElectricity"|"coolingElectricity"|"fanElectricity"|"unmetHeating"|"unmetCooling")=>output.some(r=>finite(r[key]))?output.reduce((s,r)=>s+(r[key]??0),0):null;
+  const sum=(key:"electricity"|"gasTherms"|"boilerFuelConsumption"|"boilerFuelInputBtu"|"heatingElectricity"|"coolingElectricity"|"fanElectricity"|"unmetHeating"|"unmetCooling")=>output.some(r=>finite(r[key]))?output.reduce((s,r)=>s+(r[key]??0),0):null;
   return {scenario,selection,heatingCapacityBtuHr,coolingCapacityTons,error,rows:output,summary:{electricity:sum("electricity"),gasTherms:sum("gasTherms"),boilerFuelConsumption:sum("boilerFuelConsumption"),boilerFuelUnit:output.find(r=>r.boilerFuelUnit)?.boilerFuelUnit??null,boilerFuelInputBtu:sum("boilerFuelInputBtu"),heatingElectricity:sum("heatingElectricity"),coolingElectricity:sum("coolingElectricity"),fanElectricity:sum("fanElectricity"),completeHours,fullYear:!error&&completeHours===8760&&completeCalendar(rows),unmetHeatingBtu:sum("unmetHeating"),unmetCoolingBtu:sum("unmetCooling"),unmetHeatingHours:output.filter(r=>(r.unmetHeating??0)>1).length,unmetCoolingHours:output.filter(r=>(r.unmetCooling??0)>1).length,unknownHeatingHours:output.filter(r=>r.unmetHeating===null).length,unknownCoolingHours:output.filter(r=>r.unmetCooling===null).length,estimatedHeatingHours:output.filter(r=>r.heatingBoundaryEstimate).length,estimatedCoolingHours:output.filter(r=>r.coolingBoundaryEstimate).length,heatingCyclingSharePercent:heatingCyclingCallHours?100*heatingBelowMinimumHours/heatingCyclingCallHours:null,coolingCyclingSharePercent:coolingCyclingCallHours?100*coolingBelowMinimumHours/coolingCyclingCallHours:null}};
 }
 // Require 8760 unique hourly timestamps in one year, with no February 29.
