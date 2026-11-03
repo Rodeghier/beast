@@ -11,13 +11,14 @@ import type { ClimateRow } from "./csv";
 import type { ElectricTariff, EmissionRegion, GasContext, GasCombustion, RateTier } from "./location-energy";
 import { ENERGY_TIER_UNITS } from "./location-energy";
 import type { EquipmentResult } from "./equipment-model";
+import type { BoilerFuelUnit } from "./boiler-model";
 
 export type BillingHour = Pick<ClimateRow, "year" | "month" | "day" | "hour" | "minute"> & { electricity: number };
 export type ElectricMonth = { energy: number; demand: number; fixed: number; minimum: number; total: number };
 export type ElectricityBill = { months: ElectricMonth[]; total: number | null; reason: string | null; warnings: string[] };
-export type MonthlyPerformance = { month: number; energy: number; electricity: number; gasTherms:number; gasCost:number|null; gasPeriod:string|null; cost: number | null; co2e: number | null };
+export type MonthlyPerformance = { month: number; energy: number; electricity: number; gasTherms:number; fuelConsumption:number; fuelUnit:BoilerFuelUnit|null; gasCost:number|null; gasPeriod:string|null; cost: number | null; co2e: number | null };
 export type AnnualPerformance = {
-  months: MonthlyPerformance[]; energy: number | null; cost: number | null; co2e: number | null;
+  months: MonthlyPerformance[]; energy: number | null; cost: number | null; co2e: number | null; fuelUnit:BoilerFuelUnit|null;
   electricBill: ElectricityBill; emissionsReason: string | null; reason: string | null; gasReason:string|null;
 };
 
@@ -148,10 +149,10 @@ export function annualPerformance(result: EquipmentResult, rows: ClimateRow[], t
     return row.year===rows[0].year && row.minute===0 && Number.isInteger(row.hour) && row.hour>=0 && row.hour<24 && date.getUTCMonth()===row.month-1 && date.getUTCDate()===row.day && !(row.month===2&&row.day===29);
   });
   const valid=(n:number|null):n is number=>typeof n==="number"&&Number.isFinite(n)&&n>=0;
-  const invalid=!!result.error || !result.summary.fullYear || rows.length!==8760 || dates.size!==8760 || !calendar || result.rows.length!==rows.length || result.rows.some(r=>!valid(r.electricity)||!valid(r.gasTherms));
+  const invalid=!!result.error || !result.summary.fullYear || rows.length!==8760 || dates.size!==8760 || !calendar || result.rows.length!==rows.length || result.rows.some(r=>!valid(r.electricity)||!valid(r.gasTherms)||!valid(r.boilerFuelConsumption)||!valid(r.boilerFuelInputBtu));
   if(invalid){
     const reason=result.error || result.rows.find(r=>r.electricity===null||r.gasTherms===null)?.status || "A complete year of valid equipment energy is required.";
-    return {months:[],energy:null,cost:null,co2e:null,electricBill:{months:[],total:null,reason,warnings:[]},reason,emissionsReason:null,gasReason:null};
+    return {months:[],energy:null,cost:null,co2e:null,fuelUnit:result.summary.boilerFuelUnit,electricBill:{months:[],total:null,reason,warnings:[]},reason,emissionsReason:null,gasReason:null};
   }
   const hours=rows.map((row,i)=>({...row,electricity:result.rows[i].electricity!}));
   const electricBill:ElectricityBill=hours.every(h=>h.electricity===0)?{months:Array.from({length:12},()=>({energy:0,demand:0,fixed:0,minimum:0,total:0})),total:0,reason:null,warnings:["No modeled electricity use; no separate electricity account charges assigned."]}:electricityBill(hours,tariff,manualRate);
@@ -160,15 +161,17 @@ export function annualPerformance(result: EquipmentResult, rows: ClimateRow[], t
   const prices=[...(gas?.status==="ok"?gas.prices:[])].sort((a,b)=>b.period.localeCompare(a.period));
   const conversion=combustion&&Number.isFinite(combustion.thermsPerMcf)&&combustion.thermsPerMcf>0?combustion.thermsPerMcf:null;
   const months=Array.from({length:12},(_,month):MonthlyPerformance=>{
-    let electricity=0,gasTherms=0;
-    rows.forEach((row,i)=>{if(row.month===month+1){electricity+=result.rows[i].electricity!;gasTherms+=result.rows[i].gasTherms!;}});
+    let electricity=0,gasTherms=0,fuelConsumption=0,fuelInputBtu=0;
+    rows.forEach((row,i)=>{if(row.month===month+1){electricity+=result.rows[i].electricity!;gasTherms+=result.rows[i].gasTherms!;fuelConsumption+=result.rows[i].boilerFuelConsumption!;fuelInputBtu+=result.rows[i].boilerFuelInputBtu!;}});
     const price=prices.find(p=>Number(p.period.slice(5))===month+1&&Number.isFinite(p.dollarsPerMcf)&&p.dollarsPerMcf>=0);
-    const gasCost=gasTherms===0?0:price&&conversion!==null?gasTherms/conversion*price.dollarsPerMcf:null;
+    const fuelUnit=result.summary.boilerFuelUnit;
+    const gasCost=fuelConsumption===0?0:fuelUnit!=="therms"?null:price&&conversion!==null?gasTherms/conversion*price.dollarsPerMcf:null;
     const electricCost=electricBill.months[month]?.total??null, emissions=energyEmissions(electricity,gasTherms,region,combustion);
-    return {month:month+1,electricity,gasTherms,energy:electricity*3412.141633/1e6+gasTherms*.1,gasCost,gasPeriod:price?.period??null,cost:electricCost===null||gasCost===null?null:electricCost+gasCost,co2e:emissions.co2e===null?null:emissions.co2e/1000};
+    const co2e=fuelConsumption>0&&fuelUnit!=="therms"?null:emissions.co2e===null?null:emissions.co2e/1000;
+    return {month:month+1,electricity,gasTherms,fuelConsumption,fuelUnit,energy:electricity*3412.141633/1e6+fuelInputBtu/1e6,gasCost,gasPeriod:price?.period??null,cost:electricCost===null||gasCost===null?null:electricCost+gasCost,co2e};
   });
   const total=(key:"energy"|"cost"|"co2e")=>months.every(m=>m[key]!==null)?months.reduce((sum,m)=>sum+m[key]!,0):null;
-  return {months,energy:total("energy"),cost:total("cost"),co2e:total("co2e"),electricBill,reason:null,
-    gasReason:months.some(m=>m.gasCost===null)?"Natural-gas cost requires an EIA monthly price for each used month and a valid heat-content conversion. Refresh gas data or configure the EIA connection.":null,
-    emissionsReason:months.some(m=>m.co2e===null)?"Required EPA electricity or natural-gas emissions factors are unavailable.":null};
+  return {months,energy:total("energy"),cost:total("cost"),co2e:total("co2e"),fuelUnit:result.summary.boilerFuelUnit,electricBill,reason:null,
+    gasReason:months.some(m=>m.gasCost===null)?result.summary.boilerFuelUnit!=="therms"?"Propane and No. 2 light-oil price data are not connected; fuel cost is unavailable for those fuels.":"Natural-gas cost requires an EIA monthly price for each used month and a valid heat-content conversion. Refresh gas data or configure the EIA connection.":null,
+    emissionsReason:months.some(m=>m.co2e===null)?result.summary.boilerFuelUnit!=="therms"?"Propane and No. 2 light-oil combustion emissions factors are not connected; total emissions are unavailable.":"Required EPA electricity or natural-gas emissions factors are unavailable.":null};
 }

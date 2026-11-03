@@ -15,5 +15,6 @@ export function energyEmissions(electricity:number|null, gasTherms:number|null, 
 }
 export function totalCo2e(result:EquipmentResult|null|undefined,region:EmissionRegion|null|undefined,gas?:GasCombustion|null):number|null {
   if(!result||result.error||!result.summary.completeHours)return null;
+  if(result.summary.boilerFuelInputBtu!==null&&result.summary.boilerFuelInputBtu>0&&result.summary.boilerFuelUnit!=="therms")return null;
   return energyEmissions(result.summary.electricity,result.summary.gasTherms,region,gas).co2e;
 }

@@ -162,7 +162,7 @@ Follow the objects before following the screen. Their type declarations are a co
 | `EquipmentResult` | `lib/equipment-model.ts` | Scenario, selection, hourly array, error and summary |
 | `AnnualPerformance` | `lib/utility-billing.ts` | Monthly and annual energy, cost, emissions and availability reasons |
 
-An `EquipmentScenario` is an input choice, not a calculated result. It identifies heating type, required cooling choice, efficiency family, gas efficiency and the internal curve-range policy. `newScenario` creates these choices and `scenarioName` derives the display name.
+An `EquipmentScenario` is an input choice, not a calculated result. It identifies heating type, required cooling choice, efficiency family, boiler size class, fuel and firing mode, and the internal curve-range policy. `newScenario` creates these choices and `scenarioName` derives the display name. The large commercial boiler path uses CBLE-4D hot-water rating data; see the equipment model section below.
 
 ### Units and signs to keep beside you
 
@@ -306,7 +306,7 @@ The model sorts large demand hours early so an undersized candidate can be rejec
 
 No sizing percentage margin is applied. A 1 BTU/hr shortfall tolerance is used in candidate checks. The count search has a protective upper limit: the smaller of 10,000 and the larger of the ventilation minimum plus 50 or sixteen times the reference estimate. If the search does not produce a passing operating selection, a labeled reference estimate can remain; hourly delivery and unmet-load results still need review.
 
-Gas and resistance cases select packaged units for cooling and ventilation. Their separate heating coil/element output is sized from the maximum heating demand remaining after fan-heat credit.
+Gas and resistance cases select packaged units for cooling and ventilation. Small-boiler and resistance output are sized from the maximum heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted peak demand.
 
 ## 12 One hour through the equipment model
 
@@ -331,6 +331,8 @@ For a hypothetical unit with net catalog heating capacity 31,000 BTU/hr, total c
 Heating coil duty is `14500 / 30000`. The program duty-scales the nonfan heating input, then adds the full-hour fan once. Total electricity is about 1.408 kWh for the hour. Delivered building heat is 15,500 BTU and unmet heat is zero. The reported full-output heating COP still uses the catalog net heat and total power, approximately 3.49 for these illustrative values.
 
 For gas at 80% entered heating efficiency, 14,500 BTU/hr of heater output uses 0.18125 therm for that hour, plus fan electricity. For resistance, element electricity plus the fan electricity equals the 15,500 BTU delivered divided by 3412.141633, approximately 4.543 kWh.
+
+For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the annual peak heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and the selected fuel's manufacturer consumption/hour is multiplied by runtime fraction. Natural gas is reported in therms, propane in ft³, and No. 2 light oil in gal. Fuel input Btu converts those quantities to site MMBtu. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available. Utility cost and combustion emissions remain unavailable for propane and light oil.
 
 Duty is limited to one. An overloaded unit records unmet heating or component cooling rather than receiving unlimited capacity. There is no hidden auxiliary heater or reheat correction. Review unmet hours alongside energy totals: a low-energy case that does not meet the load is not an equivalent service comparison.
 

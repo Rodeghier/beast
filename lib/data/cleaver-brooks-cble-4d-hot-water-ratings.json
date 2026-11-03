@@ -1,0 +1,18 @@
+[
+  { "horsepower": 50, "ratedOutputBtuHr": 1674000, "lightOilGalPerHr": 14.9, "naturalGasCubicFeetPerHr": 2092, "naturalGasThermsPerHr": 20.9, "propaneCubicFeetPerHr": 820 },
+  { "horsepower": 60, "ratedOutputBtuHr": 2009000, "lightOilGalPerHr": 17.9, "naturalGasCubicFeetPerHr": 2511, "naturalGasThermsPerHr": 25.1, "propaneCubicFeetPerHr": 985 },
+  { "horsepower": 70, "ratedOutputBtuHr": 2343000, "lightOilGalPerHr": 20.9, "naturalGasCubicFeetPerHr": 2929, "naturalGasThermsPerHr": 29.3, "propaneCubicFeetPerHr": 1150 },
+  { "horsepower": 80, "ratedOutputBtuHr": 2678000, "lightOilGalPerHr": 23.9, "naturalGasCubicFeetPerHr": 3348, "naturalGasThermsPerHr": 33.5, "propaneCubicFeetPerHr": 1315 },
+  { "horsepower": 100, "ratedOutputBtuHr": 3348000, "lightOilGalPerHr": 29.9, "naturalGasCubicFeetPerHr": 4184, "naturalGasThermsPerHr": 41.8, "propaneCubicFeetPerHr": 1640 },
+  { "horsepower": 125, "ratedOutputBtuHr": 4184000, "lightOilGalPerHr": 36.4, "naturalGasCubicFeetPerHr": 5103, "naturalGasThermsPerHr": 51.0, "propaneCubicFeetPerHr": 2000 },
+  { "horsepower": 150, "ratedOutputBtuHr": 5021000, "lightOilGalPerHr": 43.7, "naturalGasCubicFeetPerHr": 6123, "naturalGasThermsPerHr": 61.2, "propaneCubicFeetPerHr": 2402 },
+  { "horsepower": 200, "ratedOutputBtuHr": 6695000, "lightOilGalPerHr": 58.3, "naturalGasCubicFeetPerHr": 8165, "naturalGasThermsPerHr": 81.6, "propaneCubicFeetPerHr": 3202 },
+  { "horsepower": 250, "ratedOutputBtuHr": 8369000, "lightOilGalPerHr": 72.9, "naturalGasCubicFeetPerHr": 10206, "naturalGasThermsPerHr": 102.1, "propaneCubicFeetPerHr": 4002 },
+  { "horsepower": 300, "ratedOutputBtuHr": 10043000, "lightOilGalPerHr": 87.5, "naturalGasCubicFeetPerHr": 12247, "naturalGasThermsPerHr": 122.5, "propaneCubicFeetPerHr": 4802 },
+  { "horsepower": 350, "ratedOutputBtuHr": 11716000, "lightOilGalPerHr": 102.1, "naturalGasCubicFeetPerHr": 14288, "naturalGasThermsPerHr": 142.9, "propaneCubicFeetPerHr": 5600 },
+  { "horsepower": 400, "ratedOutputBtuHr": 13390000, "lightOilGalPerHr": 116.6, "naturalGasCubicFeetPerHr": 16329, "naturalGasThermsPerHr": 163.3, "propaneCubicFeetPerHr": 6404 },
+  { "horsepower": 500, "ratedOutputBtuHr": 16738000, "lightOilGalPerHr": 145.8, "naturalGasCubicFeetPerHr": 20412, "naturalGasThermsPerHr": 204.1, "propaneCubicFeetPerHr": 8006 },
+  { "horsepower": 600, "ratedOutputBtuHr": 20085000, "lightOilGalPerHr": 175.0, "naturalGasCubicFeetPerHr": 24494, "naturalGasThermsPerHr": 244.9, "propaneCubicFeetPerHr": 9605 },
+  { "horsepower": 700, "ratedOutputBtuHr": 23433000, "lightOilGalPerHr": 204.1, "naturalGasCubicFeetPerHr": 28576, "naturalGasThermsPerHr": 285.8, "propaneCubicFeetPerHr": 11206 },
+  { "horsepower": 800, "ratedOutputBtuHr": 26780000, "lightOilGalPerHr": 233.3, "naturalGasCubicFeetPerHr": 32659, "naturalGasThermsPerHr": 326.6, "propaneCubicFeetPerHr": 12807 }
+]
