@@ -64,6 +64,18 @@ export function stagedPowerFraction(partLoadRatio:number,stages:number[],cd=CYCL
   }
   return 1;
 }
+/** Lead/lag identical units: bring whole units on in sequence, then stage the
+ * final unit. Only a residual below one unit's minimum stage is compressor cycling. */
+export function stagedSystemOperation(loadBtuHr:number,unitCapacityBtuHr:number,unitCount:number,stages:number[],cd=CYCLING_DEGRADATION_COEFFICIENT):{powerEquivalentUnits:number;belowMinimumStage:boolean} {
+  if(!Number.isFinite(loadBtuHr)||loadBtuHr<=0||!Number.isFinite(unitCapacityBtuHr)||unitCapacityBtuHr<=0||!Number.isInteger(unitCount)||unitCount<=0)return {powerEquivalentUnits:0,belowMinimumStage:false};
+  const served=Math.min(loadBtuHr,unitCapacityBtuHr*unitCount);
+  const fullUnits=Math.min(unitCount,Math.floor(served/unitCapacityBtuHr));
+  let residual=served-fullUnits*unitCapacityBtuHr;
+  if(residual<unitCapacityBtuHr*1e-9)residual=0;
+  if(fullUnits===unitCount)residual=0;
+  const residualPlr=residual/unitCapacityBtuHr,minimumStage=stages[0]??1;
+  return {powerEquivalentUnits:fullUnits+(residualPlr>0?stagedPowerFraction(residualPlr,stages,cd):0),belowMinimumStage:residualPlr>0&&residualPlr<minimumStage-1e-9};
+}
 const validCooling=(r:SchoolRow)=>finite(r.sensibleCooling)&&finite(r.latentCooling)&&r.sensibleCooling<=0&&r.latentCooling<=0;
 const needsCooling=(r:SchoolRow)=>validCooling(r)&&(r.sensibleCooling!<0||r.latentCooling!<0);
 /** Full-hour supply-fan operation on a heating, cooling or scheduled ventilation call. */
@@ -160,8 +172,6 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
   const coolingCapacityTons=coolingEquipment==="air-cooled-chiller"?peakCoolingBtuHr/12000:null;
   const boilerEfficiencyLabel=boilerModel?.efficiencyMetric??"boiler efficiency";
   const error=!hasCooling?"Choose cooling equipment (required).":scenario.heating==="gas"&&boilerModel?.sizeClass==="small"&&!validGasEfficiency(scenario.gasEfficiencyPercent)?`Enter boiler ${boilerEfficiencyLabel} above 0% and at or below 100%.`:scenario.heating==="gas"&&boilerModel?.sizeClass==="large"&&scenario.boilerFiringMode==="modulating"?"Modulating CBLE-4D performance data is not available yet.":coolingEquipment==="heat-pump"&&scenario.stage==="variable"?"Variable-speed heat-pump performance data is not available yet.":coolingEquipment==="heat-pump"&&selection===null?`No equipment models are available for the selected ${scenario.stage==="single"?"single-stage":"multi-stage"} option and efficiency family.`:null;
-  const stageFractions=selection?compressorStages(scenario.efficiency,selection.model.nominal_tons):[];
-  const minimumStage=stageFractions[0]??1;
   let heatingCyclingCallHours=0,heatingBelowMinimumHours=0,coolingCyclingCallHours=0,coolingBelowMinimumHours=0;
   // Hourly worksheet starts here. issues collects text explaining assumptions or
   // unavailable dependent values; it is exported with the numeric results.
@@ -182,14 +192,14 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
         // Heating catalog output/input already include fan effects. Remove the inferred
         // fan components to get coil-only capacity/power, duty-scale those, then count the
         // full-hour operating fan exactly once in the building heat and electrical balance.
-        const coilCapacity=Math.max(0,availableHeating!-ratedFanHeat),coilNeed=adjusted.heat!;
-        const deliveredCoil=Math.min(coilNeed,coilCapacity),duty=coilCapacity>0?deliveredCoil/coilCapacity:0;
-        if(coilNeed>0&&coilCapacity>0){heatingCyclingCallHours++;if(duty<minimumStage-1e-9)heatingBelowMinimumHours++;}
+        const coilCapacity=Math.max(0,availableHeating!-ratedFanHeat),coilNeed=adjusted.heat!,unitCoilCapacity=Math.max(0,hp.capacityBtuHr-rating.inferred_supply_fan_heat_Btu_hr);
+        const deliveredCoil=Math.min(coilNeed,coilCapacity);
         const stages=compressorStages(scenario.efficiency,selection!.model.nominal_tons);
-        const powerFraction=stagedPowerFraction(duty,stages);
-        const nonfanPower=selection!.count*hp.powerKw-ratedFanKw;
+        const operation=stagedSystemOperation(coilNeed,unitCoilCapacity,selection!.count,stages);
+        if(coilNeed>0&&coilCapacity>0){heatingCyclingCallHours++;if(operation.belowMinimumStage)heatingBelowMinimumHours++;}
+        const nonfanPower=hp.powerKw-rating.inferred_supply_fan_power_kW;
         if(nonfanPower<0)issues.push("Inferred supply-fan input exceeds catalog heating power; heating electricity unavailable.");
-        else heatingElectricity=nonfanPower*powerFraction;
+        else heatingElectricity=nonfanPower*operation.powerEquivalentUnits;
         deliveredHeating=Math.min(r.heating,deliveredCoil+fanHeat!);unmetHeating=Math.max(0,r.heating-deliveredHeating);
         issues.push(HEATING_BASIS);
         if(stages.length>1)issues.push("Multi-stage heating input is estimated proportional to catalog stage capacity; cycling degradation applies below minimum stage.");
@@ -240,13 +250,12 @@ export function simulateEquipment(rows:SchoolRow[],school:SchoolAssumptions,scen
         const sensible=adjusted.sensible!,latent=adjusted.latent!;
         // Choose duty from the more demanding sensible or latent requirement. The
         // compressor duty cannot exceed 1; excess component demands become unmet loads.
-        const need=Math.max(sensible>0?sensible/cold.shr:0,latent>0?latent/(1-cold.shr):0);
-        const duty=Math.min(1,need/availableCooling!);
-        if(duty>0){coolingCyclingCallHours++;if(duty<minimumStage-1e-9)coolingBelowMinimumHours++;}
-        deliveredCooling=availableCooling!*duty;
+        const need=Math.max(sensible>0?sensible/cold.shr:0,latent>0?latent/(1-cold.shr):0),deliveredCapacity=Math.min(need,availableCooling!);
+        const stages=compressorStages(scenario.efficiency,selection.model.nominal_tons),operation=stagedSystemOperation(deliveredCapacity,cold.capacityBtuHr,selection.count,stages);
+        if(need>0){coolingCyclingCallHours++;if(operation.belowMinimumStage)coolingBelowMinimumHours++;}
+        deliveredCooling=deliveredCapacity;
         unmetCooling=Math.max(0,sensible-deliveredCooling*cold.shr)+Math.max(0,latent-deliveredCooling*(1-cold.shr));
-        const stages=compressorStages(scenario.efficiency,selection.model.nominal_tons);
-        coolingElectricity=selection.count*rating.cooling_non_supply_fan_power_kW*stagedPowerFraction(duty,stages);
+        coolingElectricity=rating.cooling_non_supply_fan_power_kW*operation.powerEquivalentUnits;
         if(stages.length>1)issues.push("Multi-stage cooling input is estimated proportional to catalog stage capacity; cycling degradation applies below minimum stage.");
         // Full-output COP uses available net cooling and nominal total kW. Operating COP
         // uses actual delivered net cooling and duty-scaled cooling plus full-hour fan kWh.
