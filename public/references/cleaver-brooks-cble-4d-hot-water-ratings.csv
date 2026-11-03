@@ -1,0 +1,17 @@
+source_document,source_printed_page,boiler_model,horsepower,rated_hot_water_output_kBtu_per_hr,approx_light_oil_consumption_gal_per_hr,approx_natural_gas_consumption_cuft_per_hr,approx_natural_gas_consumption_therms_per_hr,approx_propane_consumption_cuft_per_hr,light_oil_heat_content_Btu_per_gal,natural_gas_heat_content_Btu_per_cuft,propane_heat_content_Btu_per_cuft
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,50,1674,14.9,2092,20.9,820,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,60,2009,17.9,2511,25.1,985,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,70,2343,20.9,2929,29.3,1150,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,80,2678,23.9,3348,33.5,1315,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,100,3348,29.9,4184,41.8,1640,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,125,4184,36.4,5103,51.0,2000,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,150,5021,43.7,6123,61.2,2402,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,200,6695,58.3,8165,81.6,3202,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,250,8369,72.9,10206,102.1,4002,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,300,10043,87.5,12247,122.5,4802,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,350,11716,102.1,14288,142.9,5600,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,400,13390,116.6,16329,163.3,6404,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,500,16738,145.8,20412,204.1,8006,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,600,20085,175.0,24494,244.9,9605,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,700,23433,204.1,28576,285.8,11206,140000,1000,2550
+CBLE-4D 50-800 HP Dimensions and Ratings,3,CBLE-4D,800,26780,233.3,32659,326.6,12807,140000,1000,2550

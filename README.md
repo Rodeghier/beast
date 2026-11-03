@@ -6,9 +6,13 @@ Building Energy Analysis Selection Tool: hourly building loads, selected heating
 
 ## Equipment and names
 
-Heating choices are Rooftop Packaged Heat Pump, Natural Gas and Electric Resistance. Every combination includes cooling. A heat pump includes its cooling automatically; gas and resistance require the user to select cooling, currently Rooftop Packaged Heat Pump only. The interface and calculation validation reject a missing cooling selection. Gas/resistance no longer represent heating-only comparisons.
+Heating choices are Rooftop Packaged Heat Pump, Natural Gas and Electric Resistance. Every combination includes cooling. A heat pump includes its cooling automatically; gas and resistance require the user to select cooling, either Rooftop Packaged Heat Pump or the provisional air-cooled chiller. The chiller uses flat 0.6 kW/ton and autosizes to peak hourly cooling load; separate air-handler fan and pump power are excluded. The interface and calculation validation reject a missing cooling selection. Gas/resistance no longer represent heating-only comparisons.
 
-There is no editable scenario name or stored name field. `scenarioName()` derives labels such as **Heat Pump Cooling + Natural Gas Heating** for cards, tables, graphs and CSVs. Each combination can choose standard or high efficiency for its heat-pump equipment. Gas efficiency (AHUE / AFUE) is entered above 0% and at or below 100%, with no assumed value.
+There is no editable scenario name or stored name field. `scenarioName()` derives labels such as **Heat Pump Cooling + Natural Gas Heating** for cards, tables, graphs and CSVs. Each combination can choose standard or high efficiency for its heat-pump equipment. Natural-gas heating offers a small-boiler path that retains user-entered AFUE and a large commercial path using Cleaver-Brooks CBLE-4D hot-water ratings. The large path selects the smallest listed rated output that meets peak heating demand after fan-heat credit, then uses the selected fuel's table consumption/hour multiplied by hourly runtime. Natural gas, propane, and No. 2 light oil are selectable for the large boiler. On/off firing is modeled; modulating is shown as unavailable pending manufacturer data. Small-boiler AFUE is applied as effective hourly efficiency with no additional cycling penalty. Propane/oil fuel quantities and site energy are reported, while fuel cost and combustion emissions remain unavailable until data sources are added. Boiler ratings are in `lib/data/cleaver-brooks-cble-4d-hot-water-ratings.json` and the source-table CSV is under `public/references/`.
+
+The equipment form's **Stage** choice filters the automatically sized heat-pump models to automatic, single-stage or multi-stage operation. Variable-speed is shown as unavailable until stage-specific modulation data is supplied. Equipment sizes remain automatically selected from the loads.
+
+Annual results report the percentage of evaluated heat-pump heating/cooling call hours below the selected unit's minimum stage. For the on/off boiler they report heating-call hours with less-than-full-hour firing. This is an expected cycling share, not a count of starts. Hours without a load call or without an evaluable performance point are excluded.
 
 ## Supplied equipment data
 
@@ -24,20 +28,25 @@ Coefficient, source, error and nominal-rating CSVs are served under `public/refe
 
 Nominal **total** cooling system power is held constant at full output because no off-rating power curve was provided. Fan heat per unit = rated gross cooling minus AHRI net cooling. Inferred fan kW = that heat / 3412.141633, assuming all electrical input becomes air heat. This is a rating-derived estimate, not a measured operating fan curve. Nameplate motor HP is not converted into operating fan watts.
 
-Remove the inferred supply-fan input from total system power before scaling the remaining cooling input by coil duty. Add the operating supply fan once:
+Remove the inferred supply-fan input from total system power before scaling the remaining cooling input. Trane Precedent stage-capacity percentages are used for the selected size and efficiency family. Below the minimum stage, that stage cycles using provisional `Cd = 0.15`. Between adjacent stages, the model time-shares the stages for the hourly average. Because stage-specific power curves are unavailable, stage input is provisionally assumed proportional to stage capacity:
 
-- Cooling input excluding supply fan = installed (nominal system kW − inferred fan kW) × cooling duty.
+The stage percentages are from Trane catalog PKGP-PRC023E-EN (2026). For example, standard-efficiency 3–5 ton units are single-stage; high-efficiency 3–5 ton units use 67% and 100%; larger sizes use the catalog's listed three- or four-step levels. Stage control is represented as an hourly average, not a minute-by-minute controller simulation. See the [Trane Precedent catalog](https://elibrary.tranetechnologies.com/public/commercial-hvac/Literature/Product%20Catalog/PKGP-PRC023E-EN_05152026.pdf).
+
+- Minimum-stage PLR = cooling duty / minimum-stage capacity fraction.
+- Minimum-stage PLF = 1 − Cd × (1 − minimum-stage PLR); minimum-stage runtime = minimum-stage PLR / minimum-stage PLF.
+- Below minimum stage, cooling input excluding supply fan = installed nonfan kW × minimum-stage capacity fraction × minimum-stage runtime.
+- At or above minimum stage, cooling input excluding supply fan = installed nonfan kW × cooling duty (proportional stage-power estimate).
 - Supply-fan kWh = installed inferred fan kW for every full hour with a heating, cooling or scheduled ventilation call; zero otherwise.
 - Full-output net cooling COP = (installed gross curve capacity − installed fan heat) / (3412.141633 × installed nominal system kW).
 - Operating net cooling COP = max(0, delivered gross cooling − hourly fan heat) / (3412.141633 × (cooling input excluding fan + fan kWh)). Both COP definitions are exported; the hourly table displays full-output net COP.
 
-The fan runs through the full call hour, even when coil duty is below 1. This is an explicit screening control assumption. At full cooling duty, total input reconciles to nominal system kW. Nominal/AHRI ratings are not adjusted to the selected maximum airflow. No fan-law scaling, power-temperature correction, motor-efficiency assumption or extra outdoor-fan term is invented. All power/fan estimates are provisional.
+The fan runs through the full call hour, even when coil duty is below 1. This is an explicit screening control assumption. Cycling degradation applies only below the minimum compressor stage; the supply fan remains at its full-hour estimate. At full cooling duty, total input reconciles to nominal system kW. Nominal/AHRI ratings are not adjusted to the selected maximum airflow. No fan-law scaling, power-temperature correction, motor-efficiency assumption or extra outdoor-fan term is invented. Stage-specific power is a provisional proportional estimate.
 
 Fan heat reduces heating demand and enters the **signed** sensible cooling balance: heater demand = max(0, building heating − fan heat); sensible cooling demand = max(0, signed cooling balance + fan heat). Latent demand is unchanged. This retains thermostat deadband and permits fan-only ventilation to create cooling demand.
 
-Gas/resistance heater output is sized to peak heating demand after fan heat credit. Gas therms = delivered heater output / (100000 × efficiency fraction). Resistance element kWh = element output / 3412.141633. Fan electricity is separate and its heat also serves the building, preventing duplicate heating input. Gas annual efficiency used hourly and ideal modulation are screening assumptions.
+For small natural-gas boilers, output capacity is provisionally set to peak heating demand after fan heat credit. On/off runtime fraction = hourly delivered output / output capacity. Gas therms = capacity × runtime / (100000 × entered AFUE fraction). For the large CBLE-4D path, choose the smallest listed rated hot-water output that meets peak heating demand after fan heat credit; use the selected fuel's listed consumption/hour × hourly runtime fraction. Propane is reported in ft³ and No. 2 light oil in gal; their listed heating values convert consumption to site MMBtu. If demand exceeds the 800 HP rating, cap delivered boiler output at that rating and report unmet heat. Modulating firing is not available. Resistance element kWh = element output / 3412.141633. Fan electricity is separate and its heat also serves the building, preventing duplicate heating input.
 
-For heat-pump heating, subtract inferred fan heat/input from integrated heating capacity/power before determining coil duty. Add actual fan heat to delivered building heat and fan electricity once to total input. No extra defrost term, auxiliary heat or reheat is supplied. Total kWh = heating coil input + cooling input excluding supply fan + supply-fan input.
+For heat-pump heating, subtract inferred fan heat/input from integrated heating capacity/power before determining coil duty. Apply `PLF = 1 − Cd × (1 − PLR)` only when load is below the minimum stage; above minimum stage, adjacent stages are time-shared using the provisional proportional-power assumption. Add fan heat to delivered building heat and fan electricity once to total input. `Cd = 0.15` is provisional. No extra defrost term, auxiliary heat or reheat is supplied. Total kWh = heating coil input + cooling input excluding supply fan + supply-fan input.
 
 ## Mixed air and automatic unit selection
 
@@ -71,7 +80,7 @@ Build and hosting use Vinext and Cloudflare directly. See [Local setup and hosti
 
 Reproduce ratings: `python scripts/extract-unit-data.py --source PATH_TO_FULL_PDF`. Reproduce heating fits: `python scripts/fit-precedent-heating.py --source PATH`. Checks cover all 1,628 heating points, all 24 nominal power records, fan power reconciliation, part duty, fuel/element heat credit, ventilation, fan-induced cooling, required cooling, automatic names, domains, annual accounting, CSVs and rendered controls. The 55 independent wet-bulb reference states remain in `scripts/fixtures/mixed-air-reference.json`.
 
-References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psychrolib.html; fan inference https://www.energycodes.gov/sites/default/files/2024-08/90.1_Secton_11_and%29_Appendix_G_Review_Manual_V04.pdf; AFUE https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-furnaces. Source provenance and licenses are in `THIRD_PARTY_NOTICES.md`.
+References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psychrolib.html; fan inference https://www.energycodes.gov/sites/default/files/2024-08/90.1_Secton_11_and%29_Appendix_G_Review_Manual_V04.pdf; residential AFUE https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-furnaces; commercial boiler rating categories https://www.energy.gov/cmei/femp/purchasing-energy-efficient-boilers. Source provenance and licenses are in `THIRD_PARTY_NOTICES.md`.
 
 ## Input controls
 
