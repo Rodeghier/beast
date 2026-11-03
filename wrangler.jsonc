@@ -4,6 +4,7 @@
   // Set the Worker name for your own Cloudflare account before deploying.
   "name": "beast",
   "main": "vinext/server/fetch-handler",
+  "preview_urls": true,
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"]
 }
