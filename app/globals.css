@@ -392,6 +392,21 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .monthly-graph-heading label { display: flex; gap: 12px; align-items: center; }
 .monthly-graph-heading select { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
 .monthly-performance-graph { width: 100%; height: 300px; aspect-ratio: auto; margin-top: 16px; }
+.equipment-distributions { margin: 30px 0; }
+.equipment-distributions h3 { font-size: 1.1rem; font-weight: 650; }
+.distribution-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin-top: 16px; }
+.distribution-controls > label { display: flex; flex-direction: column; gap: 7px; font-size: .85rem; min-width: 0; }
+.distribution-controls > label:first-child { flex: 1 1 340px; }
+.distribution-controls select { max-width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 6px; padding: 9px; background: white; }
+.distribution-controls .distribution-zero { flex-direction: row; align-items: center; padding-bottom: 10px; }
+.distribution-note, .distribution-basis, .distribution-coverage { color: #475569; font-size: .82rem; line-height: 1.6; margin-top: 10px; }
+.distribution-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+.distribution-grid figure { min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: white; padding: 16px; }
+.distribution-grid figcaption { font-size: .95rem; font-weight: 650; }
+.distribution-basis { min-height: 42px; }
+.utilization-graph { width: 100%; height: 310px; aspect-ratio: auto; margin-top: 10px; }
+@media (max-width: 900px) { .distribution-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .distribution-controls > label { width: 100%; } }
 .billing-breakdown { margin-top: 24px; }
 .billing-breakdown summary { cursor: pointer; font-weight: 600; }
 .billing-breakdown h4 { font-weight: 650; margin: 18px 0 8px; }

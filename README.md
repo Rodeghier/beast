@@ -72,6 +72,7 @@ Build and hosting use Vinext and Cloudflare directly. See [Local setup and hosti
 
 - `node node_modules/typescript/bin/tsc --noEmit`
 - `node scripts/check-equipment-model.mjs`
+- `node scripts/check-equipment-utilization.mjs`
 - `node scripts/check-school-model.mjs`
 - `node scripts/check-beast-scorecard.mjs`
 - `node scripts/check-location-energy.mjs`
@@ -85,3 +86,9 @@ References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psyc
 ## Input controls
 
 Building characteristics and assumptions is a single collapsible panel with one default/custom choice. Defaults restore the complete building input set; custom mode enables editing. Location, year, equipment, utility and ZIP inputs are directly editable. The first input group contains total conditioned floor area, number of floors, height per floor, plan aspect ratio and rotation. Total area includes all floors; conditioned volume is total area times height per floor, and occupancy remains an independently entered building total. Required building fields reveal the panel on validation. UI copy describes current behavior; implementation history stays outside the website.
+
+## Capacity and power distributions
+
+The Results tab includes histograms for the selected equipment combination and heating/cooling mode. Capacity is delivered coil/heater output divided by available installed coil/heater output at each evaluated hour. Cooling is gross capacity; heating removes the supply-fan heat credit. Electrical power is hourly average compressor/element input divided by installed full-output input, excluding the separately reported supply fan. Boiler power is average fuel input divided by full-fire fuel input, using the modeled runtime fraction for the selected fuel. Chiller percentages use the existing placeholder capacity and kW/ton basis.
+
+Bins distinguish zero, each 10-percentage-point interval through 100%, and values above 100%. Exact interval endpoints belong to the lower bin. Zero-use hours are excluded by default and can be included. Missing or unsupported values stay unavailable; each chart reports its included, unavailable and zero-use counts. Percentages are hourly averages that reflect staging, lead/lag sequencing and cycling, not instantaneous stage positions. These graphs use hourly equipment outputs and are available independently of utility pricing and annual completeness.
