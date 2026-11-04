@@ -9,7 +9,7 @@
 import type { ClimateRow } from "./csv";
 import { solarGains, type SolarLocation } from "./solar";
 
-export const MODEL_VERSION = "building-solar-2.1";
+export const MODEL_VERSION = "building-solar-2.2";
 export const BTU_PER_WH = 3.412141633;
 const PRESSURE_PA = 101325;
 
@@ -17,6 +17,7 @@ const PRESSURE_PA = 101325;
 // adds labels, allowed ranges and units for the input form.
 export const DEFAULT_SCHOOL = {
   floorAreaFt2: 150_000,
+  coolingDesignPercent: 1, heatingDesignPercent: 99,
   heatingF: 70, coolingF: 75, setbackHeatingF: 60, setbackCoolingF: 85, indoorRh: 50,
   people: 1200, startHour: 7, endHour: 17, summerPercent: 10,
   envelopeUa: 0.10, ceilingFt: 14, infiltrationAch: 0.15,
@@ -26,8 +27,12 @@ export const DEFAULT_SCHOOL = {
   roofU: 0.04, wallU: 0.06, solarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
 };
 export type SchoolAssumptions = typeof DEFAULT_SCHOOL;
-export type SchoolField = { key: keyof SchoolAssumptions; label: string; unit: string; min: number; max: number; step: number };
+export type SchoolField = { key: keyof SchoolAssumptions; label: string; unit: string; min: number; max: number; step: number; options?: { value: number; label: string }[] };
 export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
+  { title: "ASHRAE design sizing", fields: [
+    { key: "coolingDesignPercent", label: "Cooling design condition", unit: "% annual exceedance", min: 0.4, max: 2, step: 0.1, options: [{value:0.4,label:"0.4%"},{value:1,label:"1%"},{value:2,label:"2%"}] },
+    { key: "heatingDesignPercent", label: "Heating design condition", unit: "% annual cumulative frequency", min: 99, max: 99.6, step: 0.1, options: [{value:99,label:"99%"},{value:99.6,label:"99.6%"}] },
+  ] },
   { title: "Building size and geometry", fields: [
     { key: "floorAreaFt2", label: "Total conditioned floor area", unit: "ft² · all floors combined", min: 1, max: 10_000_000, step: 1 },
     { key: "stories", label: "Number of floors", unit: "equal floor areas", min: 1, max: 30, step: 1 },
@@ -78,6 +83,7 @@ export function validateSchool(a: SchoolAssumptions): string | null {
   for (const field of SCHOOL_FIELDS.flatMap(g => g.fields)) {
     const value = a[field.key];
     if (!Number.isFinite(value) || value < field.min || value > field.max) return `${field.label} must be between ${field.min} and ${field.max}.`;
+    if (field.options && !field.options.some(option => option.value === value)) return `Select a listed ${field.label.toLowerCase()}.`;
     if (["people", "startHour", "endHour", "stories"].includes(field.key) && !Number.isInteger(value)) return `${field.label} must be a whole number.`;
   }
   if (a.heatingF >= a.coolingF || a.setbackHeatingF >= a.setbackCoolingF) return "Each heating setpoint must be lower than its cooling setpoint.";
@@ -143,7 +149,7 @@ export type SchoolRow = ClimateRow & {
 
 // Main building calculation: rows.map(...) produces one SchoolRow per weather hour.
 // a is the assumptions object; site holds the dataset coordinates and UTC offset.
-export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: SolarLocation | null): SchoolRow[] {
+export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: SolarLocation | null, designDay?: "heating" | "cooling"): SchoolRow[] {
   const error = validateSchool(a); if (error) throw new Error(error);
   // Area already includes every floor. Multiplying by height per floor gives
   // total conditioned volume; multiplying by stories again would double count.
@@ -155,15 +161,17 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     // Use the CSV's calendar directly. Date.UTC avoids shifting weekdays in
     // a visitor's browser time zone; the source excludes daylight saving time.
     const weekday = new Date(Date.UTC(row.year, row.month - 1, row.day)).getUTCDay();
-    const schoolHour = weekday > 0 && weekday < 6 && row.hour >= a.startHour && row.hour < a.endHour;
+    const schoolHour = (designDay || weekday > 0 && weekday < 6) && row.hour >= a.startHour && row.hour < a.endHour;
     // fraction is the occupancy fraction, not a compressor duty fraction.
     // It drives people, ventilation and internal-gain schedules for this hour.
-    const fraction = schoolHour ? (row.month >= 6 && row.month <= 8 ? a.summerPercent / 100 : 1) : 0;
+    // Design days use full design occupancy during the entered occupied hours,
+    // independent of weekday and summer holidays. Annual schedules are unchanged.
+    const fraction = schoolHour ? (designDay ? 1 : row.month >= 6 && row.month <= 8 ? a.summerPercent / 100 : 1) : 0;
     const occupied = fraction > 0;
     const occupants = a.people * fraction;
     const ventilation = occupied ? occupants * a.ventilationPerson + area * a.ventilationArea : 0;
     const outdoorAirCfm = infiltration + ventilation;
-    const heatSetpoint = occupied ? a.heatingF : a.setbackHeatingF;
+    const heatSetpoint = designDay === "heating" ? a.heatingF : occupied ? a.heatingF : a.setbackHeatingF;
     const coolSetpoint = occupied ? a.coolingF : a.setbackCoolingF;
     const tempF = row.temperature !== null && Number.isFinite(row.temperature) && row.temperature >= -100 && row.temperature <= 100 ? fahrenheit(row.temperature) : null;
     // heatTransfer is K = UA + 1.08 * outdoor-air CFM [BTU/hr/F].
@@ -180,7 +188,8 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     // inputs become sensible heat here; their electricity is not billed in HVAC totals.
     const lighting = area * a.lightingW * (0.10 + 0.90 * fraction) * BTU_PER_WH;
     const equipment = area * a.equipmentW * (0.25 + 0.75 * fraction) * BTU_PER_WH;
-    const gains = lighting + equipment + occupants * a.sensiblePerson + solar.total;
+    // Winter sizing does not rely on solar or internal gains to meet the load.
+    const gains = designDay === "heating" ? 0 : lighting + equipment + occupants * a.sensiblePerson + solar.total;
     // These expressions are the familiar steady-state heat balance, clipped at zero.
     // Cooling is negated only when the result is stored at the return statement.
     const sensible = Math.max(0, heatTransfer * (tempF - coolSetpoint) + gains);

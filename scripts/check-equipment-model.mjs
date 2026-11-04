@@ -31,7 +31,9 @@ function load(path) {
 const { DEFAULT_SCHOOL, simulateSchool, humidityRatio, celsius }=load('lib/school.ts');
 const { newScenario,scenarioName,coolingFor }=load('lib/equipment.ts');
 const { UNIT_RATINGS,unitRatingFor }=load('lib/unit-ratings.ts');
-const { simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
+const { simulateEquipment:simulateEquipmentModel, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
+// These component fixtures explicitly serve as their own controlled design days.
+const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel(rows,school,scenario,selection,{rows,basis:'Controlled design fixture',metadata:{Sizing_basis:'Controlled design fixture'},error:null});
 const { airContext, mixAir, enthalpy, wetBulbF }=load('lib/mixed-air.ts');
 const { coolingPoint, COOLING_MODELS }=load('lib/packaged-cooling.ts');
 const { heatingPoint, heatingModelFor, HEATING_MODELS }=load('lib/packaged-heating.ts');
@@ -101,7 +103,7 @@ const expectedHighPower=[2.81,3.83,4.69,5.94,7.33,8.76,10.35,12.4,15.21,18.23,22
 UNIT_RATINGS.forEach((r,i)=>{near(r.cooling_system_power_kW,i<12?expectedPower[i]:expectedHighPower[i-12]);near(r.inferred_supply_fan_heat_Btu_hr,r.rated_gross_cooling_Btu_hr-r.rated_net_cooling_Btu_hr);near(r.inferred_supply_fan_power_kW*BTU_PER_KWH,r.inferred_supply_fan_heat_Btu_hr);near(r.cooling_non_supply_fan_power_kW+r.inferred_supply_fan_power_kW,r.cooling_system_power_kW);assert.ok(unitRatingFor({nominal_tons:r.nominal_tons,efficiency:'high'}));});
 const gasScenario={...newScenario('gas'),cooling:'heat-pump',gasEfficiencyPercent:80},resistanceScenario={...newScenario('resistance'),cooling:'heat-pump'};
 assert.equal(coolingFor(newScenario()),'heat-pump');assert.equal(newScenario('gas').cooling,null);assert.equal('name' in newScenario(),false);
-assert.equal(scenarioName(gasScenario),'Heat Pump Cooling + Natural Gas Heating');assert.equal(scenarioName(resistanceScenario),'Heat Pump Cooling + Electric Resistance Heating');
+assert.equal(scenarioName(gasScenario),'Heat Pump Cooling + Small Non-Condensing Boiler Heating');assert.equal(scenarioName(resistanceScenario),'Heat Pump Cooling + Electric Resistance Heating');
 const missingCooling=simulateEquipment([row],DEFAULT_SCHOOL,newScenario('gas'));assert.match(missingCooling.error,/Choose cooling/);assert.equal(missingCooling.rows[0].electricity,null);assert.equal(missingCooling.selection,null);
 const hp=simulateEquipment([row],DEFAULT_SCHOOL,newScenario());
 assert.ok(hp.selection);assert.ok(hp.selection.supplyCfm>=row.ventilationCfm);assert.equal(hp.selection.provisional,true);assert.ok(hp.rows[0].unmetCooling<=1);assert.ok(hp.rows[0].electricity>0);
@@ -119,7 +121,7 @@ const heating=simulateEquipment([heatRow],DEFAULT_SCHOOL,newScenario());
 assert.equal(heating.selection.count,1);assert.equal(heating.selection.model.nominal_tons,3);assert.equal(heating.selection.verifiedHeatingHours,1);
 const fkw=1000/BTU_PER_KWH;
 near(heating.rows[0].availableHeating,31000);near(heating.rows[0].deliveredHeating,15500);near(heating.rows[0].fanElectricity,fkw);
-near(heating.rows[0].electricity,(2.6-fkw)*(14500/30000)+fkw);near(heating.rows[0].unmetHeating,0);near(heating.rows[0].heatingCop,31000/(BTU_PER_KWH*2.6));
+near(heating.rows[0].electricity,(2.6-fkw)*(14500/30000)/(.85+.15*(14500/30000))+fkw);near(heating.rows[0].unmetHeating,0);near(heating.rows[0].heatingCop,31000/(BTU_PER_KWH*2.6));
 const undersized=simulateEquipment([{...heatRow,heating:62000,heatBalance:62000}],DEFAULT_SCHOOL,newScenario(),heating.selection).rows[0];near(undersized.deliveredHeating,31000);near(undersized.unmetHeating,31000);near(undersized.electricity,2.6);
 const gas=simulateEquipment([heatRow],DEFAULT_SCHOOL,gasScenario),resistance=simulateEquipment([heatRow],DEFAULT_SCHOOL,resistanceScenario);
 for(const r of [gas,resistance]){assert.ok(r.selection);near(r.heatingCapacityBtuHr,14500);near(r.rows[0].fanHeat,1000);near(r.rows[0].fanElectricity,fkw);near(r.rows[0].unmetHeating,0);near(r.rows[0].unmetCooling,0);assert.ok(r.rows[0].enteringWetBulbF!==null);}
@@ -167,7 +169,7 @@ for(const result of [hp,gas,resistance]){const exported=parseCsv(equipmentResult
 const comparison=parseCsv(equipmentComparisonCsv([hp,gas,resistance]));comparison.slice(1).forEach(r=>assert.equal(r.length,comparison[0].length));
 const {EquipmentScenarios}=load('components/equipment-scenarios.tsx');
 const html=renderToStaticMarkup(createElement(EquipmentScenarios,{choices:[hp.scenario,gasScenario,resistanceScenario],results:[hp,gas,resistance],active:0,onActive:()=>{},onChange:()=>{}}));
-assert.match(html,/Cooling equipment/);assert.match(html,/required/);assert.match(html,/Heat Pump Cooling \+ Natural Gas Heating/);assert.doesNotMatch(html,/Scenario name|Heating only|COP is still awaiting|type="file"/);assert.match(html,/Supply-fan|supply.fan/);
+assert.match(html,/Cooling equipment/);assert.match(html,/required/);assert.match(html,/Heat Pump Cooling \+ Small Non-Condensing Boiler Heating/);assert.doesNotMatch(html,/Scenario name|Heating only|COP is still awaiting|type="file"/);assert.match(html,/Supply-fan|supply.fan/);
 assert.doesNotMatch(html,/<details|Use defaults|Modify values|flagged source/i);assert.doesNotMatch(html,/Outside supplied|Trane|Precedent|Cooling power and COP available|Boundary estimates included/i);
 console.log('Equipment checks passed: source heating fits and nominal power, inferred fans, no double counting, gas/resistance fan heat credit, fan-only ventilation and induced cooling, required cooling, derived names, COP, domains, both efficiency families, annual energy, CSVs and rendered controls.');
 

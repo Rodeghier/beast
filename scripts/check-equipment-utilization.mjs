@@ -18,7 +18,9 @@ function load(path){
  new Function('require','module','exports',outputText)(localRequire,module,module.exports);return module.exports;
 }
 const {equipmentUtilization,utilizationDistribution}=load('lib/equipment-utilization.ts');
-const {simulateEquipment,BTU_PER_KWH}=load('lib/equipment-model.ts');
+const {simulateEquipment:simulateEquipmentModel,BTU_PER_KWH}=load('lib/equipment-model.ts');
+// These component fixtures explicitly serve as their own controlled design days.
+const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel(rows,school,scenario,selection,{rows,basis:'Controlled design fixture',metadata:{Sizing_basis:'Controlled design fixture'},error:null});
 const {DEFAULT_SCHOOL,simulateSchool,celsius}=load('lib/school.ts');
 const {newScenario}=load('lib/equipment.ts');
 const {unitRatingFor}=load('lib/unit-ratings.ts');

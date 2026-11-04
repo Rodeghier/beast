@@ -24,11 +24,13 @@ import { coolingFor, curveRangeMode, scenarioName, newScenario, type EquipmentSc
 import { EquipmentScenarios } from "@/components/equipment-scenarios";
 import { LoadSummary, formatLoad } from "@/components/load-summary";
 import { EquipmentDistributions } from "@/components/equipment-distributions";
+import { DesignSizingSummary } from "@/components/design-sizing-summary";
+import { buildDesignSizing, type DesignConditionResponse } from "@/lib/design-sizing";
 import { AnalysisAssumptions } from "@/components/analysis-assumptions";
 import { LocationEnergy } from "@/components/location-energy";
 
 const DOCS = "https://developer.nlr.gov/docs/climate/sup3rcc/sup3rcc-conus-ecearth3cc-ssp245-r1i1p1f1-v0-2-2-download/";
-type Result = { place: Place; year: number; data: ClimateData; csv: string };
+type Result = { place: Place; year: number; data: ClimateData; csv: string; design:DesignConditionResponse };
 type Stage = "idle" | "locating" | "choosing" | "loading" | "ready" | "error" | "unsupported";
 const pad = (n: number) => String(n).padStart(2, "0");
 const coordinate = (v: number, lat = false) => `${Math.abs(v).toFixed(4)}° ${lat ? (v < 0 ? "S" : "N") : (v < 0 ? "W" : "E")}`;
@@ -67,6 +69,12 @@ export default function Home() {
   // Engineering pipeline step 1: weather + assumptions -> hourly building loads.
   // useMemo recomputes when the listed input objects change; it is a performance cache.
   const schoolRows = useMemo(() => result && !validateSchool(school) ? simulateSchool(result.data.rows, school, solarLocation(result.data.metadata)) : [], [result, school]);
+  const [designStationChoice,setDesignStationChoice]=useState<{placeKey:string;stationId:string}|null>(null);
+  const designPlaceKey=result?`${result.place.id}:${result.place.latitude}:${result.place.longitude}`:"";
+  const designStation=result?.design.stations.find(station=>designStationChoice?.placeKey===designPlaceKey&&station.id===designStationChoice.stationId)??result?.design.stations[0];
+  // Equipment is selected from published design days. The downloaded year is
+  // used only after selection, to simulate the fixed installation hour by hour.
+  const designSizing=useMemo(()=>result&&!validateSchool(school)?buildDesignSizing(designStation,school,result.design.source,result.place):undefined,[result,school,designStation]);
   const [systems, setSystems] = useState<EquipmentScenario[]>(() => [newScenario("heat-pump"), newScenario("gas"), newScenario("resistance")]);
   const [activeSystem, setActiveSystem] = useState(0);
   // Steps 2 and 3: size each distinct equipment request once, then simulate each
@@ -74,10 +82,10 @@ export default function Home() {
   const sizingRequests=systems.map(s=>`${s.heating==="heat-pump"?"heat-pump":"gas"}:${s.efficiency}:${coolingFor(s)==="heat-pump"}:${curveRangeMode(s)}:${s.stage}`).join("|");
   const packagedSelections=useMemo(()=>{
     const cache=new Map<string,ReturnType<typeof autosizePackaged>>();
-    return sizingRequests.split("|").map(request=>{const [mode,efficiency,selected,rangeMode,stage]=request.split(":");if(!schoolRows.length||selected!=="true")return null;
-      if(!cache.has(request))cache.set(request,autosizePackaged(schoolRows,school,efficiency as "standard"|"high",mode as "heat-pump"|"gas",rangeMode as CurveRangeMode,stage as EquipmentScenario["stage"]));return cache.get(request)!;});
-  },[schoolRows,school,sizingRequests]);
-  const comparisonResults = useMemo(() => schoolRows.length ? systems.map((system,i) => simulateEquipment(schoolRows, school, system,packagedSelections[i])) : [], [schoolRows, school, systems,packagedSelections]);
+    return sizingRequests.split("|").map(request=>{const [mode,efficiency,selected,rangeMode,stage]=request.split(":");if(!designSizing?.rows.length||designSizing.error||selected!=="true")return null;
+      if(!cache.has(request))cache.set(request,autosizePackaged(designSizing.rows,school,efficiency as "standard"|"high",mode as "heat-pump"|"gas",rangeMode as CurveRangeMode,stage as EquipmentScenario["stage"]));return cache.get(request)!;});
+  },[designSizing,school,sizingRequests]);
+  const comparisonResults = useMemo(() => schoolRows.length ? systems.map((system,i) => simulateEquipment(schoolRows, school, system,packagedSelections[i],designSizing)) : [], [schoolRows, school, systems,packagedSelections,designSizing]);
   const curveResult = comparisonResults[activeSystem] ?? null;
   function updateSystem(index: number, choice: EquipmentScenario) {
     setSystems(current => current.map((s, i) => i === index ? choice : s));
@@ -111,11 +119,15 @@ export default function Home() {
     }
     setStage("loading");
     const params = new URLSearchParams({ latitude: String(selected.latitude), longitude: String(selected.longitude), state: selected.stateCode, year: String(requestedYear) });
-    const response = await request(`/api/climate?${params}`, controller.signal);
+    const [response,designResponse]=await Promise.all([
+      request(`/api/climate?${params}`,controller.signal),
+      request(`/api/design-conditions?${new URLSearchParams({latitude:String(selected.latitude),longitude:String(selected.longitude)})}`,controller.signal),
+    ]);
+    const design=await designResponse.json() as DesignConditionResponse;
     const csv = await response.text();
     const data = parseClimateCsv(csv, requestedYear);
     if (controller.signal.aborted) return;
-    setResult({ place: selected, year: requestedYear, data, csv }); setPage(1); setStage("ready");
+    setResult({ place: selected, year: requestedYear, data, csv, design }); setPage(1); setStage("ready");
     return { city: selected.name, state: selected.state, year: requestedYear, rows: data.rows.length, latitude: selected.latitude, longitude: selected.longitude };
   }, []);
 
@@ -225,7 +237,7 @@ export default function Home() {
             <LocationEnergy key={`${result.place.id}-${result.place.stateCode}`} place={result.place} year={result.year} results={comparisonResults} rows={schoolRows}/><div className="edit-inputs"><button type="button" className="button secondary" onClick={() => setTab("query")}>Edit analysis inputs</button></div>
             <div className="results-heading"><div><div className="eyebrow">WEATHER & BUILDING LOADS</div><h2>{result.place.name}, {result.place.state}<span className="result-year">{result.year}</span></h2><p><MapPin size={14}/>{coordinate(result.place.latitude, true)}<span>·</span>{coordinate(result.place.longitude)}<span>·</span>{timezone}</p></div><div className="download-actions"><button className="button primary" onClick={() => download()}><Download size={17}/>Download results CSV</button><button className="button text-button" onClick={() => download(true)}>Original weather CSV</button></div></div>
             <div className="results-meta"><span><Table2 size={16}/><strong>{total.toLocaleString()}</strong> hourly records</span><span><CalendarDays size={16}/>{result.data.rows[0]?.year}-{pad(result.data.rows[0]?.month)}-{pad(result.data.rows[0]?.day)} to {result.data.rows.at(-1)?.year}-{pad(result.data.rows.at(-1)!.month)}-{pad(result.data.rows.at(-1)!.day)}</span><span>EC-Earth3-CC <span className="meta-separator">/</span> SSP2-4.5</span></div>
-            <EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/><EquipmentDistributions results={comparisonResults} active={activeSystem} onActive={setActiveSystem}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
+            <DesignSizingSummary design={result.design} station={designStation} sizing={designSizing} school={school} onStation={stationId=>setDesignStationChoice({placeKey:designPlaceKey,stationId})}/><EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/><EquipmentDistributions results={comparisonResults} active={activeSystem} onActive={setActiveSystem}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
             <div className="hourly-heading"><h3>Hourly results · {scenarioName(systems[activeSystem])}</h3><span>Cooling − · Heating + · Electricity in kWh per hour</span></div>
             <div className="table-scroll" tabIndex={0} aria-label="Hourly weather, building loads and equipment performance"><Table className="school-table"><TableHeader><TableRow>
               {["#", "Date", "Time (local)", "Outdoor dry bulb (°F)", "Dew point (°F)", "DHI / DNI / GHI (W/m²)", "Solar heat gain (BTU/hr)", "Sensible cooling (BTU/hr · −)", "Total cooling (BTU/hr · −)", "Building heat need (BTU/hr · +)", "Mixed entering dry bulb (°F)", "Mixed entering wet bulb (°F)", "Outdoor-air fraction", "Available heat (BTU/hr)", "Available cooling (BTU/hr)", "Heating COP · full output", "Cooling COP · full-output net", "Cooling SHR", "Equipment electricity (kWh)", "Supply fan electricity (kWh)", "Supply fan heat (BTU/hr)", systems[activeSystem]?.heating==="gas"&&systems[activeSystem]?.boilerSizeClass==="large"?`Fuel input (${curveResult?.summary.boilerFuelUnit??"units"})`:"Gas input (therms)", "Unmet heat (BTU/hr)", "Unmet cooling (BTU/hr)", "Status"].map(label => <TableHead key={label}>{label}</TableHead>)}

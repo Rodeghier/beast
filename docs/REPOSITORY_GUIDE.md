@@ -2,7 +2,7 @@
 
 An engineering handbook for readers with basic Python experience
 
-Prepared from the local repository on October 29 2026
+Prepared from the local repository on November 3 2026
 
 ## 1 What this guide helps you do
 
@@ -40,10 +40,19 @@ City and state
   -> climate API -> weather CSV
   -> parseClimateCsv -> ClimateRow[]
   -> simulateSchool -> SchoolRow[]
-  -> autosizePackaged -> PackagedSelection
-  -> simulateEquipment -> EquipmentResult
+  -> simulateEquipment (fixed design-day selection) -> EquipmentResult
   -> annualPerformance -> annual and monthly metrics
   -> result cards, graphs and CSV downloads
+```
+
+Sizing runs alongside that annual path:
+
+```text
+Selected coordinates
+  -> design-conditions API -> nearby ASHRAE station choices
+  -> buildDesignSizing -> design-day SchoolRow[]
+  -> autosizePackaged -> PackagedSelection
+  -> simulateEquipment with annual SchoolRow[] -> EquipmentResult
 ```
 
 `[]` means a list or array. The same hourly position is retained through the weather, building and equipment arrays. For example, weather row 100, building row 100 and equipment row 100 refer to the same hour. Several exports combine them by array position, so changing row ordering in only one stage is unsafe.
@@ -296,17 +305,27 @@ Cooling source coverage is generally outdoor 85–125°F, entering WB 61–73°F
 
 ## 11 How automatic selection works
 
+Start with `lib/design-sizing.ts`. Annual `schoolRows` calculate energy and unmet loads; a separate `designSizing.rows` supplies equipment sizes. The server route `/api/design-conditions` calls `nearestDesignStations` in `lib/ashrae-design-stations.ts`, returning the ten nearest complete stations within 250 km. The catalog stays on the server. Results initially select the nearest station, with an engineer override for nearby climate/elevation differences.
+
+The local catalog contains 1,724 complete U.S. stations from the EnergyPlus team's public ASHRAE 2017 design-condition distribution. The source URL and ZIP SHA-256 are embedded in `lib/data/ashrae-design-2017-us.json`. This is the 2017 edition. `scripts/build-ashrae-design-data.py --source PATH_TO_ZIP` reproduces it. Incomplete source records are excluded. No annual-weather percentile or annual maximum substitutes for missing published conditions.
+
+Building assumptions select 1% cooling and 99% heating by default; published 0.4%/2% cooling and 99.6% heating alternatives are available. `buildDesignSizing` generates 96 hourly load rows: one winter day and three summer days checking dry-bulb/mean-coincident-wet-bulb, wet-bulb/mean-coincident-dry-bulb and dew-point/mean-coincident-dry-bulb conditions. The published daily range and default ASHRAE/EnergyPlus hourly temperature multipliers form each summer profile. Humidity ratio is constant with a saturation cap, and clear-sky solar uses the 2017 tau equations and station optical depths. The fixed 2001 calendar keeps sizing independent of the selected weather year.
+
+Cooling uses full design occupancy during scheduled hours, without summer reductions. Winter uses occupied heating temperature all day and takes no credit for internal or solar gains; ventilation follows occupied hours. Infiltration remains active. Psychrometrics retain the existing standard-pressure basis; station elevation is disclosed but does not change air-density coefficients. These are steady-state design loads with no thermal storage or morning warm-up simulation.
+
+`simulateEquipment` receives annual rows and a separate `DesignSizing` context. Heat-pump selection, boiler/resistance output and chiller capacity use only the context's design rows. Sizes remain fixed throughout the annual simulation. Annual extreme hours can exceed installed capacity and produce unmet loads; they do not trigger resizing. Equipment CSVs include station ID, edition, probabilities, design temperatures, design loads and source provenance.
+
 Open `autosizePackaged` in `lib/equipment-model.ts`. It enumerates catalog sizes in the selected efficiency family and scans integer unit counts for each size. It is a search through discrete candidates, not a continuous optimization of dollars or energy.
 
 The smallest candidate count must accommodate peak scheduled ventilation using the catalog maximum cooling CFM per unit. Reference-condition capacity produces a search scale. Each candidate then recalculates mixed entering air and fan heat before checking sensible cooling, latent cooling and, for heat-pump heating, net heating capacity.
 
 Cooling is checked by component: sensible availability is installed gross capacity times SHR; latent availability is installed gross capacity times one minus SHR. A unit can have enough total cooling and still fail the latent or sensible requirement.
 
-The model sorts large demand hours early so an undersized candidate can be rejected quickly. For each size it retains the first count that passes the available checks. Across those candidates, it prefers fewer unavailable checks, then fewer units, then less nominal tonnage. This order can favor one large unit over several smaller units. It does not compare first cost, annual cost, redundancy, staging quality or installation constraints.
+The model sorts large demand hours early so an undersized candidate can be rejected quickly. For each size it retains the first count that passes the available checks. Across those candidates, it prefers fewer unavailable design checks, then less total nominal tonnage, then fewer units. This avoids preferring one larger unit solely because its count is lower. It does not compare first cost, annual cost, redundancy, staging quality or installation constraints.
 
 No sizing percentage margin is applied. A 1 BTU/hr shortfall tolerance is used in candidate checks. The count search has a protective upper limit: the smaller of 10,000 and the larger of the ventilation minimum plus 50 or sixteen times the reference estimate. If the search does not produce a passing operating selection, a labeled reference estimate can remain; hourly delivery and unmet-load results still need review.
 
-Gas and resistance cases select packaged units for cooling and ventilation. Small-boiler and resistance output are sized from the maximum heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted peak demand.
+Gas and resistance cases select packaged units for cooling and ventilation. Small-boiler and resistance output are sized from the maximum design-day heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted design demand.
 
 ## 12 One hour through the equipment model
 
@@ -332,7 +351,7 @@ Heating coil duty is `14500 / 30000`. The program duty-scales the nonfan heating
 
 For gas at 80% entered heating efficiency, 14,500 BTU/hr of heater output uses 0.18125 therm for that hour, plus fan electricity. For resistance, element electricity plus the fan electricity equals the 15,500 BTU delivered divided by 3412.141633, approximately 4.543 kWh.
 
-For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the annual peak heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and the selected fuel's manufacturer consumption/hour is multiplied by runtime fraction. Natural gas is reported in therms, propane in ft³, and No. 2 light oil in gal. Fuel input Btu converts those quantities to site MMBtu. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available. Utility cost and combustion emissions remain unavailable for propane and light oil.
+For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the ASHRAE design heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and the selected fuel's manufacturer consumption/hour is multiplied by runtime fraction. Natural gas is reported in therms, propane in ft³, and No. 2 light oil in gal. Fuel input Btu converts those quantities to site MMBtu. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available. Utility cost and combustion emissions remain unavailable for propane and light oil.
 
 Duty is limited to one. An overloaded unit records unmet heating or component cooling rather than receiving unlimited capacity. There is no hidden auxiliary heater or reheat correction. Review unmet hours alongside energy totals: a low-energy case that does not meet the load is not an equivalent service comparison.
 
@@ -364,7 +383,7 @@ Cost and emissions depend on different inputs. Missing gas prices can block gas 
 
 `app/page.tsx` is the coordinator. A React component is a function that describes a screen. `useState` holds values between renders. A setter such as `setSchool` requests a state change and a new render. `useMemo` caches a derived value until its listed inputs change. It does not make the cached result permanent.
 
-The engineering path is concentrated in three named values: `schoolRows`, `packagedSelections` and `comparisonResults`. They call the building, sizing and equipment functions you have already read. The sizing-request key avoids repeating the expensive selection search for combinations with equivalent cooling/heating sizing requirements.
+The engineering path is concentrated in three named values: `schoolRows`, `packagedSelections` and `comparisonResults`. A fourth value, `designSizing`, creates the published design-day load rows before selection. They call the building, sizing and equipment functions you have already read. The sizing-request key avoids repeating the expensive selection search for combinations with equivalent cooling/heating sizing requirements.
 
 The `stage` value controls the search/loading screen: idle, locating, choosing, loading, ready, error or unsupported. `startQuery` validates inputs and asks the locations API for matches. `fetchClimate` retrieves and parses the selected weather CSV. The `AbortController` cancels obsolete requests so an older response cannot overwrite a newer search.
 
@@ -466,6 +485,7 @@ The development command requests port 5173. Dependency installation and server s
 | --- | --- |
 | `node node_modules/typescript/bin/tsc --noEmit` | Types imports and compiler consistency |
 | `node scripts/check-school-model.mjs` | Building balance psychrometrics schedule signs and missing data |
+| `node scripts/check-design-sizing.mjs` | Published station conditions, daily profiles, design schedules, sizing independence, API and exports |
 | `node scripts/check-equipment-model.mjs` | Accepted fitting data curve evaluation sizing fans COP exports and controls |
 | `node scripts/check-beast-scorecard.mjs` | Tariffs annual completeness costs emissions and result displays |
 | `node scripts/check-location-energy.mjs` | Provider parsing region resolution and source-data conventions |
