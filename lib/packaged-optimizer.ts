@@ -13,7 +13,7 @@ import { airContext, mixAir } from "./mixed-air";
 import { operatingCoolingPoint, operatingHeatingPoint } from "./curve-evaluation";
 import type { SchoolAssumptions, SchoolRow } from "./school";
 import type { CurveRangeMode, EquipmentStage, HeatingEquipment } from "./equipment";
-import { bankRatings, type PackagedGroup, type PackagedSelection } from "./packaged-bank";
+import { bankRatings, type DesignLoading, type PackagedSelection } from "./packaged-bank";
 
 const finite=(v:unknown):v is number=>typeof v==="number"&&Number.isFinite(v);
 const validCooling=(r:SchoolRow)=>finite(r.sensibleCooling)&&finite(r.latentCooling)&&r.sensibleCooling<=0&&r.latentCooling<=0;
@@ -60,6 +60,7 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
     const groups=groupsFor(counts),count=counts.reduce((s,n)=>s+n,0),supply=groups.reduce((s,g)=>s+g.count*g.model.fixed_cfm,0);
     if(!count||supply+1e-7<peakVent)return null;
     const rating=bankRatings(groups)!;
+    const designLoading:DesignLoading={heating:null,sensibleCooling:null,latentCooling:null,ventilation:peakVent/supply};
     const coverage={verifiedCoolingHours:0,estimatedCoolingHours:0,unverifiedCoolingHours:0,verifiedHeatingHours:0,estimatedHeatingHours:0,unverifiedHeatingHours:0};
     const coolingHours=new Map<number,"verified"|"estimated"|"unknown">();
     for(const check of at(supply)){
@@ -68,7 +69,15 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
       if(check.kind==="cooling"&&validCooling(r)&&Math.max(0,(r.coolBalance??-r.sensibleCooling!)+rating.fanHeat)===0&&r.latentCooling===0)continue;
       const unknown=!finite(check.need)||check.values.some((v,i)=>counts[i]>0&&v===null);
       const estimated=check.estimated.some((v,i)=>counts[i]>0&&v);
-      if(!unknown&&check.values.reduce<number>((s,v,i)=>s+counts[i]*(v??0),0)<check.need-1)return null;
+      const available=check.values.reduce<number>((s,v,i)=>s+counts[i]*(v??0),0);
+      if(!unknown&&available<check.need-1)return null;
+      if(!unknown){
+        const key=check.kind==="heating"?"heating":check.key[0]==="s"?"sensibleCooling":"latentCooling";
+        const need=key==="sensibleCooling"?Math.max(0,check.need+rating.fanHeat):Math.max(0,check.need);
+        const capacity=key==="sensibleCooling"?available+rating.fanHeat:available;
+        const ratio=need===0?0:capacity>0?need/capacity:null;
+        if(ratio!==null)designLoading[key]=Math.max(designLoading[key]??0,ratio);
+      }
       if(check.kind==="cooling"){
         const previous=coolingHours.get(index);
         coolingHours.set(index,unknown||previous==="unknown"?"unknown":estimated||previous==="estimated"?"estimated":"verified");
@@ -77,7 +86,7 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
     for(const [index,status] of coolingHours)if(status==="unknown")coverage.unverifiedCoolingHours+=weights[index];else if(status==="estimated")coverage.estimatedCoolingHours+=weights[index];else coverage.verifiedCoolingHours+=weights[index];
     return {groups,count,totalTons:groups.reduce((s,g)=>s+g.count*g.model.nominal_tons,0),supplyCfm:supply,
       referenceCoolingBtuHr:groups.reduce((s,g)=>s+g.count*g.model.reference_capacity_Btu_hr,0),referenceHeatingBtuHr:groups.reduce((s,g)=>s+g.count*g.heatingModel.reference_capacity_Btu_hr,0),
-      ...coverage,rangeMode,heatingAirflowApproximation:heating==="heat-pump",includesHeatPumpHeating:heating==="heat-pump",provisional:true,optimizationComplete:true,
+      ...coverage,designLoading,rangeMode,heatingAirflowApproximation:heating==="heat-pump",includesHeatPumpHeating:heating==="heat-pump",provisional:true,optimizationComplete:true,
       basis:"Occupied ASHRAE design hours; seasonal occupancy applied. Minimize total unit count, then installed nominal tonnage. Unavailable design checks are ignored."};
   };
   // Obtain a feasible incumbent from each homogeneous bank. Starting with large

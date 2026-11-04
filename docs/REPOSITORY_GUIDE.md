@@ -355,6 +355,16 @@ For a large commercial boiler, the program selects the smallest CBLE-4D table ou
 
 Duty is limited to one. An overloaded unit records unmet heating or component cooling rather than receiving unlimited capacity. There is no hidden auxiliary heater or reheat correction. Review unmet hours alongside energy totals: a low-energy case that does not meet the load is not an equivalent service comparison.
 
+### Read the stage and cycling charts
+
+`lib/equipment-staging.ts` returns `StageOperation` alongside the existing power-equivalent count. It records whole units at full stage, idle units and one residual unit's fractions of an hour at each modeled stage. Below the minimum stage, `stageTimeFractions` uses the same Cd = 0.15 runtime already used by the energy calculation. Between two stages, their time fractions sum to one, so the unit stays ON for the full hour even though stage capacity changes. A multi-compressor unit is ON when at least one compressor runs; individual compressor switching is not resolved.
+
+`dispatchHeating` and `dispatchCooling` retain those stage records in each group's exported `staging` field. The histogram module `lib/equipment-operation.ts` reads them, preserving the unit positions in the model's fixed lead/lag order. It can select a size group, include only called units or all installed units, or inspect one numbered unit. It aggregates compressed counts instead of constructing one array entry for every physical unit. A unit-hour means one unit observed for one hour. Stage bars contain fractional unit-hours; the ON/OFF histogram counts unit-hours with each total-minute value. ON and OFF totals sum to 60 for each included unit-hour. Missing stage data remain unavailable, while known zero compressor use is idle.
+
+These charts report hourly time totals. They cannot determine whether 30 ON minutes occurred in one run or several starts. The model does not resolve thermostat cycle periods or lead rotation. Boiler firing uses its existing runtime fraction; resistance and the chiller placeholder do not have stage switching data and therefore do not receive invented stage or runtime distributions. Their bank-average capacity and power view remains available.
+
+Low bank utilization can coexist with lead units at full stage. Heating and latent design requirements are checked separately, and winter design gains differ from annual gains. `PackagedSelection.designLoading` records the maximum available design load/capacity ratios for heating, sensible cooling, latent cooling and ventilation. The UI displays these ratios; CSV metadata exports them as `Design_check_loading_JSON`. This helps distinguish a lightly loaded installed bank from a cycling individual unit.
+
 ## 13 Annual energy cost and emissions
 
 `completeCalendar` and `annualPerformance` protect the annual calculation. A complete non-leap analysis requires 8,760 unique valid hourly timestamps, correct row alignment and complete required electricity/gas values. The program does not establish completeness merely by counting rows.

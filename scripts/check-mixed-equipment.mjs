@@ -43,7 +43,7 @@ try {
  const constant=tons=>({...original.find(m=>m.efficiency==='standard'&&m.nominal_tons===tons),reference_capacity_Btu_hr:tons===3?36000:60000,capacity_coefficients:[1,0,0,0,0,0,0,0,0,0],shr_numerator_coefficients:[.75,0,0,0],valid_domain_halfspaces:[]});
  COOLING_MODELS.splice(0,COOLING_MODELS.length,constant(3),constant(4));
  const selected=optimizePackagedBank([fixture],school,'standard','gas');
- assert.equal(selected.count,2);assert.equal(selected.totalTons,7);assert.equal(selected.groups.length,2);assert.equal(selected.optimizationComplete,true);
+ assert.equal(selected.count,2);assert.equal(selected.totalTons,7);assert.equal(selected.groups.length,2);assert.equal(selected.optimizationComplete,true);near(selected.designLoading.latentCooling,1);assert.equal(selected.designLoading.heating,null);
  // Independent exhaustive integer enumeration verifies both objective levels.
  const feasible=[];
  for(let n3=0;n3<=3;n3++)for(let n4=0;n4<=3;n4++){
@@ -73,7 +73,7 @@ try {
  const csv=parseCsv(equipmentResultsCsv([fixture],school,result,'Fixture','CST'));
  const groupMeta=JSON.parse(csv[1][csv[0].indexOf('Installed_groups')]);assert.equal(groupMeta.length,2);assert.deepEqual(groupMeta.map(g=>g.nominalTons),[4,3]);
  const hourlyHeader=csv.find(r=>r.includes('Equipment_group_performance_JSON'));assert.ok(hourlyHeader);
- assert.equal(JSON.parse(row.groupPerformance).cooling.length,2);
+ assert.equal(JSON.parse(row.groupPerformance).cooling.length,2);assert.ok(JSON.parse(row.groupPerformance).cooling.every(g=>g.staging.unitCount===g.count));
  const comparison=parseCsv(equipmentComparisonCsv([result]));assert.equal(comparison[0].length,comparison[1].length);assert.equal(comparison[1][comparison[0].indexOf('Nominal_tons_each')],'');
  // Mixed heating uses individual curves and stage duty, with fan counted once.
  const hp=bankHeating(selected.groups,47,70,'bounded'),heat=dispatchHeating(hp,30000);
@@ -140,6 +140,7 @@ if(process.argv.includes('--built-worker')){
  assert.equal(reply.error,null);
  const expected=optimizePackagedBank([fixture],school,'standard','gas'),actual=reply.selections[0];
  assert.equal(actual.count,expected.count);assert.equal(actual.totalTons,expected.totalTons);assert.equal(actual.optimizationComplete,true);
+ assert.equal(JSON.stringify(actual.designLoading),JSON.stringify(expected.designLoading));
  assert.equal(JSON.stringify(actual.groups.map(g=>[g.model.id,g.count])),JSON.stringify(expected.groups.map(g=>[g.model.id,g.count])));
  console.log('PASS: compiled production worker is self-contained and matches the source selector.');
 }

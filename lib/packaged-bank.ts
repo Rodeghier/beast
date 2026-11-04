@@ -10,9 +10,10 @@ import { compressorStages } from "./precedent-stages";
 import { stagedSystemOperation } from "./equipment-staging";
 
 export type PackagedGroup={model:CoolingModel;heatingModel:HeatingModel;count:number};
+export type DesignLoading={heating:number|null;sensibleCooling:number|null;latentCooling:number|null;ventilation:number|null};
 export type PackagedSelection={groups:PackagedGroup[];count:number;totalTons:number;supplyCfm:number;referenceCoolingBtuHr:number;referenceHeatingBtuHr:number;
   verifiedCoolingHours:number;estimatedCoolingHours:number;unverifiedCoolingHours:number;verifiedHeatingHours:number;estimatedHeatingHours:number;unverifiedHeatingHours:number;
-  rangeMode:CurveRangeMode;heatingAirflowApproximation:boolean;includesHeatPumpHeating:boolean;provisional:boolean;basis:string;optimizationComplete:boolean};
+  rangeMode:CurveRangeMode;heatingAirflowApproximation:boolean;includesHeatPumpHeating:boolean;provisional:boolean;basis:string;optimizationComplete:boolean;designLoading:DesignLoading};
 
 export const selectionGroupsLabel=(s:Pick<PackagedSelection,"groups">)=>s.groups.map(g=>`${g.count} × ${g.model.nominal_tons} ton`).join(" + ");
 export function bankRatings(groups:PackagedGroup[]) {
@@ -47,7 +48,7 @@ export function dispatchHeating(bank:NonNullable<ReturnType<typeof bankHeating>>
     const capacity=Math.max(0,point.capacityBtuHr-rating.inferred_supply_fan_heat_Btu_hr);
     const served=Math.min(remaining,g.count*capacity),op=stagedSystemOperation(served,capacity,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
     remaining-=served;delivered+=served;electricity+=(point.powerKw-rating.inferred_supply_fan_power_kW)*op.powerEquivalentUnits;belowMinimumStage ||=op.belowMinimumStage;
-    return {model:g.model.id,count:g.count,heating:point,heatingPowerEquivalentUnits:op.powerEquivalentUnits};
+    return {model:g.model.id,count:g.count,heating:point,heatingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
   });
   return {delivered,electricity:bank.evaluated.some(v=>v.point.powerKw<v.rating.inferred_supply_fan_power_kW)?null:electricity,belowMinimumStage,details};
 }
@@ -58,7 +59,7 @@ export function dispatchCooling(bank:NonNullable<ReturnType<typeof bankCooling>>
     const op=stagedSystemOperation(served,point.capacityBtuHr,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
     s=Math.max(0,s-served*point.shr);l=Math.max(0,l-served*(1-point.shr));
     electricity+=rating.cooling_non_supply_fan_power_kW*op.powerEquivalentUnits;delivered+=served;belowMinimumStage ||=op.belowMinimumStage;
-    return {model:g.model.id,count:g.count,cooling:point,coolingPowerEquivalentUnits:op.powerEquivalentUnits};
+    return {model:g.model.id,count:g.count,cooling:point,coolingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
   });
   return {delivered,electricity,unmet:s+l,belowMinimumStage,details};
 }

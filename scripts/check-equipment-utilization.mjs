@@ -18,7 +18,7 @@ function load(path){
  new Function('require','module','exports',outputText)(localRequire,module,module.exports);return module.exports;
 }
 const {equipmentUtilization,utilizationDistribution}=load('lib/equipment-utilization.ts');
-const {simulateEquipment:simulateEquipmentModel,BTU_PER_KWH}=load('lib/equipment-model.ts');
+const {simulateEquipment:simulateEquipmentModel,BTU_PER_KWH,stagedSystemOperation}=load('lib/equipment-model.ts');
 // These component fixtures explicitly serve as their own controlled design days.
 const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel(rows,school,scenario,selection,{rows,basis:'Controlled design fixture',metadata:{Sizing_basis:'Controlled design fixture'},error:null});
 const {DEFAULT_SCHOOL,simulateSchool,celsius}=load('lib/school.ts');
@@ -64,9 +64,10 @@ near(equipmentUtilization(chiller,'cooling').capacity[0],25);near(equipmentUtili
 // delivered-capacity fraction at a partial load; charting must not replace it.
 const actual=equipmentUtilization(hp,'heating');assert.ok(actual.power[0]>actual.capacity[0]);assert.ok(actual.power[0]<100);
 const {EquipmentDistributions}=load('components/equipment-distributions.tsx');
-const html=renderToStaticMarkup(createElement(EquipmentDistributions,{results:[cooling],active:0,onActive:()=>{}}));
-assert.match(html,/Capacity and power distributions/);assert.match(html,/Cooling capacity used/);assert.match(html,/Cooling electrical power used/);assert.match(html,/Include zero-use hours/);assert.match(html,/distribution values/);assert.match(html,/0 unavailable/);
+const chartCooling={...cooling,rows:[{...cooling.rows[0],groupPerformance:JSON.stringify({cooling:[{model:hp.selection.groups[0].model.id,staging:stagedSystemOperation(50000,100000,1,[1])}]})}]};
+const html=renderToStaticMarkup(createElement(EquipmentDistributions,{results:[chartCooling],active:0,onActive:()=>{}}));
+assert.match(html,/Equipment stages and cycling/);assert.match(html,/Time at each unit stage/);assert.match(html,/Unit ON\/OFF time per hour/);assert.match(html,/Unit stages and ON\/OFF time/);assert.match(html,/distribution values/);assert.match(html,/Unavailable weather hours: 0/);
 const errorHtml=renderToStaticMarkup(createElement(EquipmentDistributions,{results:[{...cooling,error:'Unsupported selection'}],active:0,onActive:()=>{}}));
-assert.match(errorHtml,/1 unavailable/);assert.match(errorHtml,/No valid hourly utilization data/);
+assert.match(errorHtml,/Unavailable weather hours: 1/);assert.match(errorHtml,/No valid hourly stage data/);
 const page=readFileSync(resolve(root,'app/page.tsx'),'utf8');assert.match(page,/<EquipmentDistributions results=\{comparisonResults\} active=\{activeSystem\} onActive=\{setActiveSystem\}/);
 console.log('Utilization checks passed: installed capacity/input bases, fans, cycling, all heating/fuel/cooling types, idle/missing data, bin boundaries, hour conservation and rendered controls.');

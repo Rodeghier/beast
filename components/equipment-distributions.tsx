@@ -10,6 +10,8 @@ import { ChartContainer } from "@/components/ui/chart";
 import { scenarioName } from "@/lib/equipment";
 import type { EquipmentResult } from "@/lib/equipment-model";
 import { equipmentUtilization, utilizationDistribution, type UtilizationDistribution, type UtilizationMode } from "@/lib/equipment-utilization";
+import { equipmentOperation, operationSources, type OperationScope } from "@/lib/equipment-operation";
+import { EquipmentOperationGraphs } from "@/components/equipment-operation-graphs";
 
 const number = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
@@ -37,24 +39,42 @@ export function EquipmentDistributions({ results, active, onActive }: {
   const id = useId();
   const [mode, setMode] = useState<UtilizationMode>("cooling");
   const [includeZero, setIncludeZero] = useState(false);
+  const [view,setView]=useState<"operation"|"utilization">("operation");
+  const [groupId,setGroupId]=useState("");
+  const [scope,setScope]=useState<OperationScope>("operating");
+  const [unit,setUnit]=useState(1);
   const result = results[active];
+  const sources=operationSources(result,mode).sources;
+  const source=sources.find(s=>s.id===groupId)??sources[0];
+  const operation=useMemo(()=>equipmentOperation(result,mode,{groupId:source?.id,scope,unit:Math.min(unit,source?.count??1)}),[result,mode,source?.id,scope,unit,source?.count]);
   const distributions = useMemo(() => {
     const samples = result ? equipmentUtilization(result, mode) : { capacity: [], power: [] };
     return { capacity: utilizationDistribution(samples.capacity, includeZero), power: utilizationDistribution(samples.power, includeZero) };
   }, [result, mode, includeZero]);
   const fuelInput = mode === "heating" && result?.scenario.heating === "gas";
-  return <section className="equipment-distributions" aria-label="Capacity and power distributions">
-    <h3>Capacity and power distributions</h3>
+  const loading=result?.selection?.designLoading;
+  const designChecks=loading?[{label:"Heat-pump heating",value:loading.heating},{label:"Sensible cooling",value:loading.sensibleCooling},{label:"Latent cooling",value:loading.latentCooling},{label:"Ventilation",value:loading.ventilation}]:[];
+  const highest=designChecks.filter(c=>c.value!==null&&c.value>0).sort((a,b)=>b.value!-a.value!)[0];
+  if(!results.length)return null;
+  return <section className="equipment-distributions" aria-label="Equipment stages and cycling">
+    <h3>Equipment stages and cycling</h3>
+    {loading&&<div className="design-loading-summary"><p className="distribution-note">{highest&&<>Highest evaluated design loading: <strong>{highest.label} · {number(highest.value!*100)}%</strong>. </>}Design checks compare loads with the entire installed bank; unavailable checks are excluded.</p><dl>{designChecks.map(check=><div key={check.label}><dt>{check.label}</dt><dd>{check.value===null?"Not evaluated":`${number(check.value*100)}%`}</dd></div>)}</dl></div>}
     <div className="distribution-controls">
       <label htmlFor={`${id}-equipment`}>Equipment combination<select id={`${id}-equipment`} value={active} onChange={event => onActive(Number(event.target.value))}>{results.map((item, i) => <option key={i} value={i}>{scenarioName(item.scenario)}</option>)}</select></label>
       <label htmlFor={`${id}-mode`}>Operating mode<select id={`${id}-mode`} value={mode} onChange={event => setMode(event.target.value as UtilizationMode)}><option value="cooling">Cooling</option><option value="heating">Heating</option></select></label>
-      <label className="distribution-zero"><input type="checkbox" checked={includeZero} onChange={event => setIncludeZero(event.target.checked)}/>Include zero-use hours</label>
+      <label htmlFor={`${id}-view`}>Chart view<select id={`${id}-view`} value={view} onChange={event=>setView(event.target.value as "operation"|"utilization")}><option value="operation">Unit stages and ON/OFF time</option><option value="utilization">Capacity and power · bank average</option></select></label>
+      {view==="operation"&&sources.length>0&&<>
+        {sources.length>1&&<label htmlFor={`${id}-group`}>Equipment size<select id={`${id}-group`} value={source?.id??""} onChange={event=>setGroupId(event.target.value)}>{sources.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
+        <label htmlFor={`${id}-scope`}>Units included<select id={`${id}-scope`} value={scope} onChange={event=>setScope(event.target.value as OperationScope)}><option value="operating">Units called to run</option><option value="all">All installed units</option><option value="unit">Individual unit</option></select></label>
+        {scope==="unit"&&<label htmlFor={`${id}-unit`}>Unit number<input id={`${id}-unit`} type="number" min={1} max={source?.count??1} step={1} value={Math.min(unit,source?.count??1)} onChange={event=>setUnit(Number.isFinite(event.target.valueAsNumber)?Math.max(1,Math.min(source?.count??1,Math.round(event.target.valueAsNumber))):1)}/></label>}
+      </>}
+      {view==="utilization"&&<label className="distribution-zero"><input type="checkbox" checked={includeZero} onChange={event => setIncludeZero(event.target.checked)}/>Include zero-use hours</label>}
     </div>
-    <p className="distribution-note">Hourly averages for all installed units, including staging and cycling. Capacity uses available output at each hour’s evaluated conditions. Supply-fan power and heat are excluded from these equipment percentages. Missing values are excluded.</p>
+    {view==="operation"?<p className="distribution-note">{source&&<><strong>{source.label}.</strong> </>}Estimated operation with one shared building load sequenced across units. Supply fans are separate. {scope==="operating"?"Only unit-hours called to run are included; their cycling OFF time is retained.":scope==="unit"?"Unit numbers follow this size group's fixed lead/lag order; rotation is not modeled.":"Fully idle units are included as OFF time."}</p>:<p className="distribution-note">Hourly averages for the entire installed bank. A low bank percentage can include individual units at full stage while others are idle. Capacity uses each hour’s available output; supply-fan power and heat are excluded. Missing values are excluded.</p>}
     {result?.error && <p role="status" className="model-error">{result.error}</p>}
-    <div className="distribution-grid">
+    {view==="operation"?<EquipmentOperationGraphs data={operation}/>:<div className="distribution-grid">
       <DistributionGraph title={`${mode === "cooling" ? "Cooling" : "Heating"} capacity used`} basis={mode === "cooling" ? "Delivered gross cooling / available gross cooling (%)" : "Delivered heater or coil output / available heater or coil output (%)"} distribution={distributions.capacity} color="#2878a1" includeZero={includeZero}/>
       <DistributionGraph title={fuelInput ? "Heating fuel input used" : `${mode === "cooling" ? "Cooling" : "Heating"} electrical power used`} basis={fuelInput ? "Hourly fuel input / full firing fuel input (%)" : "Hourly average electrical input / full-output electrical input (%)"} distribution={distributions.power} color="#b56b32" includeZero={includeZero}/>
-    </div>
+    </div>}
   </section>;
 }

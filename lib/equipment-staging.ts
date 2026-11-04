@@ -25,15 +25,39 @@ export function stagedPowerFraction(partLoadRatio:number,stages:number[],cd=CYCL
   }
   return 1;
 }
-/** Lead/lag identical units: bring whole units on in sequence, then stage the
- * final unit. Only a residual below one unit's minimum stage is compressor cycling. */
-export function stagedSystemOperation(loadBtuHr:number,unitCapacityBtuHr:number,unitCount:number,stages:number[],cd=CYCLING_DEGRADATION_COEFFICIENT):{powerEquivalentUnits:number;belowMinimumStage:boolean} {
-  if(!Number.isFinite(loadBtuHr)||loadBtuHr<=0||!Number.isFinite(unitCapacityBtuHr)||unitCapacityBtuHr<=0||!Number.isInteger(unitCount)||unitCount<=0)return {powerEquivalentUnits:0,belowMinimumStage:false};
+/** Fractions of an hourly interval spent at each catalog stage. Below minimum
+ * stage, on-time includes the existing cycling-degradation factor. Between
+ * stages the model time-shares adjacent stages with no compressor off-time.
+ * These are hourly time totals, not cycle periods or a sequence of starts. */
+export function stageTimeFractions(partLoadRatio:number,stages:number[],cd=CYCLING_DEGRADATION_COEFFICIENT):number[] {
+  const levels=stages.length?stages:[1],times=levels.map(()=>0),plr=Math.min(1,Math.max(0,partLoadRatio));
+  if(!Number.isFinite(plr)||plr===0)return times;
+  if(plr<levels[0]){times[0]=cyclingRuntimeFraction(plr/levels[0],cd);return times;}
+  for(let i=1;i<levels.length;i++)if(plr<=levels[i]){
+    const span=levels[i]-levels[i-1];
+    times[i]=span>0?(plr-levels[i-1])/span:0;times[i-1]=1-times[i];return times;
+  }
+  times[times.length-1]=1;return times;
+}
+export type StageOperation={
+  unitCount:number;fullUnits:number;idleUnits:number;stageLevels:number[];
+  partialUnitLoadFraction:number;partialUnitStageTimes:number[];partialUnitRuntimeFraction:number;
+  powerEquivalentUnits:number;belowMinimumStage:boolean;
+};
+/** Lead/lag identical units: full units, at most one partially loaded unit, and
+ * the remaining idle units. Unit positions are fixed within each size group. */
+export function stagedSystemOperation(loadBtuHr:number,unitCapacityBtuHr:number,unitCount:number,stages:number[],cd=CYCLING_DEGRADATION_COEFFICIENT):StageOperation {
+  const stageLevels=stages.length?[...stages]:[1],count=Number.isInteger(unitCount)&&unitCount>0?unitCount:0;
+  const idle:StageOperation={unitCount:count,fullUnits:0,idleUnits:count,stageLevels,partialUnitLoadFraction:0,partialUnitStageTimes:stageLevels.map(()=>0),partialUnitRuntimeFraction:0,powerEquivalentUnits:0,belowMinimumStage:false};
+  if(!Number.isFinite(loadBtuHr)||loadBtuHr<=0||!Number.isFinite(unitCapacityBtuHr)||unitCapacityBtuHr<=0||!count)return idle;
   const served=Math.min(loadBtuHr,unitCapacityBtuHr*unitCount);
   const fullUnits=Math.min(unitCount,Math.floor(served/unitCapacityBtuHr));
   let residual=served-fullUnits*unitCapacityBtuHr;
   if(residual<unitCapacityBtuHr*1e-9)residual=0;
   if(fullUnits===unitCount)residual=0;
-  const residualPlr=residual/unitCapacityBtuHr,minimumStage=stages[0]??1;
-  return {powerEquivalentUnits:fullUnits+(residualPlr>0?stagedPowerFraction(residualPlr,stages,cd):0),belowMinimumStage:residualPlr>0&&residualPlr<minimumStage-1e-9};
+  const residualPlr=residual/unitCapacityBtuHr,minimumStage=stageLevels[0];
+  const partialUnitStageTimes=stageTimeFractions(residualPlr,stageLevels,cd);
+  return {unitCount:count,fullUnits,idleUnits:count-fullUnits-(residualPlr>0?1:0),stageLevels,partialUnitLoadFraction:residualPlr,partialUnitStageTimes,
+    partialUnitRuntimeFraction:partialUnitStageTimes.reduce((s,t)=>s+t,0),
+    powerEquivalentUnits:fullUnits+(residualPlr>0?stagedPowerFraction(residualPlr,stageLevels,cd):0),belowMinimumStage:residualPlr>0&&residualPlr<minimumStage-1e-9};
 }
