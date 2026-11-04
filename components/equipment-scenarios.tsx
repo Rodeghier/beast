@@ -12,6 +12,7 @@ import { compressorStages } from "@/lib/precedent-stages";
 import { bankRatings, selectionGroupsLabel } from "@/lib/packaged-bank";
 import { AIR_COOLED_CHILLER_KW_PER_TON, type EquipmentResult } from "@/lib/equipment-model";
 import { cble4dRatingForPeakLoad, cble4dFuelRatingFor } from "@/lib/boiler-model";
+import { LARGE_UNIT_BASIS } from "@/lib/catalog-sizes";
 function EquipmentEditor({value,onChange}:{value:EquipmentScenario;onChange:(v:EquipmentScenario)=>void}) {
  const id=useId(),cooling=coolingFor(value);
  return <>
@@ -34,8 +35,10 @@ export function EquipmentScenarios({choices,onChange,results=[],active,onActive,
  {s&&<div className="equipment-selection"><strong>{selectionGroupsLabel(s)} cooling units</strong><p>{s.totalTons.toLocaleString()} nominal tons total · {s.supplyCfm.toLocaleString()} CFM · {s.count} units</p><ul>{s.groups.map(g=><li key={g.model.id}>{g.count} × {g.model.nominal_tons} ton · {compressorStages(choice.efficiency,g.model.nominal_tons).map(v=>`${Math.round(v*100)}%`).join(" / ")} stage levels</li>)}</ul><p>{(s.referenceCoolingBtuHr/1000).toLocaleString(undefined,{maximumFractionDigits:1})} MBh gross cooling at reference conditions.</p>
  {rating&&<p>{(rating.coolingSystemKw).toFixed(2)} kW nominal total cooling input; {(rating.fanKw).toFixed(2)} kW estimated supply fan, already included in that total.</p>}
  {choice.heating==="heat-pump"&&<p>{(s.referenceHeatingBtuHr/1000).toLocaleString(undefined,{maximumFractionDigits:1})} MBh net heating at 47°F outdoor / 70°F entering dry bulb.</p>}
- <p>Occupied design hours within curve coverage: {s.verifiedCoolingHours.toLocaleString()} cooling hours{choice.heating==="heat-pump"&&` · ${s.verifiedHeatingHours.toLocaleString()} heating hours`}.</p>
+ <p>Occupied design hours within the modeled curve domain: {s.verifiedCoolingHours.toLocaleString()} cooling hours{choice.heating==="heat-pump"&&` · ${s.verifiedHeatingHours.toLocaleString()} heating hours`}.</p>
  <p>Sized for sensible and latent cooling only. Heating capacity and ventilation airflow do not increase the unit count or size.</p>
+ <p>One normalized cooling-capacity curve applies to all sizes. Units serve fixed zone shares proportional to nominal tonnage; compressors stage or cycle within each unit.</p>
+ {s.groups.some(g=>g.model.scaledFromNominalTons)&&<p>{LARGE_UNIT_BASIS}</p>}
  {!!s.unverifiedCoolingHours&&<p className="model-error" role="status"><strong>Ignored unavailable cooling design checks:</strong> {s.unverifiedCoolingHours.toLocaleString()} cooling hours were excluded from sizing. Review exported coverage and annual unmet loads.</p>}
  {!!s.unverifiedHeatingHours&&choice.heating==="heat-pump"&&<p role="status">Heating performance could not be evaluated for {s.unverifiedHeatingHours.toLocaleString()} design hours. Heating is diagnostic only.</p>}
  {result&&result.rows.some(r=>(r.unmetVentilationCfm??0)>0)&&<p role="status">Requested ventilation exceeds installed supply airflow during {result.rows.filter(r=>(r.unmetVentilationCfm??0)>0).length.toLocaleString()} simulated hours. Peak airflow shortfall: {Math.max(...result.rows.map(r=>r.unmetVentilationCfm??0)).toLocaleString(undefined,{maximumFractionDigits:0})} CFM. Mixed air is capped at 100% outdoor air; ventilation thermal loads are retained.</p>}

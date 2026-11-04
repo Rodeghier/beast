@@ -42,7 +42,7 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
       const fan=models.map(m=>unitRatingFor(m)!.inferred_supply_fan_heat_Btu_hr);
       const balance=finite(r.coolBalance)?r.coolBalance:-r.sensibleCooling!;
       // Cooling need can be created by fans on a heating/ventilation call.
-      const calling=r.heating!>0||r.ventilationCfm>0||r.sensibleCooling!<0||r.latentCooling!<0;
+      const calling=r.occupied||r.heating!>0||r.ventilationCfm>0||r.sensibleCooling!<0||r.latentCooling!<0;
       if(calling){
         checks.push({key:`s${i}`,need:balance,values:points.map((p,j)=>p?p.capacityBtuHr*p.shr-fan[j]:null),kind:"cooling",estimated:points.map(p=>p?.boundaryEstimate??false)});
         checks.push({key:`l${i}`,need:-r.latentCooling!,values:points.map(p=>p?p.capacityBtuHr*(1-p.shr):null),kind:"cooling",estimated:points.map(p=>p?.boundaryEstimate??false)});
@@ -73,6 +73,14 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
       // Heating is diagnostic only: the cooling-selected bank is never enlarged
       // to meet winter heat or a minimum ventilation airflow.
       if(check.kind==="cooling"&&!unknown&&available<check.need-1)return null;
+      if(check.kind==="cooling"&&!unknown){
+        // The aggregate zone is divided into fixed nominal-tonnage shares.
+        // A group cannot borrow spare capacity from units serving other zones.
+        const tons=groups.reduce((s,g)=>s+g.count*g.model.nominal_tons,0);
+        const sensible=check.key[0]==="s",need=Math.max(0,check.need+(sensible?rating.fanHeat:0));
+        if(models.some((m,i)=>counts[i]>0&&
+          counts[i]*(check.values[i]!+(sensible?unitRatingFor(m)!.inferred_supply_fan_heat_Btu_hr:0))<need*counts[i]*m.nominal_tons/tons-1))return null;
+      }
       if(!unknown){
         const key=check.kind==="heating"?"heating":check.key[0]==="s"?"sensibleCooling":"latentCooling";
         const need=key==="sensibleCooling"?Math.max(0,check.need+rating.fanHeat):Math.max(0,check.need);
@@ -114,6 +122,19 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
     for(const check of at(supply)){
       if(check.kind!=="cooling")continue;
       if(!finite(check.need))continue;
+      // At fixed airflow, total tons is known for this catalog. Reject sizes
+      // that cannot meet their assigned zone share even with the smallest fan
+      // heat per CFM. Final evaluation uses the selected bank's actual fan heat.
+      // Unknown checks retain the existing whole-check exclusion policy.
+      if(sameAirPerTon&&check.values.every(v=>v!==null)){
+        const tons=supply*models[0].nominal_tons/models[0].fixed_cfm,sensible=check.key[0]==="s";
+        const minFan=sensible?supply*Math.min(...models.map(m=>unitRatingFor(m)!.inferred_supply_fan_heat_Btu_hr/m.fixed_cfm)):0;
+        const need=Math.max(0,check.need+minFan);
+        models.forEach((m,i)=>{
+          const gross=check.values[i]!+(sensible?unitRatingFor(m)!.inferred_supply_fan_heat_Btu_hr:0);
+          if(gross*tons/m.nominal_tons<need-1){constraints[`excluded${i}`]={max:0};variables[`u${i}`][`excluded${i}`]=1;}
+        });
+      }
       constraints[check.key]={min:(check.need-1)/12000};
       // A selected unknown unit relaxes this whole check. M exceeds the demand
       // plus the greatest possible negative contribution from the other units.

@@ -41,9 +41,22 @@ export function stageTimeFractions(partLoadRatio:number,stages:number[],cd=CYCLI
 }
 export type StageOperation={
   unitCount:number;fullUnits:number;idleUnits:number;stageLevels:number[];
+  partialUnits?:number;
   partialUnitLoadFraction:number;partialUnitStageTimes:number[];partialUnitRuntimeFraction:number;
   powerEquivalentUnits:number;belowMinimumStage:boolean;
 };
+/** All identical units serve assigned zones rather than a shared lead/lag load.
+ * Each receives load/unitCount, so every unit can stage/cycle locally. This
+ * does not force compressors ON when their zone has no demand. */
+export function zonedSystemOperation(loadBtuHr:number,unitCapacityBtuHr:number,unitCount:number,stages:number[],cd=CYCLING_DEGRADATION_COEFFICIENT):StageOperation {
+  const count=Number.isInteger(unitCount)&&unitCount>0?unitCount:0,stageLevels=stages.length?[...stages]:[1];
+  const plr=count&&unitCapacityBtuHr>0&&Number.isFinite(loadBtuHr)?Math.min(1,Math.max(0,loadBtuHr/(count*unitCapacityBtuHr))):0;
+  const partial=plr>0&&plr<1,partialUnitStageTimes=stageTimeFractions(partial?plr:0,stageLevels,cd);
+  return {unitCount:count,fullUnits:plr===1?count:0,idleUnits:plr===0?count:0,partialUnits:partial?count:0,
+    stageLevels,partialUnitLoadFraction:partial?plr:0,partialUnitStageTimes,
+    partialUnitRuntimeFraction:partialUnitStageTimes.reduce((s,t)=>s+t,0),powerEquivalentUnits:count*stagedPowerFraction(plr,stageLevels,cd),
+    belowMinimumStage:partial&&plr<stageLevels[0]-1e-9};
+}
 /** Lead/lag identical units: full units, at most one partially loaded unit, and
  * the remaining idle units. Unit positions are fixed within each size group. */
 export function stagedSystemOperation(loadBtuHr:number,unitCapacityBtuHr:number,unitCount:number,stages:number[],cd=CYCLING_DEGRADATION_COEFFICIENT):StageOperation {

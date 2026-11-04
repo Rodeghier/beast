@@ -1,4 +1,4 @@
-/** Unit-level stage and on/off histograms. Compressed lead/lag records avoid
+/** Unit-level stage and on/off histograms. Compressed identical-unit profiles avoid
  * expanding thousands of installed units into individual hourly arrays.
  * A unit-hour is one unit observed for one hour; stage times can be fractional.
  */
@@ -33,9 +33,11 @@ export function operationSources(result:EquipmentResult|undefined,mode:Utilizati
 function validOperation(value:unknown,source:OperationSource):value is StageOperation {
   if(!value||typeof value!=="object")return false;
   const op=value as StageOperation;
+  const partialUnits=op.partialUnits??(op.partialUnitLoadFraction>0?1:0);
   return op.unitCount===source.count&&Number.isInteger(op.fullUnits)&&op.fullUnits>=0&&Number.isInteger(op.idleUnits)&&op.idleUnits>=0
+    &&Number.isInteger(partialUnits)&&partialUnits>=0&&(op.partialUnitLoadFraction>0?partialUnits>0:partialUnits===0)
     &&finite(op.partialUnitLoadFraction)&&op.partialUnitLoadFraction>=0&&op.partialUnitLoadFraction<=1
-    &&op.fullUnits+op.idleUnits+(op.partialUnitLoadFraction>0?1:0)===source.count
+    &&op.fullUnits+op.idleUnits+partialUnits===source.count
     &&Array.isArray(op.stageLevels)&&op.stageLevels.length===source.stages.length&&op.stageLevels.every((v,i)=>close(v,source.stages[i]))
     &&Array.isArray(op.partialUnitStageTimes)&&op.partialUnitStageTimes.length===source.stages.length
     &&op.partialUnitStageTimes.every(v=>finite(v)&&v>=0&&v<=1)&&finite(op.partialUnitRuntimeFraction)
@@ -93,11 +95,11 @@ export function equipmentOperation(result:EquipmentResult|undefined,mode:Utiliza
     const full=source.stages.map((_,i)=>i===source.stages.length-1?1:0),idle=source.stages.map(()=>0);
     if(scope==="unit"){
       if(unit<=op.fullUnits)add(1,full,true);
-      else if(op.partialUnitLoadFraction>0&&unit===op.fullUnits+1)add(1,op.partialUnitStageTimes,true);
+      else if(op.partialUnitLoadFraction>0&&unit<=op.fullUnits+(op.partialUnits??1))add(1,op.partialUnitStageTimes,true);
       else add(1,idle,false);
     }else{
       add(op.fullUnits,full,true);
-      if(op.partialUnitLoadFraction>0)add(1,op.partialUnitStageTimes,true);
+      if(op.partialUnitLoadFraction>0)add(op.partialUnits??1,op.partialUnitStageTimes,true);
       add(op.idleUnits,idle,false);
     }
   }

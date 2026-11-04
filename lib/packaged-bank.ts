@@ -1,4 +1,5 @@
-/** A bank may contain several catalog sizes. Each group retains its own curves,
+/** A bank may contain several catalog sizes. Cooling capacity has one shared
+ * normalized shape; each group retains its reference scale, SHR/heating curves,
  * rating, fan estimate and compressor stages. Shared mixed air represents the
  * existing single-zone air-handler model; this is not a duct/zoning simulation. */
 import type { CoolingModel } from "./packaged-cooling";
@@ -7,7 +8,7 @@ import type { CurveRangeMode } from "./equipment";
 import { unitRatingFor } from "./unit-ratings";
 import { operatingCoolingPoint, operatingHeatingPoint } from "./curve-evaluation";
 import { compressorStages } from "./precedent-stages";
-import { stagedSystemOperation } from "./equipment-staging";
+import { zonedSystemOperation } from "./equipment-staging";
 
 export type PackagedGroup={model:CoolingModel;heatingModel:HeatingModel;count:number};
 export type DesignLoading={heating:number|null;sensibleCooling:number|null;latentCooling:number|null;ventilation:number|null};
@@ -40,26 +41,32 @@ export function bankHeating(groups:PackagedGroup[],outdoor:number,dry:number,mod
   return {evaluated,capacity,powerKw,cop:powerKw>0?capacity/(3412.141633*powerKw):null,boundaryEstimate:evaluated.some(v=>v.point.boundaryEstimate),
     curveOutdoorF:common(evaluated.map(v=>v.point.curveOutdoorF)),curveDryF:common(evaluated.map(v=>v.point.curveDryF))};
 }
-/** Deterministic lead/lag: larger units first; stage/cycle the residual within
- * each size group. Fans retain the existing full-hour bank operation on calls. */
+/** Fixed surrogate zones: each unit receives the fraction of building load
+ * represented by its nominal tons / total installed tons. A unit's spare output
+ * is not transferred to another zone. All units stage/cycle on their own loads;
+ * fans retain full-hour operation across the bank on scheduled calls. */
 export function dispatchHeating(bank:NonNullable<ReturnType<typeof bankHeating>>,need:number) {
-  let remaining=Math.max(0,need),electricity=0,delivered=0,belowMinimumStage=false;
+  let electricity=0,delivered=0,belowMinimumStage=false;
+  const totalTons=bank.evaluated.reduce((s,{g})=>s+g.count*g.model.nominal_tons,0);
   const details=bank.evaluated.map(({g,rating,point})=>{
+    const zoneShare=g.count*g.model.nominal_tons/totalTons,assignedLoad=Math.max(0,need)*zoneShare;
     const capacity=Math.max(0,point.capacityBtuHr-rating.inferred_supply_fan_heat_Btu_hr);
-    const served=Math.min(remaining,g.count*capacity),op=stagedSystemOperation(served,capacity,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
-    remaining-=served;delivered+=served;electricity+=(point.powerKw-rating.inferred_supply_fan_power_kW)*op.powerEquivalentUnits;belowMinimumStage ||=op.belowMinimumStage;
-    return {model:g.model.id,count:g.count,heating:point,heatingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
+    const served=Math.min(assignedLoad,g.count*capacity),op=zonedSystemOperation(served,capacity,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
+    delivered+=served;electricity+=(point.powerKw-rating.inferred_supply_fan_power_kW)*op.powerEquivalentUnits;belowMinimumStage ||=op.belowMinimumStage;
+    return {model:g.model.id,count:g.count,zoneShare,assignedHeatingBtuHr:assignedLoad,unmetHeatingBtuHr:assignedLoad-served,heating:point,heatingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
   });
   return {delivered,electricity:bank.evaluated.some(v=>v.point.powerKw<v.rating.inferred_supply_fan_power_kW)?null:electricity,belowMinimumStage,details};
 }
 export function dispatchCooling(bank:NonNullable<ReturnType<typeof bankCooling>>,sensible:number,latent:number) {
-  let s=Math.max(0,sensible),l=Math.max(0,latent),electricity=0,delivered=0,belowMinimumStage=false;
+  let unmet=0,electricity=0,delivered=0,belowMinimumStage=false;
+  const totalTons=bank.evaluated.reduce((s,{g})=>s+g.count*g.model.nominal_tons,0);
   const details=bank.evaluated.map(({g,rating,point})=>{
+    const zoneShare=g.count*g.model.nominal_tons/totalTons,s=Math.max(0,sensible)*zoneShare,l=Math.max(0,latent)*zoneShare;
     const need=Math.max(s>0?s/point.shr:0,l>0?l/(1-point.shr):0),served=Math.min(need,g.count*point.capacityBtuHr);
-    const op=stagedSystemOperation(served,point.capacityBtuHr,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
-    s=Math.max(0,s-served*point.shr);l=Math.max(0,l-served*(1-point.shr));
+    const op=zonedSystemOperation(served,point.capacityBtuHr,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
+    const zoneUnmet=Math.max(0,s-served*point.shr)+Math.max(0,l-served*(1-point.shr));unmet+=zoneUnmet;
     electricity+=rating.cooling_non_supply_fan_power_kW*op.powerEquivalentUnits;delivered+=served;belowMinimumStage ||=op.belowMinimumStage;
-    return {model:g.model.id,count:g.count,cooling:point,coolingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
+    return {model:g.model.id,count:g.count,zoneShare,assignedSensibleBtuHr:s,assignedLatentBtuHr:l,unmetCoolingBtuHr:zoneUnmet,cooling:point,coolingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
   });
-  return {delivered,electricity,unmet:s+l,belowMinimumStage,details};
+  return {delivered,electricity,unmet,belowMinimumStage,details};
 }

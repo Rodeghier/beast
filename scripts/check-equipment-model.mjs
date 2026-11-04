@@ -35,7 +35,7 @@ const { simulateEquipment:simulateEquipmentModel, equipmentResultsCsv, equipment
 // These component fixtures explicitly serve as their own controlled design days.
 const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel(rows,school,scenario,selection,{rows,basis:'Controlled design fixture',metadata:{Sizing_basis:'Controlled design fixture'},error:null});
 const { airContext, mixAir, enthalpy, wetBulbF }=load('lib/mixed-air.ts');
-const { coolingPoint, COOLING_MODELS }=load('lib/packaged-cooling.ts');
+const { coolingPoint, SOURCE_COOLING_MODELS: COOLING_MODELS }=load('lib/packaged-cooling.ts');
 const { heatingPoint, heatingModelFor, HEATING_MODELS }=load('lib/packaged-heating.ts');
 const { operatingCoolingPoint, operatingHeatingPoint }=load('lib/curve-evaluation.ts');
 const { parseCsv }=load('lib/csv.ts');
@@ -132,8 +132,9 @@ const noRh=simulateEquipment([{...heatRow,humidity:null,latentCooling:null,total
 const fanOnly={...heatRow,heating:0,heatBalance:-10000,coolBalance:-5000,ventilationCfm:100};
 const ventilation=simulateEquipment([fanOnly],DEFAULT_SCHOOL,gasScenario).rows[0];near(ventilation.electricity,fkw);near(ventilation.heatingElectricity,0);near(ventilation.coolingElectricity,0);near(ventilation.gasTherms,0);
 const induced=simulateEquipment([{...row,heating:0,sensibleCooling:0,latentCooling:0,totalCooling:0,coolBalance:-100,ventilationCfm:100}],DEFAULT_SCHOOL,gasScenario).rows[0];assert.ok(induced.coolingElectricity>0);assert.ok(induced.fanHeat>0);assert.ok(induced.unmetCooling<=1);
-const off=simulateEquipment([{...fanOnly,ventilationCfm:0}],DEFAULT_SCHOOL,resistanceScenario).rows[0];near(off.electricity,0);near(off.fanElectricity,0);near(off.fanHeat,0);
-const high=simulateEquipment([row],DEFAULT_SCHOOL,{...newScenario(),efficiency:'high'});assert.ok(high.rows[0].coolingElectricity>0);assert.ok(high.rows[0].fanElectricity>0);near(high.rows[0].electricity,high.rows[0].heatingElectricity+high.rows[0].coolingElectricity+high.rows[0].fanElectricity);assert.equal(unitRatingFor({nominal_tons:30,efficiency:'high'}),null);
+const scheduled=simulateEquipment([{...fanOnly,occupied:true,ventilationCfm:0}],DEFAULT_SCHOOL,resistanceScenario).rows[0];near(scheduled.electricity,fkw);near(scheduled.fanElectricity,fkw);near(scheduled.coolingElectricity,0);
+const offResult=simulateEquipmentModel([{...fanOnly,occupied:false,ventilationCfm:0}],DEFAULT_SCHOOL,resistanceScenario,resistance.selection,{rows:[heatRow],basis:'Occupied design, unoccupied annual hour',metadata:{},error:null});assert.equal(offResult.error,null);const off=offResult.rows[0];near(off.electricity,0);near(off.fanElectricity,0);near(off.fanHeat,0);
+const high=simulateEquipment([row],DEFAULT_SCHOOL,{...newScenario(),efficiency:'high'});assert.ok(high.rows[0].coolingElectricity>0);assert.ok(high.rows[0].fanElectricity>0);near(high.rows[0].electricity,high.rows[0].heatingElectricity+high.rows[0].coolingElectricity+high.rows[0].fanElectricity);assert.equal(unitRatingFor({nominal_tons:30,efficiency:'high'}).scaledFromNominalTons,25);
 const highHeat=simulateEquipment([heatRow],DEFAULT_SCHOOL,{...newScenario(),efficiency:'high'});assert.ok(highHeat.rows[0].electricity>0);assert.ok(highHeat.rows[0].fanElectricity>0);
 const strictScenario={...newScenario(),rangeMode:'strict'};
 const coldGap=simulateEquipment([{...heatRow,temperatureF:-9,temperature:celsius(-9)}],DEFAULT_SCHOOL,strictScenario);assert.equal(coldGap.rows[0].availableHeating,null);assert.equal(coldGap.rows[0].electricity,null);assert.equal(coldGap.rows[0].unmetHeating,null);assert.equal(coldGap.selection.unverifiedHeatingHours,1);assert.equal(coldGap.selection.unverifiedCoolingHours,0);

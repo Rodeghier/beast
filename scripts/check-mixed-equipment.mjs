@@ -35,21 +35,21 @@ const near=(a,b,t=1e-6)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 const weather=[{year:2025,month:1,day:7,hour:12,minute:0,temperature:celsius(95),humidity:50,dhi:0,dni:0,ghi:0}];
 const school={...DEFAULT_SCHOOL,floorAreaFt2:1000,people:1,ventilationArea:0,ventilationPerson:0};
 const raw=simulateSchool(weather,school)[0];
-const fixture={...raw,occupied:true,ventilationCfm:0,freeFloatF:75,temperatureF:95,heating:0,sensibleCooling:-56000,latentCooling:-24000,totalCooling:-80000,coolBalance:56000};
+const fixture={...raw,occupied:true,ventilationCfm:0,freeFloatF:75,temperatureF:95,heating:0,sensibleCooling:-56000,latentCooling:-21000,totalCooling:-77000,coolBalance:56000};
 const original=[...COOLING_MODELS];
 try {
  // Controlled constant-output curves: 3 tons => 36,000 and 4 tons => 60,000
  // gross BTU/hr, both SHR .75. Real rating/fan lookups remain in use.
- const constant=tons=>({...original.find(m=>m.efficiency==='standard'&&m.nominal_tons===tons),reference_capacity_Btu_hr:tons===3?36000:60000,capacity_coefficients:[1,0,0,0,0,0,0,0,0,0],shr_numerator_coefficients:[.75,0,0,0],valid_domain_halfspaces:[]});
+ const constant=tons=>({...original.find(m=>m.efficiency==='standard'&&m.nominal_tons===tons),reference_capacity_Btu_hr:tons===3?36000:60000,capacity_coefficients:[1,0,0,0,0,0,0,0,0,0],shr_numerator_coefficients:[.75,0,0,0],shr_capacity_coefficients:[1,0,0,0,0,0,0,0,0,0],valid_domain_halfspaces:[]});
  COOLING_MODELS.splice(0,COOLING_MODELS.length,constant(3),constant(4));
  const selected=optimizePackagedBank([fixture],school,'standard','gas');
- assert.equal(selected.count,2);assert.equal(selected.totalTons,7);assert.equal(selected.groups.length,2);assert.equal(selected.optimizationComplete,true);near(selected.designLoading.latentCooling,1);assert.equal(selected.designLoading.heating,null);
+ assert.equal(selected.count,2);assert.equal(selected.totalTons,7);assert.equal(selected.groups.length,2);assert.equal(selected.optimizationComplete,true);near(selected.designLoading.latentCooling,.875);assert.equal(selected.designLoading.heating,null);
  // Independent exhaustive integer enumeration verifies both objective levels.
  const feasible=[];
  for(let n3=0;n3<=3;n3++)for(let n4=0;n4<=3;n4++){
   if(!n3&&!n4)continue;
   const q=36000*n3+60000*n4;
-  if(q*.75-bankRatings([{model:constant(3),count:n3},{model:constant(4),count:n4}]).fanHeat>=56000&&q*.25>=24000)feasible.push({count:n3+n4,tons:3*n3+4*n4});
+  if(q*.75-bankRatings([{model:constant(3),count:n3},{model:constant(4),count:n4}]).fanHeat>=56000&&q*.25>=21000)feasible.push({count:n3+n4,tons:3*n3+4*n4});
  }
  feasible.sort((a,b)=>a.count-b.count||a.tons-b.tons);assert.deepEqual({count:selected.count,tons:selected.totalTons},feasible[0]);
  const hugeEmpty={...fixture,occupied:false,heating:1e9,coolBalance:1e9,sensibleCooling:-1e9,latentCooling:-1e9,totalCooling:-2e9,ventilationCfm:1e7};
@@ -60,18 +60,20 @@ try {
  const result=simulateEquipment([fixture],school,scenario,selected,sizing);
  assert.equal(result.error,null);assert.equal(result.heatingCapacityBtuHr,0);near(result.rows[0].availableCooling,96000);near(result.rows[0].coolingShr,.75);near(result.rows[0].unmetCooling,0);
  const chiller=simulateEquipment([fixture],school,{...scenario,cooling:'air-cooled-chiller'},undefined,sizing);
- near(chiller.coolingCapacityTons,80000/12000);assert.equal(chiller.heatingCapacityBtuHr,0);
+ near(chiller.coolingCapacityTons,77000/12000);assert.equal(chiller.heatingCapacityBtuHr,0);
  const gas=simulateEquipment([fixture],school,{...newScenario('gas'),cooling:'heat-pump',gasEfficiencyPercent:90},selected,sizing);
  assert.equal(gas.heatingCapacityBtuHr,0);
  const ratings=bankRatings(selected.groups),row=result.rows[0];
  near(row.fanElectricity,ratings.fanKw);near(row.fanHeat,ratings.fanHeat);near(row.electricity,row.heatingElectricity+row.coolingElectricity+row.fanElectricity);
  const mixed=mixAir(airContext(fixture,school),selected.supplyCfm);
  const cool=bankCooling(selected.groups,95,mixed.wetF,mixed.dryF,'bounded');
- const operation=dispatchCooling(cool,56000+ratings.fanHeat,24000);near(row.coolingElectricity,operation.electricity);
+ const operation=dispatchCooling(cool,56000+ratings.fanHeat,21000);near(row.coolingElectricity,operation.electricity);
  near(row.coolingCop,(96000-ratings.fanHeat)/(BTU_PER_KWH*ratings.coolingSystemKw));
  near(equipmentUtilization(result,'cooling').power[0],100*row.coolingElectricity/ratings.coolingNonfanKw);
  const csv=parseCsv(equipmentResultsCsv([fixture],school,result,'Fixture','CST'));
  const groupMeta=JSON.parse(csv[1][csv[0].indexOf('Installed_groups')]);assert.equal(groupMeta.length,2);assert.deepEqual(groupMeta.map(g=>g.nominalTons),[4,3]);
+ assert.equal(JSON.parse(csv[1][csv[0].indexOf('Shared_cooling_capacity_curve')]).id,'shared-normalized-cooling-capacity-v1');
+ assert.match(csv[1][csv[0].indexOf('Zone_load_allocation')],/Fixed nominal-tonnage shares/);
  const hourlyHeader=csv.find(r=>r.includes('Equipment_group_performance_JSON'));assert.ok(hourlyHeader);
  assert.equal(JSON.parse(row.groupPerformance).cooling.length,2);assert.ok(JSON.parse(row.groupPerformance).cooling.every(g=>g.staging.unitCount===g.count));
  const comparison=parseCsv(equipmentComparisonCsv([result]));assert.equal(comparison[0].length,comparison[1].length);assert.equal(comparison[1][comparison[0].indexOf('Nominal_tons_each')],'');
@@ -94,7 +96,7 @@ try {
  const ventBank=optimizePackagedBank([highVent],school,'standard','heat-pump');
  assert.deepEqual(ventBank.groups.map(g=>[g.model.id,g.count]),selected.groups.map(g=>[g.model.id,g.count]));
  assert.ok(ventBank.supplyCfm<highVent.ventilationCfm);near(ventBank.designLoading.ventilation,50000/ventBank.supplyCfm);
- near(ventBank.designLoading.latentCooling,1);assert.equal(ventBank.unverifiedCoolingHours,0);
+ near(ventBank.designLoading.latentCooling,.875);assert.equal(ventBank.unverifiedCoolingHours,0);
  const ventResult=simulateEquipment([highVent],school,newScenario(),ventBank,{...sizing,rows:[highVent]});
  near(ventResult.rows[0].outdoorAirFraction,1);near(ventResult.rows[0].unmetVentilationCfm,50000-ventBank.supplyCfm);
  near(ventResult.rows[0].unmetCooling,0);assert.ok(Number.isFinite(ventResult.rows[0].electricity));
@@ -122,7 +124,7 @@ for(const [s,l] of [[50000,10000],[250000,30000],[350000,40000]]){
  const walk=(start,groups,left)=>{
   if(groups.length){
    const cooling=bankCooling(groups,95,mixAir(airContext(row,school),1e7).wetF,75,'bounded'),ratings=bankRatings(groups);
-   if(cooling&&cooling.sensible-ratings.fanHeat>=s-1&&cooling.latent>=l-1){
+   if(cooling&&dispatchCooling(cooling,s+ratings.fanHeat,l).unmet<=1){
     const count=groups.reduce((n,g)=>n+g.count,0),tons=groups.reduce((n,g)=>n+g.count*g.model.nominal_tons,0);
     if(!best||count<best.count||count===best.count&&tons<best.tons)best={count,tons};
    }
@@ -168,6 +170,12 @@ if(process.argv.includes('--built-worker')){
  assert.equal(actual.count,expected.count);assert.equal(actual.totalTons,expected.totalTons);assert.equal(actual.optimizationComplete,true);
  assert.equal(JSON.stringify(actual.designLoading),JSON.stringify(expected.designLoading));
  assert.equal(JSON.stringify(actual.groups.map(g=>[g.model.id,g.count])),JSON.stringify(expected.groups.map(g=>[g.model.id,g.count])));
+ const largeRow={...fixture,coolBalance:900000,sensibleCooling:-900000,latentCooling:-200000,totalCooling:-1100000};
+ context.onmessage({data:{rows:[largeRow],school,requests:'gas:standard:true:bounded:automatic'}});
+ const largeExpected=optimizePackagedBank([largeRow],school,'standard','gas'),largeActual=reply.selections[0];
+ assert.equal(reply.error,null);assert.equal(largeActual.count,largeExpected.count);assert.ok(largeActual.groups.some(g=>g.model.nominal_tons>25));
+ assert.equal(JSON.stringify(largeActual.groups.map(g=>[g.model.id,g.count])),JSON.stringify(largeExpected.groups.map(g=>[g.model.id,g.count])));
+ assert.equal(largeActual.groups[0].model.capacityCurveId,'shared-normalized-cooling-capacity-v1');
  console.log('PASS: compiled production worker is self-contained and matches the source selector.');
 }
 console.log('PASS: mixed integer objective against exhaustive counts, occupied-only design, seasonal reduction, ignored unknown checks, individual curves/stages/fans, energy reconciliation, utilization, UI and exports.');
