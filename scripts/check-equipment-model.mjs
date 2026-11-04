@@ -50,7 +50,8 @@ near(enthalpy(celsius(mixed.dryF),mixed.humidityRatio),.9*context.returnH+.1*con
 assert.ok(mixed.dryF>80&&mixed.dryF<95);assert.ok(mixed.wetF<mixed.dryF);
 near(mixAir({...context,ventilationCfm:0},4000).dryF,80);
 near(mixAir({...context,ventilationCfm:4000},4000).dryF,95);
-assert.equal(mixAir(context,300),null);
+near(mixAir(context,300).outdoorFraction,1);near(mixAir(context,300).unmetVentilationCfm,100);near(mixAir(context,300).dryF,95);
+assert.equal(mixAir(context,0),null);
 assert.equal(wetBulbF(80,.2),null);
 const infiltrating=airContext({...row,infiltrationCfm:100000,outdoorAirCfm:100400},DEFAULT_SCHOOL);
 near(mixAir(infiltrating,4000).wetF,mixed.wetF);

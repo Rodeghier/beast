@@ -54,11 +54,11 @@ export function EquipmentDistributions({ results, active, onActive }: {
   const fuelInput = mode === "heating" && result?.scenario.heating === "gas";
   const loading=result?.selection?.designLoading;
   const designChecks=loading?[{label:"Heat-pump heating",value:loading.heating},{label:"Sensible cooling",value:loading.sensibleCooling},{label:"Latent cooling",value:loading.latentCooling},{label:"Ventilation",value:loading.ventilation}]:[];
-  const highest=designChecks.filter(c=>c.value!==null&&c.value>0).sort((a,b)=>b.value!-a.value!)[0];
+  const highest=designChecks.filter(c=>(c.label==="Sensible cooling"||c.label==="Latent cooling")&&c.value!==null&&c.value>0).sort((a,b)=>b.value!-a.value!)[0];
   if(!results.length)return null;
   return <section className="equipment-distributions" aria-label="Equipment stages and cycling">
     <h3>Equipment stages and cycling</h3>
-    {loading&&<div className="design-loading-summary"><p className="distribution-note">{highest&&<>Highest evaluated design loading: <strong>{highest.label} · {number(highest.value!*100)}%</strong>. </>}Design checks compare loads with the entire installed bank; unavailable checks are excluded.</p><dl>{designChecks.map(check=><div key={check.label}><dt>{check.label}</dt><dd>{check.value===null?"Not evaluated":`${number(check.value*100)}%`}</dd></div>)}</dl></div>}
+    {loading&&<div className="design-loading-summary"><p className="distribution-note">{highest&&<>Highest evaluated cooling design loading: <strong>{highest.label} · {number(highest.value!*100)}%</strong>. </>}Cooling determines the installed bank. Heating and ventilation airflow are diagnostic only; values above 100% indicate a shortfall. Unavailable checks are excluded.</p><dl>{designChecks.map(check=><div key={check.label}><dt>{check.label}</dt><dd>{check.value===null?"Not evaluated":`${number(check.value*100)}%`}</dd></div>)}</dl></div>}
     <div className="distribution-controls">
       <label htmlFor={`${id}-equipment`}>Equipment combination<select id={`${id}-equipment`} value={active} onChange={event => onActive(Number(event.target.value))}>{results.map((item, i) => <option key={i} value={i}>{scenarioName(item.scenario)}</option>)}</select></label>
       <label htmlFor={`${id}-mode`}>Operating mode<select id={`${id}-mode`} value={mode} onChange={event => setMode(event.target.value as UtilizationMode)}><option value="cooling">Cooling</option><option value="heating">Heating</option></select></label>

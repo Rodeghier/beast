@@ -58,7 +58,7 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
   const at=(supply:number)=>{let table=cache.get(supply);if(!table){table=coefficients(supply);cache.set(supply,table);}return table;};
   const evaluate=(counts:number[]):PackagedSelection|null=>{
     const groups=groupsFor(counts),count=counts.reduce((s,n)=>s+n,0),supply=groups.reduce((s,g)=>s+g.count*g.model.fixed_cfm,0);
-    if(!count||supply+1e-7<peakVent)return null;
+    if(!count)return null;
     const rating=bankRatings(groups)!;
     const designLoading:DesignLoading={heating:null,sensibleCooling:null,latentCooling:null,ventilation:peakVent/supply};
     const coverage={verifiedCoolingHours:0,estimatedCoolingHours:0,unverifiedCoolingHours:0,verifiedHeatingHours:0,estimatedHeatingHours:0,unverifiedHeatingHours:0};
@@ -70,7 +70,9 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
       const unknown=!finite(check.need)||check.values.some((v,i)=>counts[i]>0&&v===null);
       const estimated=check.estimated.some((v,i)=>counts[i]>0&&v);
       const available=check.values.reduce<number>((s,v,i)=>s+counts[i]*(v??0),0);
-      if(!unknown&&available<check.need-1)return null;
+      // Heating is diagnostic only: the cooling-selected bank is never enlarged
+      // to meet winter heat or a minimum ventilation airflow.
+      if(check.kind==="cooling"&&!unknown&&available<check.need-1)return null;
       if(!unknown){
         const key=check.kind==="heating"?"heating":check.key[0]==="s"?"sensibleCooling":"latentCooling";
         const need=key==="sensibleCooling"?Math.max(0,check.need+rating.fanHeat):Math.max(0,check.need);
@@ -87,13 +89,13 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
     return {groups,count,totalTons:groups.reduce((s,g)=>s+g.count*g.model.nominal_tons,0),supplyCfm:supply,
       referenceCoolingBtuHr:groups.reduce((s,g)=>s+g.count*g.model.reference_capacity_Btu_hr,0),referenceHeatingBtuHr:groups.reduce((s,g)=>s+g.count*g.heatingModel.reference_capacity_Btu_hr,0),
       ...coverage,designLoading,rangeMode,heatingAirflowApproximation:heating==="heat-pump",includesHeatPumpHeating:heating==="heat-pump",provisional:true,optimizationComplete:true,
-      basis:"Occupied ASHRAE design hours; seasonal occupancy applied. Minimize total unit count, then installed nominal tonnage. Unavailable design checks are ignored."};
+      basis:"Occupied ASHRAE design hours; seasonal occupancy applied. Size for sensible and latent cooling only. Heating and ventilation airflow are diagnostic, never sizing constraints. Minimize total unit count, then installed nominal tonnage. Unavailable cooling design checks are ignored."};
   };
   // Obtain a feasible incumbent from each homogeneous bank. Starting with large
   // units keeps the later mixed-integer search compact for large buildings.
   let best:PackagedSelection|null=null;
   for(let j=0;j<models.length;j++){
-    const minimum=Math.max(1,Math.ceil(peakVent/models[j].fixed_cfm));
+    const minimum=1;
     for(let n=minimum;n<=Math.min(10000,best?.count??10000);n++){
       const counts=models.map((_,i)=>i===j?n:0),candidate=evaluate(counts);
       if(candidate){if(better(candidate,best))best=candidate;break;}
@@ -105,11 +107,12 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
   // With at most the incumbent's unit count, no better bank can have airflow
   // exceeding count * largest-unit airflow. Every attainable airflow is an
   // integer multiple of the catalog airflow GCD (240 CFM in the current data).
-  for(let supply=Math.max(minAir,Math.ceil(peakVent/quantum)*quantum);supply<=best.count*maxAir;supply+=quantum){
+  for(let supply=minAir;supply<=best.count*maxAir;supply+=quantum){
     if(Date.now()-start>15000){complete=false;break;}
     const constraints:Record<string,Constraint>={air:{equal:supply/quantum},count:{min:1,max:best.count}};
     const variables:Record<string,Record<string,number>>=Object.fromEntries(models.map((m,i)=>[`u${i}`,{air:m.fixed_cfm/quantum,count:1,tons:m.nominal_tons}]));
     for(const check of at(supply)){
+      if(check.kind!=="cooling")continue;
       if(!finite(check.need))continue;
       constraints[check.key]={min:(check.need-1)/12000};
       // A selected unknown unit relaxes this whole check. M exceeds the demand

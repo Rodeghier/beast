@@ -251,7 +251,7 @@ A zero-irradiance hour can have a valid zero solar gain without solar-position m
 
 Read `airContext`, then `mixAir` in `lib/mixed-air.ts`. `airContext` prepares outdoor and return humidity ratio and enthalpy. Return DB is the free-float zone estimate limited by active setpoints; return RH is the entered indoor target.
 
-`mixAir` compares installed supply CFM with scheduled mechanical ventilation. If supply airflow is inadequate or the inputs are invalid, it returns null. Otherwise the outdoor fraction is ventilation divided by installed supply airflow.
+`mixAir` uses outdoor fraction `min(1, scheduled ventilation / installed supply CFM)`. Requests above supply produce 100% outdoor air and `unmetVentilationCfm`, not extra units. Building heat/moisture loads retain the full requested ventilation for a conservative thermal check. Invalid psychrometrics or nonpositive supply still return null. Equipment CSVs export `Unmet_ventilation_CFM`; equipment cards show affected hours and peak airflow deficit.
 
 For a hypothetical supply of 4,000 CFM and scheduled ventilation of 400 CFM, the outdoor fraction is 0.10. The mixed humidity ratio is 90% return plus 10% outdoor, and mixed enthalpy is blended with the same fractions. The program then solves mixed dry bulb from enthalpy and humidity ratio and inverts the wet-bulb relation by bisection.
 
@@ -317,7 +317,7 @@ Cooling uses the existing June-August occupancy reduction for people, person-bas
 
 `autosizePackaged` in `lib/equipment-model.ts` delegates to `optimizePackagedBank` in `lib/packaged-optimizer.ts`. The installed bank contains `groups`, each with its own catalog cooling model, heating model and integer unit count. The objective is lexicographic: fewest total units, then lowest installed nominal tonnage. Missing design checks are excluded and do not add a ranking penalty. Coverage records remain available so missing performance is not mistaken for a passed check.
 
-For each attainable installed supply airflow, `mixAir` calculates one shared entering state for the single-zone model. Each catalog size then has known per-unit sensible, latent and heating output at that airflow, so its count becomes an integer variable in a linear problem. The YALPS solver selects counts subject to required airflow and available component checks. The airflow grid is the greatest common divisor of catalog unit airflows (240 CFM in the current catalog). This ensures that mixed air is evaluated for the actual selected bank rather than frozen at a different selection's airflow.
+For each attainable installed supply airflow, `mixAir` calculates one shared entering state for the single-zone model. Each catalog size then has known per-unit sensible, latent and heating output at that airflow, so its count becomes an integer variable in a linear problem. The YALPS solver selects counts subject only to available sensible and latent cooling checks. Heating is evaluated for coverage and diagnostic loading but never rejects a bank. There is no ventilation minimum airflow constraint: enumeration starts at the smallest catalog supply airflow, independent of ventilation demand. The airflow grid is the greatest common divisor of catalog unit airflows (240 CFM in the current catalog). This ensures that mixed air is evaluated for the actual selected bank rather than frozen at a different selection's airflow.
 
 The search starts with feasible homogeneous banks, then tests mixed banks. Continuous relaxations prune airflows that cannot improve the incumbent. Every returned integer bank is checked again with the actual component capacities and inferred fan heat. The main search has a 15-second budget, each integer solve has a 150 ms budget, and seed banks have a 10,000-unit ceiling. A search limit leaves the best feasible bank found with `optimizationComplete=false`; the UI and CSV identify that the minimum is unproven. No sizing percentage margin is added; the component tolerance is 1 BTU/hr.
 
@@ -325,7 +325,7 @@ The search starts with feasible homogeneous banks, then tests mixed banks. Conti
 
 `lib/equipment-sizing.worker.ts` performs optimization outside the UI thread. The page terminates a superseded worker and accepts only results for the current design loads, school assumptions and sizing request. The annual simulation begins after selection completes. CSV metadata include all installed groups, while hourly `Equipment_group_performance_JSON` records each evaluated group and its power-equivalent operating count. Single-value curve temperatures are blank when group evaluation temperatures differ; group detail preserves the individual conditions.
 
-Gas and resistance cases select packaged units for cooling and ventilation. Small-boiler and resistance output are sized from the maximum design-day heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted design demand.
+All heating selections use the same cooling-only packaged-bank sizing policy. Heating and ventilation airflow cannot enlarge the bank; ventilation heat/moisture still contribute to cooling loads. Small-boiler and resistance output are sized from the maximum design-day heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted design demand.
 
 ## 12 One hour through the equipment model
 
@@ -363,7 +363,7 @@ Duty is limited to one. An overloaded unit records unmet heating or component co
 
 These charts report hourly time totals. They cannot determine whether 30 ON minutes occurred in one run or several starts. The model does not resolve thermostat cycle periods or lead rotation. Boiler firing uses its existing runtime fraction; resistance and the chiller placeholder do not have stage switching data and therefore do not receive invented stage or runtime distributions. Their bank-average capacity and power view remains available.
 
-Low bank utilization can coexist with lead units at full stage. Heating and latent design requirements are checked separately, and winter design gains differ from annual gains. `PackagedSelection.designLoading` records the maximum available design load/capacity ratios for heating, sensible cooling, latent cooling and ventilation. The UI displays these ratios; CSV metadata exports them as `Design_check_loading_JSON`. This helps distinguish a lightly loaded installed bank from a cycling individual unit.
+Low bank utilization can coexist with lead units at full stage. Sensible and latent cooling requirements are checked separately. Heating and ventilation airflow are diagnostics only; they do not set the bank size. `PackagedSelection.designLoading` records the maximum available design load/capacity ratios for heating, sensible cooling, latent cooling and ventilation. The UI displays these ratios; CSV metadata exports them as `Design_check_loading_JSON`. This helps distinguish a lightly loaded installed bank from a cycling individual unit.
 
 ## 13 Annual energy cost and emissions
 
@@ -526,7 +526,7 @@ Start with a single timestamp and keep its index fixed. Read the original weathe
 | Heating or cooling load is unexpected | `simulateSchool` | Which schedule gains outdoor air and setpoints apply this hour |
 | Entering wet bulb is unexpected | `airContext` and `mixAir` | What return state ventilation and installed supply CFM were used |
 | Capacity is unexpected | Curve evaluator and model JSON | Which unit reference coefficients and evaluation temperatures apply |
-| Selected unit count is unexpected | `autosizePackaged` | Was ventilation sensible latent or heating the limiting check |
+| Selected unit count is unexpected | `autosizePackaged` | Was sensible or latent cooling limiting; did missing curve coverage remove a cooling check |
 | Electricity seems too high | `simulateEquipment` | Is the full-hour fan included once and is coil duty less than one |
 | COP fields differ | Cooling COP calculations | Are you comparing full-output and operating net COP |
 | Annual total is unavailable | `completeCalendar` and `annualPerformance` | Are all required hours aligned valid and complete |

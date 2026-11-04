@@ -85,7 +85,8 @@ assert.ok(operationSources({...result,scenario:newScenario('resistance')},'heati
 assert.ok(operationSources({...result,scenario:{...newScenario('gas'),cooling:'air-cooled-chiller'}},'cooling').reason);
 const {EquipmentDistributions}=load('components/equipment-distributions.tsx');
 const html=renderToStaticMarkup(createElement(EquipmentDistributions,{results:[result],active:0,onActive:()=>{}}));
-for(const text of ['Equipment stages and cycling','Time at each unit stage','Unit ON/OFF time per hour','Units called to run','Individual unit','cycle lengths and starts are not resolved','Stage runtime distribution values','Hourly ON/OFF time distribution values','Highest evaluated design loading'])assert.ok(html.includes(text),text);
+for(const text of ['Equipment stages and cycling','Time at each unit stage','Unit ON/OFF time per hour','Units called to run','Individual unit','cycle lengths and starts are not resolved','Stage runtime distribution values','Hourly ON/OFF time distribution values','Highest evaluated cooling design loading','Heating and ventilation airflow are diagnostic only'])assert.ok(html.includes(text),text);
+assert.match(html,/Highest evaluated cooling design loading: <strong>Latent cooling/);
 const {EquipmentOperationGraphs}=load('components/equipment-operation-graphs.tsx');
 const graphHtml=renderToStaticMarkup(createElement(EquipmentOperationGraphs,{data:partial}));assert.match(graphHtml,/unit-hours/);assert.match(graphHtml,/ON minutes/);
 console.log('PASS: independent stage/runtime arithmetic, all catalog stages, lead/lag identities, mixed-size unit selection, time and histogram conservation, idle/missing states, boiler firing, unsupported equipment and rendered controls.');

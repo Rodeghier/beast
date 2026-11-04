@@ -80,6 +80,30 @@ try {
  near(hp.capacity,hp.evaluated.reduce((s,v)=>s+v.g.count*v.point.capacityBtuHr,0));near(heat.delivered,30000);
  const heatingFixture={...fixture,temperature:celsius(47),temperatureF:47,freeFloatF:70,heating:30000+ratings.fanHeat,coolBalance:-1e6,sensibleCooling:0,latentCooling:0,totalCooling:0};
  const heating=simulateEquipment([heatingFixture],school,newScenario(),selected,{...sizing,rows:[heatingFixture]});near(heating.rows[0].electricity,heat.electricity+ratings.fanKw);near(heating.rows[0].unmetHeating,0);
+ // A large occupied winter load is diagnostic only. It cannot enlarge a
+ // cooling-selected heat-pump bank, and unmet heat must remain explicit.
+ const extremeHeat={...heatingFixture,heating:1e9,heatBalance:1e9};
+ const coolingOnly=optimizePackagedBank([fixture,extremeHeat],school,'standard','heat-pump');
+ assert.deepEqual(coolingOnly.groups.map(g=>[g.model.id,g.count]),selected.groups.map(g=>[g.model.id,g.count]));
+ assert.ok(coolingOnly.designLoading.heating>1);assert.equal(coolingOnly.verifiedHeatingHours,1);
+ const heatShortfall=simulateEquipment([extremeHeat],school,newScenario(),coolingOnly,{...sizing,rows:[fixture,extremeHeat]});
+ assert.ok(heatShortfall.rows[0].unmetHeating>9e8);assert.ok(Number.isFinite(heatShortfall.rows[0].electricity));
+ // Constant-output curves isolate airflow from thermal sizing: ventilation
+ // above installed supply must not force extra units or erase cooling checks.
+ const highVent={...fixture,ventilationCfm:50000};
+ const ventBank=optimizePackagedBank([highVent],school,'standard','heat-pump');
+ assert.deepEqual(ventBank.groups.map(g=>[g.model.id,g.count]),selected.groups.map(g=>[g.model.id,g.count]));
+ assert.ok(ventBank.supplyCfm<highVent.ventilationCfm);near(ventBank.designLoading.ventilation,50000/ventBank.supplyCfm);
+ near(ventBank.designLoading.latentCooling,1);assert.equal(ventBank.unverifiedCoolingHours,0);
+ const ventResult=simulateEquipment([highVent],school,newScenario(),ventBank,{...sizing,rows:[highVent]});
+ near(ventResult.rows[0].outdoorAirFraction,1);near(ventResult.rows[0].unmetVentilationCfm,50000-ventBank.supplyCfm);
+ near(ventResult.rows[0].unmetCooling,0);assert.ok(Number.isFinite(ventResult.rows[0].electricity));
+ const ventCsv=parseCsv(equipmentResultsCsv([highVent],school,ventResult,'Fixture','CST'));
+ const ventHeader=ventCsv.findIndex(r=>r.includes('Unmet_ventilation_CFM'));
+ near(Number(ventCsv[ventHeader+1][ventCsv[ventHeader].indexOf('Unmet_ventilation_CFM')]),50000-ventBank.supplyCfm);
+ const {EquipmentScenarios:VentScenarios}=load('components/equipment-scenarios.tsx');
+ const ventHtml=renderToStaticMarkup(createElement(VentScenarios,{choices:[ventResult.scenario],results:[ventResult],onChange:()=>{},active:0,onActive:()=>{}}));
+ assert.match(ventHtml,/Sized for sensible and latent cooling only/);assert.match(ventHtml,/Peak airflow shortfall/);
  // Availability is ignored, rather than used to prefer a larger covered bank.
  COOLING_MODELS[0]={...COOLING_MODELS[0],valid_domain_halfspaces:[[0,0,0,1]]};
  const ignored=optimizePackagedBank([fixture],school,'standard','gas','strict');assert.equal(ignored.count,1);assert.equal(ignored.totalTons,3);assert.equal(ignored.unverifiedCoolingHours,1);
@@ -136,9 +160,11 @@ if(process.argv.includes('--built-worker')){
  const context={postMessage:value=>{reply=value;}};
  // Exercise the actual browser bundle without replacing its curves or solver.
  runInNewContext(readFileSync(resolve(directory,file),'utf8'),context,{timeout:10000});
- context.onmessage({data:{rows:[fixture],school,requests:'gas:standard:true:bounded:automatic'}});
+ const winter={...fixture,temperature:celsius(47),temperatureF:47,freeFloatF:70,heating:1e9,coolBalance:-1e6,sensibleCooling:0,latentCooling:0,totalCooling:0};
+ context.onmessage({data:{rows:[fixture,winter],school,requests:'heat-pump:standard:true:bounded:automatic|gas:standard:true:bounded:automatic'}});
  assert.equal(reply.error,null);
- const expected=optimizePackagedBank([fixture],school,'standard','gas'),actual=reply.selections[0];
+ const expected=optimizePackagedBank([fixture,winter],school,'standard','heat-pump'),actual=reply.selections[0];
+ assert.equal(actual.count,reply.selections[1].count);assert.equal(actual.totalTons,reply.selections[1].totalTons);assert.ok(actual.designLoading.heating>1);
  assert.equal(actual.count,expected.count);assert.equal(actual.totalTons,expected.totalTons);assert.equal(actual.optimizationComplete,true);
  assert.equal(JSON.stringify(actual.designLoading),JSON.stringify(expected.designLoading));
  assert.equal(JSON.stringify(actual.groups.map(g=>[g.model.id,g.count])),JSON.stringify(expected.groups.map(g=>[g.model.id,g.count])));
