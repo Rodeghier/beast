@@ -2,7 +2,7 @@
 
 An engineering handbook for readers with basic Python experience
 
-Prepared from the local repository on November 3 2026
+Prepared from the local repository on November 4 2026
 
 ## 1 What this guide helps you do
 
@@ -309,21 +309,21 @@ Start with `lib/design-sizing.ts`. Annual `schoolRows` calculate energy and unme
 
 The local catalog contains 1,724 complete U.S. stations from the EnergyPlus team's public ASHRAE 2017 design-condition distribution. The source URL and ZIP SHA-256 are embedded in `lib/data/ashrae-design-2017-us.json`. This is the 2017 edition. `scripts/build-ashrae-design-data.py --source PATH_TO_ZIP` reproduces it. Incomplete source records are excluded. No annual-weather percentile or annual maximum substitutes for missing published conditions.
 
-Building assumptions select 1% cooling and 99% heating by default; published 0.4%/2% cooling and 99.6% heating alternatives are available. `buildDesignSizing` generates 96 hourly load rows: one winter day and three summer days checking dry-bulb/mean-coincident-wet-bulb, wet-bulb/mean-coincident-dry-bulb and dew-point/mean-coincident-dry-bulb conditions. The published daily range and default ASHRAE/EnergyPlus hourly temperature multipliers form each summer profile. Humidity ratio is constant with a saturation cap, and clear-sky solar uses the 2017 tau equations and station optical depths. The fixed 2001 calendar keeps sizing independent of the selected weather year.
+Building assumptions select 1% cooling and 99% heating by default; published 0.4%/2% cooling and 99.6% heating alternatives are available. `buildDesignSizing` first generates 96 hourly load rows, then retains only scheduled occupied hours: one winter day and three summer days checking dry-bulb/mean-coincident-wet-bulb, wet-bulb/mean-coincident-dry-bulb and dew-point/mean-coincident-dry-bulb conditions. The published daily range and default ASHRAE/EnergyPlus hourly temperature multipliers form each summer profile. Humidity ratio is constant with a saturation cap, and clear-sky solar uses the 2017 tau equations and station optical depths. The fixed 2001 calendar keeps sizing independent of the selected weather year.
 
-Cooling uses full design occupancy during scheduled hours, without summer reductions. Winter uses occupied heating temperature all day and takes no credit for internal or solar gains; ventilation follows occupied hours. Infiltration remains active. Psychrometrics retain the existing standard-pressure basis; station elevation is disclosed but does not change air-density coefficients. These are steady-state design loads with no thermal storage or morning warm-up simulation.
+Cooling uses the existing June-August occupancy reduction for people, person-based ventilation and scheduled gains. Zero-occupancy scheduled hours do not size any equipment. Winter uses occupied heating temperature during occupied hours and takes no credit for internal or solar gains; ventilation follows occupied hours. Infiltration remains active. Psychrometrics retain the existing standard-pressure basis; station elevation is disclosed but does not change air-density coefficients. These are steady-state design loads with no thermal storage or morning warm-up simulation.
 
 `simulateEquipment` receives annual rows and a separate `DesignSizing` context. Heat-pump selection, boiler/resistance output and chiller capacity use only the context's design rows. Sizes remain fixed throughout the annual simulation. Annual extreme hours can exceed installed capacity and produce unmet loads; they do not trigger resizing. Equipment CSVs include station ID, edition, probabilities, design temperatures, design loads and source provenance.
 
-Open `autosizePackaged` in `lib/equipment-model.ts`. It enumerates catalog sizes in the selected efficiency family and scans integer unit counts for each size. It is a search through discrete candidates, not a continuous optimization of dollars or energy.
+`autosizePackaged` in `lib/equipment-model.ts` delegates to `optimizePackagedBank` in `lib/packaged-optimizer.ts`. The installed bank contains `groups`, each with its own catalog cooling model, heating model and integer unit count. The objective is lexicographic: fewest total units, then lowest installed nominal tonnage. Missing design checks are excluded and do not add a ranking penalty. Coverage records remain available so missing performance is not mistaken for a passed check.
 
-The smallest candidate count must accommodate peak scheduled ventilation using the catalog maximum cooling CFM per unit. Reference-condition capacity produces a search scale. Each candidate then recalculates mixed entering air and fan heat before checking sensible cooling, latent cooling and, for heat-pump heating, net heating capacity.
+For each attainable installed supply airflow, `mixAir` calculates one shared entering state for the single-zone model. Each catalog size then has known per-unit sensible, latent and heating output at that airflow, so its count becomes an integer variable in a linear problem. The YALPS solver selects counts subject to required airflow and available component checks. The airflow grid is the greatest common divisor of catalog unit airflows (240 CFM in the current catalog). This ensures that mixed air is evaluated for the actual selected bank rather than frozen at a different selection's airflow.
 
-Cooling is checked by component: sensible availability is installed gross capacity times SHR; latent availability is installed gross capacity times one minus SHR. A unit can have enough total cooling and still fail the latent or sensible requirement.
+The search starts with feasible homogeneous banks, then tests mixed banks. Continuous relaxations prune airflows that cannot improve the incumbent. Every returned integer bank is checked again with the actual component capacities and inferred fan heat. The main search has a 15-second budget, each integer solve has a 150 ms budget, and seed banks have a 10,000-unit ceiling. A search limit leaves the best feasible bank found with `optimizationComplete=false`; the UI and CSV identify that the minimum is unproven. No sizing percentage margin is added; the component tolerance is 1 BTU/hr.
 
-The model sorts large demand hours early so an undersized candidate can be rejected quickly. For each size it retains the first count that passes the available checks. Across those candidates, it prefers fewer unavailable design checks, then less total nominal tonnage, then fewer units. This avoids preferring one larger unit solely because its count is lower. It does not compare first cost, annual cost, redundancy, staging quality or installation constraints.
+`lib/packaged-bank.ts` sums group capacities, fan heat and rating power. Sensible output is the sum of each group's gross capacity times its SHR; latent output is the sum times one minus that group's SHR. Annual dispatch brings larger units on first, uses each group's own SHR and stages, and cycles the residual within a group. It tracks remaining sensible and latent demand separately. Full-hour bank fan operation is retained. A capacity-weighted bank SHR is suitable for reporting full-output availability; it is not substituted for individual SHR values during dispatch.
 
-No sizing percentage margin is applied. A 1 BTU/hr shortfall tolerance is used in candidate checks. The count search has a protective upper limit: the smaller of 10,000 and the larger of the ventilation minimum plus 50 or sixteen times the reference estimate. If the search does not produce a passing operating selection, a labeled reference estimate can remain; hourly delivery and unmet-load results still need review.
+`lib/equipment-sizing.worker.ts` performs optimization outside the UI thread. The page terminates a superseded worker and accepts only results for the current design loads, school assumptions and sizing request. The annual simulation begins after selection completes. CSV metadata include all installed groups, while hourly `Equipment_group_performance_JSON` records each evaluated group and its power-equivalent operating count. Single-value curve temperatures are blank when group evaluation temperatures differ; group detail preserves the individual conditions.
 
 Gas and resistance cases select packaged units for cooling and ventilation. Small-boiler and resistance output are sized from the maximum design-day heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted design demand.
 
@@ -347,7 +347,7 @@ Full-output net COP is approximately 2.83. Operating net COP is approximately 2.
 
 For a hypothetical unit with net catalog heating capacity 31,000 BTU/hr, total catalog power 2.6 kW and inferred fan heat 1,000 BTU/hr, fan input is about 0.2931 kW. At a building heating load of 15,500 BTU/hr, the coil must supply 14,500 BTU/hr and its available capacity is 30,000 BTU/hr.
 
-Heating coil duty is `14500 / 30000`. The program duty-scales the nonfan heating input, then adds the full-hour fan once. Total electricity is about 1.408 kWh for the hour. Delivered building heat is 15,500 BTU and unmet heat is zero. The reported full-output heating COP still uses the catalog net heat and total power, approximately 3.49 for these illustrative values.
+Heating coil duty is `14500 / 30000`. The program duty-scales the nonfan heating input, then adds the full-hour fan once. For a single-stage unit, Cd = 0.15 gives PLF = 1 - 0.15 x (1 - 14500/30000), and runtime is duty / PLF. Total electricity is about 1.50 kWh for the hour. Delivered building heat is 15,500 BTU and unmet heat is zero. The reported full-output heating COP still uses the catalog net heat and total power, approximately 3.49 for these illustrative values.
 
 For gas at 80% entered heating efficiency, 14,500 BTU/hr of heater output uses 0.18125 therm for that hour, plus fan electricity. For resistance, element electricity plus the fan electricity equals the 15,500 BTU delivered divided by 3412.141633, approximately 4.543 kWh.
 
@@ -485,6 +485,7 @@ The development command requests port 5173. Dependency installation and server s
 | --- | --- |
 | `node node_modules/typescript/bin/tsc --noEmit` | Types imports and compiler consistency |
 | `node scripts/check-school-model.mjs` | Building balance psychrometrics schedule signs and missing data |
+| `node scripts/check-mixed-equipment.mjs` | Mixed integer objective against exhaustive counts, occupancy reductions, ignored checks, group energy, worker contract and exports |
 | `node scripts/check-design-sizing.mjs` | Published station conditions, daily profiles, design schedules, sizing independence, API and exports |
 | `node scripts/check-equipment-model.mjs` | Accepted fitting data curve evaluation sizing fans COP exports and controls |
 | `node scripts/check-beast-scorecard.mjs` | Tariffs annual completeness costs emissions and result displays |
@@ -548,7 +549,7 @@ The present selection code expects the supplied packaged heat-pump schema. It is
 
 ### Change sizing objectives
 
-Edit the candidate evaluation and final comparison in `autosizePackaged`. Adding annual cost or energy as an objective would require simulation and pricing assumptions for each candidate; changing a displayed label does not perform that optimization.
+Edit `optimizePackagedBank` in `lib/packaged-optimizer.ts`. Adding annual cost or energy as an objective would require simulation and pricing assumptions for each candidate; changing a displayed label does not perform that optimization.
 
 ### Change fan operation
 

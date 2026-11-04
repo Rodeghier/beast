@@ -9,7 +9,7 @@
  */
 import { AIR_COOLED_CHILLER_KW_PER_TON, BTU_PER_KWH, type EquipmentResult } from "./equipment-model";
 import { coolingFor } from "./equipment";
-import { unitRatingFor } from "./unit-ratings";
+import { bankRatings } from "./packaged-bank";
 
 export type UtilizationMode = "heating" | "cooling";
 export type UtilizationSamples = { capacity: (number | null)[]; power: (number | null)[] };
@@ -30,11 +30,11 @@ function percent(used: number | null | undefined, full: number | null | undefine
 export function equipmentUtilization(result: EquipmentResult, mode: UtilizationMode): UtilizationSamples {
   const capacity: (number | null)[] = [], power: (number | null)[] = [];
   const selection = result.selection;
-  const rating = selection ? unitRatingFor(selection.model) : null;
-  const fanKw = selection && rating ? selection.count * rating.inferred_supply_fan_power_kW : null;
+  const rating = selection ? bankRatings(selection.groups) : null;
+  const fanKw = selection && rating ? rating.fanKw : null;
   const coolingFullKw = coolingFor(result.scenario) === "air-cooled-chiller"
     ? result.coolingCapacityTons === null ? null : result.coolingCapacityTons * AIR_COOLED_CHILLER_KW_PER_TON
-    : selection && rating ? selection.count * rating.cooling_non_supply_fan_power_kW : null;
+    : selection && rating ? rating.coolingNonfanKw : null;
 
   for (const row of result.rows) {
     // An invalid/unsupported selection is not an idle system. Its samples must

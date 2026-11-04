@@ -19,12 +19,15 @@ import { STATES, MIN_YEAR, MAX_YEAR, supportsClimate, type Place } from "@/lib/c
 import { parseClimateCsv, type ClimateData } from "@/lib/csv";
 import { solarLocation } from "@/lib/solar";
 import { DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
-import { autosizePackaged, simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv } from "@/lib/equipment-model";
+import { simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv } from "@/lib/equipment-model";
 import { coolingFor, curveRangeMode, scenarioName, newScenario, type EquipmentScenario, type CurveRangeMode } from "@/lib/equipment";
 import { EquipmentScenarios } from "@/components/equipment-scenarios";
 import { LoadSummary, formatLoad } from "@/components/load-summary";
 import { EquipmentDistributions } from "@/components/equipment-distributions";
 import { DesignSizingSummary } from "@/components/design-sizing-summary";
+import type { PackagedSelection } from "@/lib/packaged-bank";
+import type { SizingResponse } from "@/lib/equipment-sizing.worker";
+import EquipmentSizingWorker from "@/lib/equipment-sizing.worker?worker";
 import { buildDesignSizing, type DesignConditionResponse } from "@/lib/design-sizing";
 import { AnalysisAssumptions } from "@/components/analysis-assumptions";
 import { LocationEnergy } from "@/components/location-energy";
@@ -80,12 +83,22 @@ export default function Home() {
   // Steps 2 and 3: size each distinct equipment request once, then simulate each
   // combination. Gas/resistance may reuse cooling sizing but still have different energy.
   const sizingRequests=systems.map(s=>`${s.heating==="heat-pump"?"heat-pump":"gas"}:${s.efficiency}:${coolingFor(s)==="heat-pump"}:${curveRangeMode(s)}:${s.stage}`).join("|");
-  const packagedSelections=useMemo(()=>{
-    const cache=new Map<string,ReturnType<typeof autosizePackaged>>();
-    return sizingRequests.split("|").map(request=>{const [mode,efficiency,selected,rangeMode,stage]=request.split(":");if(!designSizing?.rows.length||designSizing.error||selected!=="true")return null;
-      if(!cache.has(request))cache.set(request,autosizePackaged(designSizing.rows,school,efficiency as "standard"|"high",mode as "heat-pump"|"gas",rangeMode as CurveRangeMode,stage as EquipmentScenario["stage"]));return cache.get(request)!;});
+  const [sizingWork,setSizingWork]=useState<{source:typeof designSizing;school:SchoolAssumptions;requests:string;response:SizingResponse}|null>(null);
+  useEffect(()=>{
+    if(!designSizing?.rows.length||designSizing.error)return;
+    // Vite's worker factory emits a browser URL directly. A file-scope
+    // import.meta.url can be rewritten to a file URL by the site framework.
+    const worker=new EquipmentSizingWorker();
+    worker.onmessage=({data}:{data:SizingResponse})=>setSizingWork({source:designSizing,school,requests:sizingRequests,response:data});
+    worker.onerror=()=>setSizingWork({source:designSizing,school,requests:sizingRequests,response:{selections:[],error:"Equipment selection could not be completed. Please try again."}});
+    worker.postMessage({rows:designSizing.rows,school,requests:sizingRequests});
+    return ()=>worker.terminate();
   },[designSizing,school,sizingRequests]);
-  const comparisonResults = useMemo(() => schoolRows.length ? systems.map((system,i) => simulateEquipment(schoolRows, school, system,packagedSelections[i],designSizing)) : [], [schoolRows, school, systems,packagedSelections,designSizing]);
+  const sizingReady=sizingWork?.source===designSizing&&sizingWork?.school===school&&sizingWork?.requests===sizingRequests;
+  const sizingBusy=!!designSizing&&!designSizing.error&&!sizingReady;
+  const sizingFailure=sizingReady?sizingWork?.response.error:null;
+  const packagedSelections:(PackagedSelection|null)[]=sizingReady?sizingWork!.response.selections:[];
+  const comparisonResults = useMemo(() => schoolRows.length&&!sizingBusy&&!sizingFailure ? systems.map((system,i) => simulateEquipment(schoolRows, school, system,packagedSelections[i]??null,designSizing)) : [], [schoolRows, school, systems,packagedSelections,designSizing,sizingBusy,sizingFailure]);
   const curveResult = comparisonResults[activeSystem] ?? null;
   function updateSystem(index: number, choice: EquipmentScenario) {
     setSystems(current => current.map((s, i) => i === index ? choice : s));
@@ -235,9 +248,9 @@ export default function Home() {
           {stage === "error" && <section className="status-panel error-panel" role="alert"><span className="loading-icon"><Info size={28}/></span><h2>We couldn’t load the results</h2><p>{error}</p><div className="center-actions"><button className="button secondary" onClick={cancel}>Edit location</button><button className="button primary" onClick={() => pending && void startQuery(pending)}>Try again</button></div></section>}
           {result && stage === "ready" && <>
             <LocationEnergy key={`${result.place.id}-${result.place.stateCode}`} place={result.place} year={result.year} results={comparisonResults} rows={schoolRows}/><div className="edit-inputs"><button type="button" className="button secondary" onClick={() => setTab("query")}>Edit analysis inputs</button></div>
-            <div className="results-heading"><div><div className="eyebrow">WEATHER & BUILDING LOADS</div><h2>{result.place.name}, {result.place.state}<span className="result-year">{result.year}</span></h2><p><MapPin size={14}/>{coordinate(result.place.latitude, true)}<span>·</span>{coordinate(result.place.longitude)}<span>·</span>{timezone}</p></div><div className="download-actions"><button className="button primary" onClick={() => download()}><Download size={17}/>Download results CSV</button><button className="button text-button" onClick={() => download(true)}>Original weather CSV</button></div></div>
+            <div className="results-heading"><div><div className="eyebrow">WEATHER & BUILDING LOADS</div><h2>{result.place.name}, {result.place.state}<span className="result-year">{result.year}</span></h2><p><MapPin size={14}/>{coordinate(result.place.latitude, true)}<span>·</span>{coordinate(result.place.longitude)}<span>·</span>{timezone}</p></div><div className="download-actions"><button className="button primary" disabled={sizingBusy||!!sizingFailure||!curveResult} onClick={() => download()}><Download size={17}/>Download results CSV</button><button className="button text-button" onClick={() => download(true)}>Original weather CSV</button></div></div>
             <div className="results-meta"><span><Table2 size={16}/><strong>{total.toLocaleString()}</strong> hourly records</span><span><CalendarDays size={16}/>{result.data.rows[0]?.year}-{pad(result.data.rows[0]?.month)}-{pad(result.data.rows[0]?.day)} to {result.data.rows.at(-1)?.year}-{pad(result.data.rows.at(-1)!.month)}-{pad(result.data.rows.at(-1)!.day)}</span><span>EC-Earth3-CC <span className="meta-separator">/</span> SSP2-4.5</span></div>
-            <DesignSizingSummary design={result.design} station={designStation} sizing={designSizing} school={school} onStation={stationId=>setDesignStationChoice({placeKey:designPlaceKey,stationId})}/><EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/><EquipmentDistributions results={comparisonResults} active={activeSystem} onActive={setActiveSystem}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
+            <p role="status" aria-live="polite">{sizingBusy?"Selecting equipment sizes and quantities...":sizingFailure??""}</p><DesignSizingSummary design={result.design} station={designStation} sizing={designSizing} school={school} onStation={stationId=>setDesignStationChoice({placeKey:designPlaceKey,stationId})}/><EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/><EquipmentDistributions results={comparisonResults} active={activeSystem} onActive={setActiveSystem}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
             <div className="hourly-heading"><h3>Hourly results · {scenarioName(systems[activeSystem])}</h3><span>Cooling − · Heating + · Electricity in kWh per hour</span></div>
             <div className="table-scroll" tabIndex={0} aria-label="Hourly weather, building loads and equipment performance"><Table className="school-table"><TableHeader><TableRow>
               {["#", "Date", "Time (local)", "Outdoor dry bulb (°F)", "Dew point (°F)", "DHI / DNI / GHI (W/m²)", "Solar heat gain (BTU/hr)", "Sensible cooling (BTU/hr · −)", "Total cooling (BTU/hr · −)", "Building heat need (BTU/hr · +)", "Mixed entering dry bulb (°F)", "Mixed entering wet bulb (°F)", "Outdoor-air fraction", "Available heat (BTU/hr)", "Available cooling (BTU/hr)", "Heating COP · full output", "Cooling COP · full-output net", "Cooling SHR", "Equipment electricity (kWh)", "Supply fan electricity (kWh)", "Supply fan heat (BTU/hr)", systems[activeSystem]?.heating==="gas"&&systems[activeSystem]?.boilerSizeClass==="large"?`Fuel input (${curveResult?.summary.boilerFuelUnit??"units"})`:"Gas input (therms)", "Unmet heat (BTU/hr)", "Unmet cooling (BTU/hr)", "Status"].map(label => <TableHead key={label}>{label}</TableHead>)}

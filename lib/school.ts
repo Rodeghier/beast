@@ -9,7 +9,7 @@
 import type { ClimateRow } from "./csv";
 import { solarGains, type SolarLocation } from "./solar";
 
-export const MODEL_VERSION = "building-solar-2.2";
+export const MODEL_VERSION = "building-solar-2.3";
 export const BTU_PER_WH = 3.412141633;
 const PRESSURE_PA = 101325;
 
@@ -161,12 +161,12 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     // Use the CSV's calendar directly. Date.UTC avoids shifting weekdays in
     // a visitor's browser time zone; the source excludes daylight saving time.
     const weekday = new Date(Date.UTC(row.year, row.month - 1, row.day)).getUTCDay();
-    const schoolHour = (designDay || weekday > 0 && weekday < 6) && row.hour >= a.startHour && row.hour < a.endHour;
+    const schoolHour = (Boolean(designDay) || weekday > 0 && weekday < 6) && row.hour >= a.startHour && row.hour < a.endHour;
     // fraction is the occupancy fraction, not a compressor duty fraction.
     // It drives people, ventilation and internal-gain schedules for this hour.
-    // Design days use full design occupancy during the entered occupied hours,
-    // independent of weekday and summer holidays. Annual schedules are unchanged.
-    const fraction = schoolHour ? (designDay ? 1 : row.month >= 6 && row.month <= 8 ? a.summerPercent / 100 : 1) : 0;
+    // Design days represent a scheduled working day and use the same seasonal
+    // occupancy reduction as annual operation. Sizing later excludes empty hours.
+    const fraction = schoolHour ? (row.month >= 6 && row.month <= 8 ? a.summerPercent / 100 : 1) : 0;
     const occupied = fraction > 0;
     const occupants = a.people * fraction;
     const ventilation = occupied ? occupants * a.ventilationPerson + area * a.ventilationArea : 0;

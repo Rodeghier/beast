@@ -36,15 +36,15 @@ assert.ok(utilizationDistribution([null,0]).bins.every(b=>b.percentOfHours===0))
 const base=simulateSchool([{year:2025,month:1,day:7,hour:12,minute:0,temperature:celsius(47),humidity:50,dhi:0,dni:0,ghi:0}],DEFAULT_SCHOOL)[0];
 const heatRow={...base,temperatureF:47,freeFloatF:70,heatingSetpointF:70,coolingSetpointF:80,ventilationCfm:0,heating:15500,heatBalance:15500,coolBalance:-300000,sensibleCooling:0,latentCooling:0,totalCooling:0};
 const hp=simulateEquipment([heatRow],DEFAULT_SCHOOL,newScenario());
-assert.equal(hp.error,null);assert.equal(hp.selection.count,1);assert.equal(hp.selection.model.nominal_tons,3);
-const rating=unitRatingFor(hp.selection.model),fanKw=rating.inferred_supply_fan_power_kW;
+assert.equal(hp.error,null);assert.equal(hp.selection.count,1);assert.equal(hp.selection.groups[0].model.nominal_tons,3);
+const rating=unitRatingFor(hp.selection.groups[0].model),fanKw=rating.inferred_supply_fan_power_kW;
 // Independent 31,000 BTU/hr / 2.6 kW full-output heating example. Fan heat is
 // 1,000 BTU/hr: 16,000 delivered to the building means 15,000 from a 30,000 coil.
 const heating={...hp,rows:[{...hp.rows[0],availableHeating:31000,deliveredHeating:16000,fanHeat:1000,heatingCop:31000/(BTU_PER_KWH*2.6),heatingElectricity:(2.6-fanKw)*.6}]};
 near(equipmentUtilization(heating,'heating').capacity[0],50);near(equipmentUtilization(heating,'heating').power[0],60);
 const cooling={...hp,rows:[{...hp.rows[0],availableCooling:100000,deliveredCooling:50000,coolingElectricity:rating.cooling_non_supply_fan_power_kW*.7,fanElectricity:99}]};
 near(equipmentUtilization(cooling,'cooling').capacity[0],50);near(equipmentUtilization(cooling,'cooling').power[0],70);
-const bank={...cooling,selection:{...hp.selection,count:3},rows:[{...cooling.rows[0],availableCooling:300000,deliveredCooling:150000,coolingElectricity:3*rating.cooling_non_supply_fan_power_kW*.7}]};
+const bank={...cooling,selection:{...hp.selection,count:3,groups:hp.selection.groups.map(g=>({...g,count:3}))},rows:[{...cooling.rows[0],availableCooling:300000,deliveredCooling:150000,coolingElectricity:3*rating.cooling_non_supply_fan_power_kW*.7}]};
 near(equipmentUtilization(bank,'cooling').capacity[0],50);near(equipmentUtilization(bank,'cooling').power[0],70);
 const idle={...hp,selection:null,rows:[{...hp.rows[0],availableCooling:null,deliveredCooling:0,coolingElectricity:0,availableHeating:null,deliveredHeating:0,heatingElectricity:0,fanHeat:0}]};
 assert.deepEqual(equipmentUtilization(idle,'cooling'),{capacity:[0],power:[0]});assert.deepEqual(equipmentUtilization(idle,'heating'),{capacity:[0],power:[0]});

@@ -45,14 +45,14 @@ for(let hour=0;hour<24;hour++){
 assert.ok(weather.some(r=>r.ghi>700));
 const max=weather[14];near(wetBulbF(max.temperature*1.8+32,humidityRatio(max.temperature,max.humidity)),22.4*1.8+32,.001);
 const sizing=buildDesignSizing(station,DEFAULT_SCHOOL,response.source,site);
-assert.equal(sizing.error,null);assert.equal(sizing.rows.length,96);assert.equal(sizing.metadata.Cooling_design_percent,1);assert.equal(sizing.metadata.Heating_design_percent,99);
+assert.equal(sizing.error,null);assert.equal(sizing.rows.length,40);assert.equal(sizing.metadata.Cooling_design_percent,1);assert.equal(sizing.metadata.Heating_design_percent,99);
 assert.ok(sizing.rows.every(r=>r.heating!==null&&r.totalCooling!==null));
-const winter=sizing.rows.slice(0,24),summer=sizing.rows.slice(24);
+const winter=sizing.rows.filter(r=>r.heating>0),summer=sizing.rows.filter(r=>r.heating===0);
 assert.ok(winter.every(r=>r.heatingSetpointF===70&&r.totalCooling===0));
-assert.ok(summer.every(r=>r.heating===0));assert.ok(summer.filter(r=>r.hour>=7&&r.hour<17).every(r=>r.occupants===1200));
+assert.ok(summer.every(r=>r.heating===0));assert.ok(summer.filter(r=>r.hour>=7&&r.hour<17).every(r=>r.occupants===120));
 // Winter capacity takes no credit for people, lighting or plug heat.
 const winterWithGains=buildDesignSizing(station,{...DEFAULT_SCHOOL,lightingW:5,equipmentW:10,sensiblePerson:1000},response.source,site);
-assert.deepEqual(winterWithGains.rows.slice(0,24).map(r=>r.heating),winter.map(r=>r.heating));
+assert.deepEqual(winterWithGains.rows.filter(r=>r.heating>0).map(r=>r.heating),winter.map(r=>r.heating));
 const colder=buildDesignSizing(station,{...DEFAULT_SCHOOL,heatingDesignPercent:99.6,coolingDesignPercent:.4},response.source,site);
 assert.ok(colder.metadata.Design_heating_load_BTU_hr>sizing.metadata.Design_heating_load_BTU_hr);
 assert.ok(colder.metadata.Cooling_design_DB_F>sizing.metadata.Cooling_design_DB_F);
@@ -68,7 +68,7 @@ for(const heating of ['heat-pump','gas','resistance']){
  const normal=simulateEquipment(annual,school,scenario,undefined,smallSizing);
  const spike=simulateEquipment([...annual,extreme],school,scenario,undefined,smallSizing);
  assert.equal(normal.error,null);assert.equal(spike.error,null);assert.ok(normal.selection);
- assert.equal(spike.selection.count,normal.selection.count);assert.equal(spike.selection.model.id,normal.selection.model.id);
+ assert.equal(spike.selection.count,normal.selection.count);assert.equal(spike.selection.groups[0].model.id,normal.selection.groups[0].model.id);
  assert.equal(spike.heatingCapacityBtuHr,normal.heatingCapacityBtuHr);assert.ok(spike.rows[1].unmetHeating>1e7);
  const unavailable=simulateEquipment(annual,school,scenario);assert.match(unavailable.error,/design-day/);assert.equal(unavailable.selection,null);assert.equal(unavailable.heatingCapacityBtuHr,null);
 }
@@ -80,15 +80,15 @@ assert.equal(spikeChiller.coolingCapacityTons,normalChiller.coolingCapacityTons)
 // An annual cooling spike also leaves the heat-pump installation unchanged.
 const hpScenario=newScenario(),baseHp=simulateEquipment(annual,school,hpScenario,undefined,smallSizing);
 const coolingHp=simulateEquipment([{...coolingSpike,temperatureF:95,temperature:celsius(95)}],school,hpScenario,undefined,smallSizing);
-assert.equal(coolingHp.selection.count,baseHp.selection.count);assert.equal(coolingHp.selection.model.id,baseHp.selection.model.id);assert.ok(coolingHp.rows[0].unmetCooling>1e7);
+assert.equal(coolingHp.selection.count,baseHp.selection.count);assert.equal(coolingHp.selection.groups[0].model.id,baseHp.selection.groups[0].model.id);assert.ok(coolingHp.rows[0].unmetCooling>1e7);
 const largeScenario={...newScenario('gas'),boilerSizeClass:'large',cooling:'air-cooled-chiller'};
 const largeBase=simulateEquipment(annual,school,largeScenario,undefined,smallSizing),largeSpike=simulateEquipment([extreme],school,largeScenario,undefined,smallSizing);
 assert.equal(largeSpike.heatingCapacityBtuHr,largeBase.heatingCapacityBtuHr);assert.ok(largeSpike.rows[0].unmetHeating>1e7);
 const noChillerDesign=simulateEquipment(annual,school,chillerScenario);
 assert.equal(noChillerDesign.coolingCapacityTons,null);assert.equal(noChillerDesign.rows[0].coolingElectricity,null);
-// Regression: selection minimizes installed nominal tonnage before unit count.
+// Regression: selection minimizes unit count before installed nominal tonnage.
 const fixture={...annual[0],heating:0,coolBalance:40000,sensibleCooling:-40000,latentCooling:-10000,totalCooling:-50000,temperatureF:95,freeFloatF:75,coolingSetpointF:75};
-const selected=autosizePackaged([fixture],school,'standard','gas');assert.ok(selected);assert.equal(selected.count,2);assert.equal(selected.model.nominal_tons,4);assert.equal(selected.totalTons,8);
+const selected=autosizePackaged([fixture],school,'standard','gas');assert.ok(selected);assert.equal(selected.count,1);assert.ok(selected.totalTons>=6);
 const hp=simulateEquipment(annual,school,newScenario(),undefined,smallSizing);
 const comparison=parseCsv(equipmentComparisonCsv([hp]));assert.equal(comparison[0].length,comparison[1].length);
 assert.equal(comparison[1][comparison[0].indexOf('Design_station_WMO')],'726410');

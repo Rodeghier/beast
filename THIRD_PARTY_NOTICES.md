@@ -47,3 +47,9 @@ Source: https://energyplushelp.freshdesk.com/support/solutions/articles/67000709
 Regional attachment: https://energyplushelp.freshdesk.com/helpdesk/attachments/67051905125
 
 The default dry-bulb profile and clear-sky solar formulation follow EnergyPlus climate calculations: https://energyplus.readthedocs.io/en/v26.2.0/guides/engineering-reference/5.1-climate-calculations.html
+
+# YALPS integer optimization
+
+The mixed equipment selector uses YALPS 0.6.4, an MIT-licensed JavaScript linear and mixed-integer optimization library by Ian Manske. It runs locally in a browser worker; equipment inputs are not sent to an optimization service. The complete license is preserved in `public/references/yalps-license.txt`.
+
+Source: https://github.com/IanManske/YALPS

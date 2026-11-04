@@ -67,7 +67,8 @@ export function buildDesignSizing(station:DesignStationChoice|undefined,school:S
     const winter:ClimateRow[]=Array.from({length:24},(_,hour)=>({year:REFERENCE_YEAR,month:heating.month,day:heating.day,hour,minute:0,temperature:heating.dryC,humidity:100,dhi:0,dni:0,ghi:0}));
     const heatingRows=simulateSchool(winter,school,site,"heating").map(row=>({...row,sensibleCooling:0,latentCooling:0,totalCooling:0}));
     const coolingRows=(["dryBulb","wetBulb","dewPoint"] as const).flatMap(kind=>simulateSchool(designCoolingWeather(cooling[kind],site),school,site,"cooling").map(row=>({...row,heating:0})));
-    const rows=[...heatingRows,...coolingRows];
+    const rows=[...heatingRows,...coolingRows].filter(row=>row.occupied);
+    if(!rows.length)return unavailable("No occupied design hours are available under the selected occupancy schedule.");
     const peak=(key:"heating"|"sensibleCooling"|"latentCooling"|"totalCooling")=>Math.max(0,...rows.map(row=>Math.abs(row[key]??0)));
     return {rows,basis,error:null,metadata:{Sizing_basis:basis,ASHRAE_edition:source.edition,Design_station:station.name,Design_station_state:station.state,Design_station_WMO:station.id,
       Design_station_distance_km:station.distanceKm,Design_station_latitude:station.latitude,Design_station_longitude:station.longitude,Design_station_elevation_m:station.elevationM,
@@ -76,7 +77,7 @@ export function buildDesignSizing(station:DesignStationChoice|undefined,school:S
       Cooling_WB_design_WB_F:fahrenheit(cooling.wetBulb.humidityC),Cooling_WB_design_MCDB_F:fahrenheit(cooling.wetBulb.dryC),
       Cooling_DP_design_DP_F:fahrenheit(cooling.dewPoint.humidityC),Cooling_DP_design_MCDB_F:fahrenheit(cooling.dewPoint.dryC),
       Design_heating_load_BTU_hr:peak("heating"),Design_sensible_cooling_load_BTU_hr:peak("sensibleCooling"),Design_latent_cooling_load_BTU_hr:peak("latentCooling"),Design_total_cooling_load_BTU_hr:peak("totalCooling"),
-      Design_schedule:"Full design occupancy during scheduled occupied hours; winter uses occupied heating setpoint and no internal/solar gain credit; annual schedules are unchanged",
+      Design_schedule:"Occupied design hours only; existing June-August occupancy reduction applies to people, ventilation and scheduled gains; winter uses occupied heating setpoint and no internal/solar gain credit; annual schedules are unchanged",
       Design_weather_basis:"24-hour default ASHRAE/EnergyPlus DB profile; constant humidity ratio capped at saturation; DB/MCWB, WB/MCDB and DP/MCDB cooling days; ASHRAETau2017 clear-sky solar; existing standard-pressure psychrometrics",
       Design_annual_relationship:"Installed sizes are fixed from design days. Annual weather determines energy, capacity utilization and unmet loads; annual extreme hours do not resize equipment."}};
   }catch(cause){return unavailable(cause instanceof Error?cause.message:"ASHRAE design loads could not be calculated.");}
