@@ -116,7 +116,7 @@ h2 { font-size: 1.25rem; font-weight: 600; letter-spacing: -.025em; line-height:
 .form-location-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .form-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .form-field label { font-size: .875rem; font-weight: 570; color: #303d56; }
-.form-field input, .field-select { height: 49px !important; width: 100%; background: white; border: 1px solid #d4dce8; border-radius: 7px; padding: 0 14px; font-size: 1rem; color: #23304b; box-shadow: 0 1px 2px #18274303; }
+.form-field input, .form-field select, .field-select { height: 49px !important; width: 100%; background: white; border: 1px solid #d4dce8; border-radius: 7px; padding: 0 14px; font-size: 1rem; color: #23304b; box-shadow: 0 1px 2px #18274303; }
 .form-field input::placeholder { color: #8994a6; }
 .form-field input:hover, .field-select:hover { border-color: #a9b6cf; }
 .year-field { width: calc(50% - 9px); margin-top: 23px; }
@@ -236,7 +236,12 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .assumption-grid .form-field { justify-content: flex-end; }
 .assumption-grid .form-field label { font-weight: 450; font-size: .875rem; line-height: 1.45; }
 .input-unit { display: block; color: #7a879c; font-size: .8125rem; margin-top: 2px; }
-.assumption-grid .form-field input { height: 44px !important; font-variant-numeric: tabular-nums; }
+.assumption-grid .form-field input, .assumption-grid .form-field select { height: 44px !important; font-variant-numeric: tabular-nums; }
+.design-sizing-summary { margin: 24px 0; padding: 20px; border: 1px solid var(--border); border-radius: 10px; background: white; }
+.design-sizing-summary h3 { font-size: 1.1rem; font-weight: 650; margin-bottom: 12px; }
+.design-sizing-summary label { display: flex; flex-direction: column; gap: 8px; font-size: .85rem; }
+.design-sizing-summary select { width: 100%; max-width: 720px; min-width: 0; border: 1px solid var(--border); border-radius: 6px; padding: 9px; }
+.design-sizing-summary p { font-size: .85rem; color: #475569; line-height: 1.65; margin-top: 10px; }
 .assumption-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 5px 0 10px; }
 .assumption-actions p { margin: 0; font-size: .875rem; color: #64748d; flex-basis: 100%; }
 .model-error { color: #ad283a; font-size: .875rem; margin: 8px 0 14px; }
@@ -392,6 +397,27 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .monthly-graph-heading label { display: flex; gap: 12px; align-items: center; }
 .monthly-graph-heading select { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
 .monthly-performance-graph { width: 100%; height: 300px; aspect-ratio: auto; margin-top: 16px; }
+.equipment-distributions { margin: 30px 0; }
+.equipment-distributions h3 { font-size: 1.1rem; font-weight: 650; }
+.distribution-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin-top: 16px; }
+.distribution-controls > label { display: flex; flex-direction: column; gap: 7px; font-size: .85rem; min-width: 0; }
+.distribution-controls > label:first-child { flex: 1 1 340px; }
+.distribution-controls select { max-width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 6px; padding: 9px; background: white; }
+.distribution-controls input[type="number"] { width: 100px; border: 1px solid var(--border); border-radius: 6px; padding: 9px; background: white; }
+.design-loading-summary dl { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 12px; }
+.design-loading-summary dt { font-size: .8rem; color: #475569; }
+.design-loading-summary dd { margin: 4px 0 0; font-size: .95rem; font-weight: 600; }
+.distribution-controls .distribution-zero { flex-direction: row; align-items: center; padding-bottom: 10px; }
+.distribution-note, .distribution-basis, .distribution-coverage { color: #475569; font-size: .82rem; line-height: 1.6; margin-top: 10px; }
+.distribution-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+.distribution-grid figure { min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: white; padding: 16px; }
+.distribution-grid figcaption { font-size: .95rem; font-weight: 650; }
+.distribution-basis { min-height: 42px; }
+.operation-grid .distribution-basis { min-height: 84px; }
+.utilization-graph { width: 100%; height: 310px; aspect-ratio: auto; margin-top: 10px; }
+@media (max-width: 900px) { .distribution-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .operation-grid .distribution-basis { min-height: 0; } }
+@media (max-width: 600px) { .distribution-controls > label { width: 100%; } }
 .billing-breakdown { margin-top: 24px; }
 .billing-breakdown summary { cursor: pointer; font-weight: 600; }
 .billing-breakdown h4 { font-weight: 650; margin: 18px 0 8px; }

@@ -30,7 +30,7 @@ export function AnalysisAssumptions({ school, onSchool }: {
         {SCHOOL_FIELDS.map(group => <fieldset className="assumption-group" key={group.title}>
           <legend>{group.title}</legend><div className="assumption-grid">{group.fields.map(field => <div className="form-field" key={field.key}>
             <label htmlFor={`input-${field.key}`}>{field.label}<span className="input-unit">{field.unit}</span></label>
-            <input form="analysis-inputs" id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step={field.step} value={Number.isFinite(school[field.key]) ? school[field.key] : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>
+            {field.options ? <select form="analysis-inputs" id={`input-${field.key}`} required value={school[field.key]} onChange={e => onSchool({ ...school, [field.key]: Number(e.target.value) })}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <input form="analysis-inputs" id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step={field.step} value={Number.isFinite(school[field.key]) ? school[field.key] : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>}
           </div>)}</div>
         </fieldset>)}
       </fieldset>

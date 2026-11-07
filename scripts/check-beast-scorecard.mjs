@@ -85,7 +85,7 @@ assert.equal(electricityBill(hours, unitTariff("MWh", 1)).total, null);
 const mixed = unitTariff("kWh/kW", 1);
 mixed.energyRates[0][1].unit = "kWh";
 near(electricityBill(hours, mixed).months[0].energy, 18);
-const result = { scenario: { heating:"resistance",cooling:"heat-pump",efficiency:"standard" }, error: null, rows: rows.map(() => ({ electricity: 1,gasTherms:0 })), summary: { fullYear: true, completeHours: 8760, electricity: 8760, gasTherms:0, unmetHeatingHours: 0, unmetCoolingHours: 0 } };
+const result = { scenario: { heating:"resistance",cooling:"heat-pump",efficiency:"standard" }, error: null, rows: rows.map(() => ({ electricity: 1,gasTherms:0,boilerFuelConsumption:0,boilerFuelInputBtu:0 })), summary: { fullYear: true, completeHours: 8760, electricity: 8760, gasTherms:0, boilerFuelConsumption:0,boilerFuelInputBtu:0,boilerFuelUnit:null, unmetHeatingHours: 0, unmetCoolingHours: 0 } };
 const region = { kgCo2ePerKwh: .5, year: 2023, code: "TEST" };
 const performance = annualPerformance(result, rows, tariff, region);
 const manual = annualPerformance(result, rows, tariff, region, undefined, undefined, .15);
@@ -128,7 +128,7 @@ assert.match(render([annualPerformance(result, rows, undefined, undefined)]), /U
 assert.doesNotMatch(render([annualPerformance({ ...result, error: "Awaiting curves" }, rows, undefined, undefined)]), /\$0/);
 assert.match(render([performance], [{ ...result, summary: { ...result.summary, unmetHeatingHours: 12 } }]), /12 heating hours/);
 const gasData={status:"ok",state:"WI",prices:Array.from({length:12},(_,i)=>({period:`2026-${String(i+1).padStart(2,"0")}`,dollarsPerMcf:10.26}))};
-const gasResult={...result,scenario:{heating:"gas",cooling:"heat-pump",efficiency:"standard"},rows:rows.map(()=>({electricity:0,gasTherms:1})),summary:{...result.summary,electricity:0,gasTherms:8760}};
+const gasResult={...result,scenario:{heating:"gas",cooling:"heat-pump",efficiency:"standard"},rows:rows.map(()=>({electricity:0,gasTherms:1,boilerFuelConsumption:1,boilerFuelInputBtu:100000})),summary:{...result.summary,electricity:0,gasTherms:8760,boilerFuelConsumption:8760,boilerFuelInputBtu:876000000,boilerFuelUnit:"therms"}};
 const gasPerformance=annualPerformance(gasResult,rows,undefined,undefined,gasData,EPA_NATURAL_GAS);
 near(gasPerformance.cost,8760);near(gasPerformance.co2e,8760*EPA_NATURAL_GAS.kgCo2ePerTherm/1000);near(gasPerformance.energy,876);
 assert.equal(annualPerformance(gasResult,rows,undefined,undefined,undefined,EPA_NATURAL_GAS).cost,null);

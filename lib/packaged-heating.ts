@@ -7,8 +7,9 @@
 
 import catalog from "./data/precedent-heating.json";
 import type { CoolingModel } from "./packaged-cooling";
+import { EXTENDED_UNIT_TONS } from "./catalog-sizes";
 
-export type HeatingModel = typeof catalog.models[number];
+export type HeatingModel = typeof catalog.models[number] & {scaledFromNominalTons?:number};
 export const HEATING_MODELS = catalog.models;
 export const HEATING_SOURCE = catalog.source;
 export const HEATING_BASIS = "Heating uses published nominal-airflow, integrated net capacity and total power at 70% outdoor RH. Mixed air uses maximum cooling airflow; an airflow/fan correction was not supplied. This is a screening approximation.";
@@ -16,7 +17,13 @@ export const HEATING_BASIS = "Heating uses published nominal-airflow, integrated
 // Some heating tables are shared by the two efficiency families. Match size and
 // either the exact family or the table marked shared; missing matches return null.
 export function heatingModelFor(model: Pick<CoolingModel,"nominal_tons"|"efficiency">): HeatingModel | null {
-  return HEATING_MODELS.find(h=>h.nominal_tons===model.nominal_tons&&(h.efficiency===model.efficiency||h.efficiency==="shared"))??null;
+  const match=HEATING_MODELS.find(h=>h.nominal_tons===model.nominal_tons&&(h.efficiency===model.efficiency||h.efficiency==="shared"));
+  if(match)return match;
+  if(!EXTENDED_UNIT_TONS.includes(model.nominal_tons))return null;
+  const base=HEATING_MODELS.find(h=>h.nominal_tons===25&&(h.efficiency===model.efficiency||h.efficiency==="shared"));
+  return base?{...base,id:`heating-scaled-${model.efficiency}-${model.nominal_tons}ton`,nominal_tons:model.nominal_tons,
+    reference_capacity_Btu_hr:base.reference_capacity_Btu_hr*model.nominal_tons/25,
+    reference_power_kW:base.reference_power_kW*model.nominal_tons/25,scaledFromNominalTons:25}:null;
 }
 /** Catalog net heating and total electrical power, including the table's fan/defrost basis. */
 export function heatingPoint(model: HeatingModel, outdoorF: number, enteringDryBulbF: number) {
