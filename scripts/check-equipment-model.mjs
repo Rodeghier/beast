@@ -197,3 +197,39 @@ near(largerGas.heatingCapacityBtuHr-smallGas.heatingCapacityBtuHr,5000);
 const sizeExport=parseCsv(equipmentResultsCsv(smallLoads,smallBuilding,smallGas,'Test','UTC'));
 assert.equal(sizeExport[1][sizeExport[0].indexOf('Floor_area_ft2')],'1000');
 assert.equal(sizeExport[1][sizeExport[0].indexOf('Number_of_floors')],'1');
+
+// Hourly readouts expose the same operating profile used for energy, and survive CSV export.
+const { hourlyOperation }=load('lib/hourly-operation.ts');
+const { zonedSystemOperation }=load('lib/equipment-staging.ts');
+const cyclingReadout=hourlyOperation([{model:'test',count:2,staging:zonedSystemOperation(25,100,2,[.5,1])}]);
+assert.equal(cyclingReadout.onMinutes,'16.9');
+assert.equal(cyclingReadout.derate,'0.8875');
+assert.match(cyclingReadout.stage,/Stage 1 .*16.9 min/);
+const sharedReadout=hourlyOperation([{model:'test',count:2,staging:zonedSystemOperation(150,100,2,[.5,1])}]);
+assert.equal(sharedReadout.onMinutes,'60.0');
+assert.equal(sharedReadout.derate,'1.0000');
+assert.match(sharedReadout.stage,/Stage 1 .*30.0 min.*Stage 2 .*30.0 min/);
+const mixedReadout=hourlyOperation([
+ {model:'small',count:2,staging:zonedSystemOperation(25,100,2,[.5,1])},
+ {model:'large',count:1,staging:zonedSystemOperation(100,100,1,[1])}
+]);
+assert.match(mixedReadout.onMinutes,/2 × small: 16.9; 1 × large: 60.0/);
+assert.equal(operating.fanOnMinutes,60);
+assert.equal(ventilation.fanOnMinutes,60);
+assert.equal(scheduled.fanOnMinutes,60);
+assert.equal(off.fanOnMinutes,0);
+assert.equal(ventilation.coolingStage,'Off');
+assert.equal(gas.rows[0].heatingDerate,'1.0000');
+assert.equal(gas.rows[0].heatingOnMinutes,(gas.rows[0].boilerRuntimeFraction*60).toFixed(1));
+assert.equal(resistance.rows[0].heatingStage,null);
+assert.equal(operating.heatingStage,'Off');
+assert.ok(operating.coolingStage);
+assert.equal(missingCooling.rows[0].coolingStage,null);
+for(const result of [hp,gas,resistance]){
+ const exported=parseCsv(equipmentResultsCsv([result===hp?row:heatRow],DEFAULT_SCHOOL,result,'Test','UTC'));
+ for(const [header,key] of [['Heating_stage_and_minutes','heatingStage'],['Heating_on_minutes_per_unit','heatingOnMinutes'],['Heating_cycling_PLF','heatingDerate'],['Cooling_stage_and_minutes','coolingStage'],['Cooling_on_minutes_per_unit','coolingOnMinutes'],['Cooling_cycling_PLF','coolingDerate'],['Supply_fan_on_minutes','fanOnMinutes']]){
+  assert.ok(exported[2].includes(header));
+  assert.equal(exported[3][exported[2].indexOf(header)],String(result.rows[0][key]??''));
+ }
+}
+console.log('Hourly operation checks passed: cycling loss, stage time sharing, mixed sizes, missing data, fan runtime, CSV column alignment.');
