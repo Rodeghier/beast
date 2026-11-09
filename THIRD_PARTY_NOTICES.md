@@ -37,3 +37,19 @@ The complete MIT license is preserved at `public/references/epa-power-profiler-l
 # Precedent nominal cooling power and fan reference data
 
 `lib/data/precedent-unit-ratings.json` derives 24 standard/high efficiency heat-pump records from user-supplied Unit_data_full.pdf, Trane PKGP-PRC023F-EN tables 6-7, printed pages 24-29. Source hash, published system kW, gross/net capacity, nominal/AHRI airflow, fan count and motor nameplate HP are retained. Fan heat is inferred from gross minus net rated capacity; fan kW assumes that electrical input becomes air heat. Nameplate HP is reference data and is not used as operating electrical input. The full document's fan-heat footnotes support the gross/net interpretation; the operating-watt estimate remains an approximation with no correction to maximum airflow. Derived records are served in `public/references/precedent-unit-ratings.csv`. No source PDF is bundled.
+
+# ASHRAE 2017 design conditions distributed by EnergyPlus
+
+`lib/data/ashrae-design-2017-us.json` contains numerical station location and annual design-day conditions extracted from the EnergyPlus support team's public 2017 regional IMF distribution. The catalog retains 1,724 complete U.S. stations; incomplete records and offshore locations without a U.S. state are excluded. The original distribution URL and ZIP SHA-256 are preserved in the JSON source metadata. The full IMF/ZIP and handbook prose are not bundled. This is the 2017 edition and is not represented as a newer ASHRAE edition.
+
+Source: https://energyplushelp.freshdesk.com/support/solutions/articles/67000709369-2017-annual-design-conditions-definitions-for-all-ashrae-design-condition-locations
+
+Regional attachment: https://energyplushelp.freshdesk.com/helpdesk/attachments/67051905125
+
+The default dry-bulb profile and clear-sky solar formulation follow EnergyPlus climate calculations: https://energyplus.readthedocs.io/en/v26.2.0/guides/engineering-reference/5.1-climate-calculations.html
+
+# YALPS integer optimization
+
+The mixed equipment selector uses YALPS 0.6.4, an MIT-licensed JavaScript linear and mixed-integer optimization library by Ian Manske. It runs locally in a browser worker; equipment inputs are not sent to an optimization service. The complete license is preserved in `public/references/yalps-license.txt`.
+
+Source: https://github.com/IanManske/YALPS

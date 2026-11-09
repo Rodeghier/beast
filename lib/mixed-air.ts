@@ -42,10 +42,14 @@ export function airContext(row: SchoolRow, school: SchoolAssumptions): AirContex
   return {outdoorF:row.temperatureF,outdoorW,outdoorH:enthalpy(celsius(row.temperatureF),outdoorW),returnF,returnW,returnH:enthalpy(celsius(returnF),returnW),ventilationCfm:row.ventilationCfm};
 }
 export function mixAir(context: AirContext | null, supplyCfm: number) {
-  if (!context || !Number.isFinite(supplyCfm) || supplyCfm<=0 || supplyCfm+1e-7<context.ventilationCfm) return null;
+  if (!context || !Number.isFinite(supplyCfm) || supplyCfm<=0) return null;
   // Mechanical ventilation divided by installed supply CFM gives the mixing fraction.
   // CFM fractions approximate dry-air mass fractions at standard conditions.
-  const fraction=context.ventilationCfm/supplyCfm;
+  // Airflow does not resize equipment. Admit at most 100% outdoor air and
+  // disclose the remaining ventilation request separately. Building thermal
+  // loads retain the full requested ventilation load for a conservative check.
+  const fraction=Math.min(1,context.ventilationCfm/supplyCfm);
+  const unmetVentilationCfm=Math.max(0,context.ventilationCfm-supplyCfm);
   const humidity=(1-fraction)*context.returnW+fraction*context.outdoorW;
   const h=(1-fraction)*context.returnH+fraction*context.outdoorH;
   // Mix W and h first, then solve temperature from the enthalpy equation.
@@ -53,5 +57,5 @@ export function mixAir(context: AirContext | null, supplyCfm: number) {
   const dryF=fahrenheit((h-2501*humidity)/(1.006+1.86*humidity));
   const wetF=wetBulbF(dryF,humidity);
   if (wetF===null) return null;
-  return {dryF,wetF,humidityRatio:humidity,outdoorFraction:fraction,returnDryF:context.returnF,supplyCfm};
+  return {dryF,wetF,humidityRatio:humidity,outdoorFraction:fraction,returnDryF:context.returnF,supplyCfm,unmetVentilationCfm};
 }

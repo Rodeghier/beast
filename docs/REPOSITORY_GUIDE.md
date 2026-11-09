@@ -2,7 +2,7 @@
 
 An engineering handbook for readers with basic Python experience
 
-Prepared from the local repository on October 29 2026
+Prepared from the local repository on November 4 2026
 
 ## 1 What this guide helps you do
 
@@ -40,10 +40,19 @@ City and state
   -> climate API -> weather CSV
   -> parseClimateCsv -> ClimateRow[]
   -> simulateSchool -> SchoolRow[]
-  -> autosizePackaged -> PackagedSelection
-  -> simulateEquipment -> EquipmentResult
+  -> simulateEquipment (fixed design-day selection) -> EquipmentResult
   -> annualPerformance -> annual and monthly metrics
   -> result cards, graphs and CSV downloads
+```
+
+Sizing runs alongside that annual path:
+
+```text
+Selected coordinates
+  -> design-conditions API -> nearby ASHRAE station choices
+  -> buildDesignSizing -> design-day SchoolRow[]
+  -> autosizePackaged -> PackagedSelection
+  -> simulateEquipment with annual SchoolRow[] -> EquipmentResult
 ```
 
 `[]` means a list or array. The same hourly position is retained through the weather, building and equipment arrays. For example, weather row 100, building row 100 and equipment row 100 refer to the same hour. Several exports combine them by array position, so changing row ordering in only one stage is unsafe.
@@ -242,7 +251,7 @@ A zero-irradiance hour can have a valid zero solar gain without solar-position m
 
 Read `airContext`, then `mixAir` in `lib/mixed-air.ts`. `airContext` prepares outdoor and return humidity ratio and enthalpy. Return DB is the free-float zone estimate limited by active setpoints; return RH is the entered indoor target.
 
-`mixAir` compares installed supply CFM with scheduled mechanical ventilation. If supply airflow is inadequate or the inputs are invalid, it returns null. Otherwise the outdoor fraction is ventilation divided by installed supply airflow.
+`mixAir` uses outdoor fraction `min(1, scheduled ventilation / installed supply CFM)`. Requests above supply produce 100% outdoor air and `unmetVentilationCfm`, not extra units. Building heat/moisture loads retain the full requested ventilation for a conservative thermal check. Invalid psychrometrics or nonpositive supply still return null. Equipment CSVs export `Unmet_ventilation_CFM`; equipment cards show affected hours and peak airflow deficit.
 
 For a hypothetical supply of 4,000 CFM and scheduled ventilation of 400 CFM, the outdoor fraction is 0.10. The mixed humidity ratio is 90% return plus 10% outdoor, and mixed enthalpy is blended with the same fractions. The program then solves mixed dry bulb from enthalpy and humidity ratio and inverts the wet-bulb relation by bisection.
 
@@ -254,11 +263,12 @@ Supply-fan heat is applied later in the sensible/heating balances. It is not add
 
 ## 9 Equipment curves and ratings
 
-The three equipment JSON datasets have different jobs. Keep those jobs distinct when adding or replacing data.
+The equipment JSON datasets have different jobs. Keep those jobs distinct when adding or replacing data.
 
 | Application dataset | Runtime reader | Role |
 | --- | --- | --- |
-| `lib/data/precedent-cooling.json` | `packaged-cooling.ts` | Per-unit gross cooling capacity and SHR fits |
+| `lib/data/shared-cooling-capacity.json` | `packaged-cooling.ts` | One runtime normalized gross-capacity curve across all sizes |
+| `lib/data/precedent-cooling.json` | `packaged-cooling.ts` | Source reference capacities, SHR fits and domains; original capacity fits retained as provenance |
 | `lib/data/precedent-heating.json` | `packaged-heating.ts` | Per-unit net heating capacity and total kW fits |
 | `lib/data/precedent-unit-ratings.json` | `unit-ratings.ts` | Nominal cooling system kW and inferred fan component |
 
@@ -268,7 +278,13 @@ The internal dataset filenames are retained source identifiers. The user-facing 
 
 `coolingPoint` takes outdoor DB, entering WB and entering DB in Fahrenheit. It checks the valid domain, creates normalized temperature variables and forms polynomial terms. A coefficient/term dot product gives normalized capacity. Multiplication by the unit's reference capacity gives gross BTU/hr.
 
-The normalized reference is outdoor 95°F, entering WB 67°F and entering DB 80°F. The reference capacity is supplied for each model at its fixed airflow; it is not simply nominal tons times 12,000. The SHR numerator is evaluated and divided by the capacity normalization, then limited to the physical range zero through one.
+The normalized reference is outdoor 95°F, entering WB 67°F and entering DB 80°F. The reference capacity is supplied for each model at its fixed airflow; it is not simply nominal tons times 12,000. Runtime `COOLING_MODELS` applies one common capacity polynomial to all 46 size/family combinations. `SOURCE_COOLING_MODELS` preserves the original fits for verification. The SHR numerator is divided by its original source denominator (`shr_capacity_coefficients`), not the new pooled capacity polynomial, preserving the supplied SHR relationship. SHR remains limited to zero through one.
+
+### Shared curve and added sizes
+
+`fit-shared-cooling-capacity.py` reads the accepted maximum-airflow CSV, normalizes by each source reference, and fits the same anchored quadratic terms with equal total weight per source model. It writes `shared-cooling-capacity.json`; `--check` verifies reproducibility. The current relative RMS fit error is 1.75%; leave-one-size-out error is 1.87%. That validation covers original source sizes, not the added large sizes.
+
+`lib/catalog-sizes.ts` defines 30, 40, 55, 60, 70, 75, 90, 105, 120, 130 and 150 tons. `packaged-cooling.ts`, `heatingModelFor` and `unitRatingFor` scale the selected family's 25-ton reference quantities by nominal tons/25. SHR and fractional stages reuse the 25-ton patterns. The original domain is retained. Records use `scaledFromNominalTons:25`; the UI and exports disclose this assumption. Heating COP remains unchanged by proportional scaling. Shared capacity coefficients do not imply independently validated large-unit power or control data.
 
 ### Heating evaluator
 
@@ -296,23 +312,33 @@ Cooling source coverage is generally outdoor 85–125°F, entering WB 61–73°F
 
 ## 11 How automatic selection works
 
-Open `autosizePackaged` in `lib/equipment-model.ts`. It enumerates catalog sizes in the selected efficiency family and scans integer unit counts for each size. It is a search through discrete candidates, not a continuous optimization of dollars or energy.
+Start with `lib/design-sizing.ts`. Annual `schoolRows` calculate energy and unmet loads; a separate `designSizing.rows` supplies equipment sizes. The server route `/api/design-conditions` calls `nearestDesignStations` in `lib/ashrae-design-stations.ts`, returning the ten nearest complete stations within 250 km. The catalog stays on the server. Results initially select the nearest station, with an engineer override for nearby climate/elevation differences.
 
-The smallest candidate count must accommodate peak scheduled ventilation using the catalog maximum cooling CFM per unit. Reference-condition capacity produces a search scale. Each candidate then recalculates mixed entering air and fan heat before checking sensible cooling, latent cooling and, for heat-pump heating, net heating capacity.
+The local catalog contains 1,724 complete U.S. stations from the EnergyPlus team's public ASHRAE 2017 design-condition distribution. The source URL and ZIP SHA-256 are embedded in `lib/data/ashrae-design-2017-us.json`. This is the 2017 edition. `scripts/build-ashrae-design-data.py --source PATH_TO_ZIP` reproduces it. Incomplete source records are excluded. No annual-weather percentile or annual maximum substitutes for missing published conditions.
 
-Cooling is checked by component: sensible availability is installed gross capacity times SHR; latent availability is installed gross capacity times one minus SHR. A unit can have enough total cooling and still fail the latent or sensible requirement.
+Building assumptions select 1% cooling and 99% heating by default; published 0.4%/2% cooling and 99.6% heating alternatives are available. `buildDesignSizing` first generates 96 hourly load rows, then retains only scheduled occupied hours: one winter day and three summer days checking dry-bulb/mean-coincident-wet-bulb, wet-bulb/mean-coincident-dry-bulb and dew-point/mean-coincident-dry-bulb conditions. The published daily range and default ASHRAE/EnergyPlus hourly temperature multipliers form each summer profile. Humidity ratio is constant with a saturation cap, and clear-sky solar uses the 2017 tau equations and station optical depths. The fixed 2001 calendar keeps sizing independent of the selected weather year.
 
-The model sorts large demand hours early so an undersized candidate can be rejected quickly. For each size it retains the first count that passes the available checks. Across those candidates, it prefers fewer unavailable checks, then fewer units, then less nominal tonnage. This order can favor one large unit over several smaller units. It does not compare first cost, annual cost, redundancy, staging quality or installation constraints.
+Cooling uses the existing June-August occupancy reduction for people, person-based ventilation and scheduled gains. Zero-occupancy scheduled hours do not size any equipment. Winter uses occupied heating temperature during occupied hours and takes no credit for internal or solar gains; ventilation follows occupied hours. Infiltration remains active. Psychrometrics retain the existing standard-pressure basis; station elevation is disclosed but does not change air-density coefficients. These are steady-state design loads with no thermal storage or morning warm-up simulation.
 
-No sizing percentage margin is applied. A 1 BTU/hr shortfall tolerance is used in candidate checks. The count search has a protective upper limit: the smaller of 10,000 and the larger of the ventilation minimum plus 50 or sixteen times the reference estimate. If the search does not produce a passing operating selection, a labeled reference estimate can remain; hourly delivery and unmet-load results still need review.
+`simulateEquipment` receives annual rows and a separate `DesignSizing` context. Heat-pump selection, boiler/resistance output and chiller capacity use only the context's design rows. Sizes remain fixed throughout the annual simulation. Annual extreme hours can exceed installed capacity and produce unmet loads; they do not trigger resizing. Equipment CSVs include station ID, edition, probabilities, design temperatures, design loads and source provenance.
 
-Gas and resistance cases select packaged units for cooling and ventilation. Small-boiler and resistance output are sized from the maximum heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted peak demand.
+`autosizePackaged` in `lib/equipment-model.ts` delegates to `optimizePackagedBank` in `lib/packaged-optimizer.ts`. The installed bank contains `groups`, each with its own catalog cooling model, heating model and integer unit count. The objective is lexicographic: fewest total units, then lowest installed nominal tonnage. Missing design checks are excluded and do not add a ranking penalty. Coverage records remain available so missing performance is not mistaken for a passed check.
+
+For each attainable installed supply airflow, `mixAir` calculates one shared entering state for the single-zone model. Each catalog size then has known per-unit sensible, latent and heating output at that airflow, so its count becomes an integer variable in a linear problem. Sizes unable to meet their assigned cooling share are pruned where possible; final bank validation checks each group with the actual selected fan heat. If an aggregate solver candidate fails this zonal validation, the best feasible bank remains available with the minimum unproven. The YALPS solver selects counts subject only to available sensible and latent cooling checks. Heating is evaluated for coverage and diagnostic loading but never rejects a bank. There is no ventilation minimum airflow constraint: enumeration starts at the smallest catalog supply airflow, independent of ventilation demand. The airflow grid is the greatest common divisor of catalog unit airflows (240 CFM in the current catalog). This ensures that mixed air is evaluated for the actual selected bank rather than frozen at a different selection's airflow.
+
+The search starts with feasible homogeneous banks, then tests mixed banks. Continuous relaxations prune airflows that cannot improve the incumbent. Every returned integer bank is checked again with the actual component capacities and inferred fan heat. The main search has a 15-second budget, each integer solve has a 150 ms budget, and seed banks have a 10,000-unit ceiling. A search limit leaves the best feasible bank found with `optimizationComplete=false`; the UI and CSV identify that the minimum is unproven. No sizing percentage margin is added; the component tolerance is 1 BTU/hr.
+
+`lib/packaged-bank.ts` sums group capacities, fan heat and rating power. Sensible output is the sum of each group's gross capacity times its SHR; latent output is the sum times one minus that group's SHR. Annual dispatch assigns loads by `group count * nominal tons / total nominal tons`. Every unit in the group stages/cycles locally; no unit is shed to concentrate demand in lead units, and spare capacity is not transferred to another zone. It tracks remaining sensible and latent demand separately. Full-hour bank fan operation is retained. A capacity-weighted bank SHR is suitable for reporting full-output availability; it is not substituted for individual SHR values during dispatch.
+
+`lib/equipment-sizing.worker.ts` performs optimization outside the UI thread. The page terminates a superseded worker and accepts only results for the current design loads, school assumptions and sizing request. The annual simulation begins after selection completes. CSV metadata include all installed groups, while hourly `Equipment_group_performance_JSON` records each evaluated group and its power-equivalent operating count. Single-value curve temperatures are blank when group evaluation temperatures differ; group detail preserves the individual conditions.
+
+All heating selections use the same cooling-only packaged-bank sizing policy. Heating and ventilation airflow cannot enlarge the bank; ventilation heat/moisture still contribute to cooling loads. Small-boiler and resistance output are sized from the maximum design-day heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted design demand.
 
 ## 12 One hour through the equipment model
 
 `simulateEquipment` obtains a selection, its unit rating and installed fan quantities. It calculates each hour using `rows.map`, keeping the result aligned with the building row.
 
-The fan runs for the full hour when there is a building heating call, sensible/latent cooling call or scheduled ventilation call. It is off otherwise. Coil duty is allowed to be less than one while the fan remains on for the entire call hour.
+The fan runs for the full hour during scheduled occupied operation or a building heating, sensible/latent cooling or ventilation call. It is off otherwise. Coil duty is allowed to be less than one while the fan remains on for the entire call hour.
 
 `fanAdjustedLoads` credits operating fan heat against heating and adds it to the signed sensible cooling balance. Latent demand is unchanged. The signed balance matters because adding heat to an already negative cooling balance may still leave no cooling demand.
 
@@ -328,13 +354,23 @@ Full-output net COP is approximately 2.83. Operating net COP is approximately 2.
 
 For a hypothetical unit with net catalog heating capacity 31,000 BTU/hr, total catalog power 2.6 kW and inferred fan heat 1,000 BTU/hr, fan input is about 0.2931 kW. At a building heating load of 15,500 BTU/hr, the coil must supply 14,500 BTU/hr and its available capacity is 30,000 BTU/hr.
 
-Heating coil duty is `14500 / 30000`. The program duty-scales the nonfan heating input, then adds the full-hour fan once. Total electricity is about 1.408 kWh for the hour. Delivered building heat is 15,500 BTU and unmet heat is zero. The reported full-output heating COP still uses the catalog net heat and total power, approximately 3.49 for these illustrative values.
+Heating coil duty is `14500 / 30000`. The program duty-scales the nonfan heating input, then adds the full-hour fan once. For a single-stage unit, Cd = 0.15 gives PLF = 1 - 0.15 x (1 - 14500/30000), and runtime is duty / PLF. Total electricity is about 1.50 kWh for the hour. Delivered building heat is 15,500 BTU and unmet heat is zero. The reported full-output heating COP still uses the catalog net heat and total power, approximately 3.49 for these illustrative values.
 
 For gas at 80% entered heating efficiency, 14,500 BTU/hr of heater output uses 0.18125 therm for that hour, plus fan electricity. For resistance, element electricity plus the fan electricity equals the 15,500 BTU delivered divided by 3412.141633, approximately 4.543 kWh.
 
-For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the annual peak heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and the selected fuel's manufacturer consumption/hour is multiplied by runtime fraction. Natural gas is reported in therms, propane in ft³, and No. 2 light oil in gal. Fuel input Btu converts those quantities to site MMBtu. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available. Utility cost and combustion emissions remain unavailable for propane and light oil.
+For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the ASHRAE design heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and the selected fuel's manufacturer consumption/hour is multiplied by runtime fraction. Natural gas is reported in therms, propane in ft³, and No. 2 light oil in gal. Fuel input Btu converts those quantities to site MMBtu. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available. Utility cost and combustion emissions remain unavailable for propane and light oil.
 
 Duty is limited to one. An overloaded unit records unmet heating or component cooling rather than receiving unlimited capacity. There is no hidden auxiliary heater or reheat correction. Review unmet hours alongside energy totals: a low-energy case that does not meet the load is not an equivalent service comparison.
+
+### Read the stage and cycling charts
+
+`lib/equipment-staging.ts` returns `StageOperation` alongside the existing power-equivalent count. The runtime calls `zonedSystemOperation`, which records full, idle and `partialUnits` counts plus the identical per-unit stage-time profile of partial units. Every unit receives a fixed nominal-tonnage share of the load. The older `stagedSystemOperation` helper remains only for legacy-record compatibility checks; annual dispatch does not use it. Below the minimum stage, `stageTimeFractions` uses the same Cd = 0.15 runtime already used by the energy calculation. Between two stages, their time fractions sum to one, so the unit stays ON for the full hour even though stage capacity changes. A multi-compressor unit is ON when at least one compressor runs; individual compressor switching is not resolved.
+
+`dispatchHeating` and `dispatchCooling` retain those stage records in each group's exported `staging` field. The histogram module `lib/equipment-operation.ts` reads them, multiplying the per-unit profile by `partialUnits` (or one for older records). It can select a size group, include only called units or all installed units, or inspect one numbered unit. It aggregates compressed counts instead of constructing one array entry for every physical unit. A unit-hour means one unit observed for one hour. Stage bars contain fractional unit-hours; the ON/OFF histogram counts unit-hours with each total-minute value. ON and OFF totals sum to 60 for each included unit-hour. Missing stage data remain unavailable, while known zero compressor use is idle.
+
+These charts report hourly time totals. They cannot determine whether 30 ON minutes occurred in one run or several starts. The model does not resolve thermostat cycle periods or actual zone diversity. Same-size units have identical assumed loads and profiles. Boiler firing uses its existing runtime fraction; resistance and the chiller placeholder do not have stage switching data and therefore do not receive invented stage or runtime distributions. Their bank-average capacity and power view remains available.
+
+Low bank demand is distributed across all assigned zones, so local compressor cycling may increase instead of concentrating the load in a few full-stage units. Sensible and latent cooling requirements are checked separately. Heating and ventilation airflow are diagnostics only; they do not set the bank size. `PackagedSelection.designLoading` records the maximum available design load/capacity ratios for heating, sensible cooling, latent cooling and ventilation. The UI displays these ratios; CSV metadata exports them as `Design_check_loading_JSON`. This helps distinguish a lightly loaded installed bank from a cycling individual unit.
 
 ## 13 Annual energy cost and emissions
 
@@ -364,7 +400,7 @@ Cost and emissions depend on different inputs. Missing gas prices can block gas 
 
 `app/page.tsx` is the coordinator. A React component is a function that describes a screen. `useState` holds values between renders. A setter such as `setSchool` requests a state change and a new render. `useMemo` caches a derived value until its listed inputs change. It does not make the cached result permanent.
 
-The engineering path is concentrated in three named values: `schoolRows`, `packagedSelections` and `comparisonResults`. They call the building, sizing and equipment functions you have already read. The sizing-request key avoids repeating the expensive selection search for combinations with equivalent cooling/heating sizing requirements.
+The engineering path is concentrated in three named values: `schoolRows`, `packagedSelections` and `comparisonResults`. A fourth value, `designSizing`, creates the published design-day load rows before selection. They call the building, sizing and equipment functions you have already read. The sizing-request key avoids repeating the expensive selection search for combinations with equivalent cooling/heating sizing requirements.
 
 The `stage` value controls the search/loading screen: idle, locating, choosing, loading, ready, error or unsupported. `startQuery` validates inputs and asks the locations API for matches. `fetchClimate` retrieves and parses the selected weather CSV. The `AbortController` cancels obsolete requests so an older response cannot overwrite a newer search.
 
@@ -466,6 +502,8 @@ The development command requests port 5173. Dependency installation and server s
 | --- | --- |
 | `node node_modules/typescript/bin/tsc --noEmit` | Types imports and compiler consistency |
 | `node scripts/check-school-model.mjs` | Building balance psychrometrics schedule signs and missing data |
+| `node scripts/check-mixed-equipment.mjs` | Mixed integer objective against exhaustive counts, occupancy reductions, ignored checks, group energy, worker contract and exports |
+| `node scripts/check-design-sizing.mjs` | Published station conditions, daily profiles, design schedules, sizing independence, API and exports |
 | `node scripts/check-equipment-model.mjs` | Accepted fitting data curve evaluation sizing fans COP exports and controls |
 | `node scripts/check-beast-scorecard.mjs` | Tariffs annual completeness costs emissions and result displays |
 | `node scripts/check-location-energy.mjs` | Provider parsing region resolution and source-data conventions |
@@ -495,7 +533,7 @@ Start with a single timestamp and keep its index fixed. Read the original weathe
 | Heating or cooling load is unexpected | `simulateSchool` | Which schedule gains outdoor air and setpoints apply this hour |
 | Entering wet bulb is unexpected | `airContext` and `mixAir` | What return state ventilation and installed supply CFM were used |
 | Capacity is unexpected | Curve evaluator and model JSON | Which unit reference coefficients and evaluation temperatures apply |
-| Selected unit count is unexpected | `autosizePackaged` | Was ventilation sensible latent or heating the limiting check |
+| Selected unit count is unexpected | `autosizePackaged` | Was sensible or latent cooling limiting; did missing curve coverage remove a cooling check |
 | Electricity seems too high | `simulateEquipment` | Is the full-hour fan included once and is coil duty less than one |
 | COP fields differ | Cooling COP calculations | Are you comparing full-output and operating net COP |
 | Annual total is unavailable | `completeCalendar` and `annualPerformance` | Are all required hours aligned valid and complete |
@@ -528,7 +566,7 @@ The present selection code expects the supplied packaged heat-pump schema. It is
 
 ### Change sizing objectives
 
-Edit the candidate evaluation and final comparison in `autosizePackaged`. Adding annual cost or energy as an objective would require simulation and pricing assumptions for each candidate; changing a displayed label does not perform that optimization.
+Edit `optimizePackagedBank` in `lib/packaged-optimizer.ts`. Adding annual cost or energy as an objective would require simulation and pricing assumptions for each candidate; changing a displayed label does not perform that optimization.
 
 ### Change fan operation
 

@@ -19,15 +19,21 @@ import { STATES, MIN_YEAR, MAX_YEAR, supportsClimate, type Place } from "@/lib/c
 import { parseClimateCsv, type ClimateData } from "@/lib/csv";
 import { solarLocation } from "@/lib/solar";
 import { DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
-import { autosizePackaged, simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv } from "@/lib/equipment-model";
+import { simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv } from "@/lib/equipment-model";
 import { coolingFor, curveRangeMode, scenarioName, newScenario, type EquipmentScenario, type CurveRangeMode } from "@/lib/equipment";
 import { EquipmentScenarios } from "@/components/equipment-scenarios";
 import { LoadSummary, formatLoad } from "@/components/load-summary";
+import { EquipmentDistributions } from "@/components/equipment-distributions";
+import { DesignSizingSummary } from "@/components/design-sizing-summary";
+import type { PackagedSelection } from "@/lib/packaged-bank";
+import type { SizingResponse } from "@/lib/equipment-sizing.worker";
+import EquipmentSizingWorker from "@/lib/equipment-sizing.worker?worker";
+import { buildDesignSizing, type DesignConditionResponse } from "@/lib/design-sizing";
 import { AnalysisAssumptions } from "@/components/analysis-assumptions";
 import { LocationEnergy } from "@/components/location-energy";
 
 const DOCS = "https://developer.nlr.gov/docs/climate/sup3rcc/sup3rcc-conus-ecearth3cc-ssp245-r1i1p1f1-v0-2-2-download/";
-type Result = { place: Place; year: number; data: ClimateData; csv: string };
+type Result = { place: Place; year: number; data: ClimateData; csv: string; design:DesignConditionResponse };
 type Stage = "idle" | "locating" | "choosing" | "loading" | "ready" | "error" | "unsupported";
 const pad = (n: number) => String(n).padStart(2, "0");
 const coordinate = (v: number, lat = false) => `${Math.abs(v).toFixed(4)}° ${lat ? (v < 0 ? "S" : "N") : (v < 0 ? "W" : "E")}`;
@@ -66,17 +72,33 @@ export default function Home() {
   // Engineering pipeline step 1: weather + assumptions -> hourly building loads.
   // useMemo recomputes when the listed input objects change; it is a performance cache.
   const schoolRows = useMemo(() => result && !validateSchool(school) ? simulateSchool(result.data.rows, school, solarLocation(result.data.metadata)) : [], [result, school]);
+  const [designStationChoice,setDesignStationChoice]=useState<{placeKey:string;stationId:string}|null>(null);
+  const designPlaceKey=result?`${result.place.id}:${result.place.latitude}:${result.place.longitude}`:"";
+  const designStation=result?.design.stations.find(station=>designStationChoice?.placeKey===designPlaceKey&&station.id===designStationChoice.stationId)??result?.design.stations[0];
+  // Equipment is selected from published design days. The downloaded year is
+  // used only after selection, to simulate the fixed installation hour by hour.
+  const designSizing=useMemo(()=>result&&!validateSchool(school)?buildDesignSizing(designStation,school,result.design.source,result.place):undefined,[result,school,designStation]);
   const [systems, setSystems] = useState<EquipmentScenario[]>(() => [newScenario("heat-pump"), newScenario("gas"), newScenario("resistance")]);
   const [activeSystem, setActiveSystem] = useState(0);
   // Steps 2 and 3: size each distinct equipment request once, then simulate each
   // combination. Gas/resistance may reuse cooling sizing but still have different energy.
   const sizingRequests=systems.map(s=>`${s.heating==="heat-pump"?"heat-pump":"gas"}:${s.efficiency}:${coolingFor(s)==="heat-pump"}:${curveRangeMode(s)}:${s.stage}`).join("|");
-  const packagedSelections=useMemo(()=>{
-    const cache=new Map<string,ReturnType<typeof autosizePackaged>>();
-    return sizingRequests.split("|").map(request=>{const [mode,efficiency,selected,rangeMode,stage]=request.split(":");if(!schoolRows.length||selected!=="true")return null;
-      if(!cache.has(request))cache.set(request,autosizePackaged(schoolRows,school,efficiency as "standard"|"high",mode as "heat-pump"|"gas",rangeMode as CurveRangeMode,stage as EquipmentScenario["stage"]));return cache.get(request)!;});
-  },[schoolRows,school,sizingRequests]);
-  const comparisonResults = useMemo(() => schoolRows.length ? systems.map((system,i) => simulateEquipment(schoolRows, school, system,packagedSelections[i])) : [], [schoolRows, school, systems,packagedSelections]);
+  const [sizingWork,setSizingWork]=useState<{source:typeof designSizing;school:SchoolAssumptions;requests:string;response:SizingResponse}|null>(null);
+  useEffect(()=>{
+    if(!designSizing?.rows.length||designSizing.error)return;
+    // Vite's worker factory emits a browser URL directly. A file-scope
+    // import.meta.url can be rewritten to a file URL by the site framework.
+    const worker=new EquipmentSizingWorker();
+    worker.onmessage=({data}:{data:SizingResponse})=>setSizingWork({source:designSizing,school,requests:sizingRequests,response:data});
+    worker.onerror=()=>setSizingWork({source:designSizing,school,requests:sizingRequests,response:{selections:[],error:"Equipment selection could not be completed. Please try again."}});
+    worker.postMessage({rows:designSizing.rows,school,requests:sizingRequests});
+    return ()=>worker.terminate();
+  },[designSizing,school,sizingRequests]);
+  const sizingReady=sizingWork?.source===designSizing&&sizingWork?.school===school&&sizingWork?.requests===sizingRequests;
+  const sizingBusy=!!designSizing&&!designSizing.error&&!sizingReady;
+  const sizingFailure=sizingReady?sizingWork?.response.error:null;
+  const packagedSelections:(PackagedSelection|null)[]=sizingReady?sizingWork!.response.selections:[];
+  const comparisonResults = useMemo(() => schoolRows.length&&!sizingBusy&&!sizingFailure ? systems.map((system,i) => simulateEquipment(schoolRows, school, system,packagedSelections[i]??null,designSizing)) : [], [schoolRows, school, systems,packagedSelections,designSizing,sizingBusy,sizingFailure]);
   const curveResult = comparisonResults[activeSystem] ?? null;
   function updateSystem(index: number, choice: EquipmentScenario) {
     setSystems(current => current.map((s, i) => i === index ? choice : s));
@@ -110,11 +132,15 @@ export default function Home() {
     }
     setStage("loading");
     const params = new URLSearchParams({ latitude: String(selected.latitude), longitude: String(selected.longitude), state: selected.stateCode, year: String(requestedYear) });
-    const response = await request(`/api/climate?${params}`, controller.signal);
+    const [response,designResponse]=await Promise.all([
+      request(`/api/climate?${params}`,controller.signal),
+      request(`/api/design-conditions?${new URLSearchParams({latitude:String(selected.latitude),longitude:String(selected.longitude)})}`,controller.signal),
+    ]);
+    const design=await designResponse.json() as DesignConditionResponse;
     const csv = await response.text();
     const data = parseClimateCsv(csv, requestedYear);
     if (controller.signal.aborted) return;
-    setResult({ place: selected, year: requestedYear, data, csv }); setPage(1); setStage("ready");
+    setResult({ place: selected, year: requestedYear, data, csv, design }); setPage(1); setStage("ready");
     return { city: selected.name, state: selected.state, year: requestedYear, rows: data.rows.length, latitude: selected.latitude, longitude: selected.longitude };
   }, []);
 
@@ -222,19 +248,20 @@ export default function Home() {
           {stage === "error" && <section className="status-panel error-panel" role="alert"><span className="loading-icon"><Info size={28}/></span><h2>We couldn’t load the results</h2><p>{error}</p><div className="center-actions"><button className="button secondary" onClick={cancel}>Edit location</button><button className="button primary" onClick={() => pending && void startQuery(pending)}>Try again</button></div></section>}
           {result && stage === "ready" && <>
             <LocationEnergy key={`${result.place.id}-${result.place.stateCode}`} place={result.place} year={result.year} results={comparisonResults} rows={schoolRows}/><div className="edit-inputs"><button type="button" className="button secondary" onClick={() => setTab("query")}>Edit analysis inputs</button></div>
-            <div className="results-heading"><div><div className="eyebrow">WEATHER & BUILDING LOADS</div><h2>{result.place.name}, {result.place.state}<span className="result-year">{result.year}</span></h2><p><MapPin size={14}/>{coordinate(result.place.latitude, true)}<span>·</span>{coordinate(result.place.longitude)}<span>·</span>{timezone}</p></div><div className="download-actions"><button className="button primary" onClick={() => download()}><Download size={17}/>Download results CSV</button><button className="button text-button" onClick={() => download(true)}>Original weather CSV</button></div></div>
+            <div className="results-heading"><div><div className="eyebrow">WEATHER & BUILDING LOADS</div><h2>{result.place.name}, {result.place.state}<span className="result-year">{result.year}</span></h2><p><MapPin size={14}/>{coordinate(result.place.latitude, true)}<span>·</span>{coordinate(result.place.longitude)}<span>·</span>{timezone}</p></div><div className="download-actions"><button className="button primary" disabled={sizingBusy||!!sizingFailure||!curveResult} onClick={() => download()}><Download size={17}/>Download results CSV</button><button className="button text-button" onClick={() => download(true)}>Original weather CSV</button></div></div>
             <div className="results-meta"><span><Table2 size={16}/><strong>{total.toLocaleString()}</strong> hourly records</span><span><CalendarDays size={16}/>{result.data.rows[0]?.year}-{pad(result.data.rows[0]?.month)}-{pad(result.data.rows[0]?.day)} to {result.data.rows.at(-1)?.year}-{pad(result.data.rows.at(-1)!.month)}-{pad(result.data.rows.at(-1)!.day)}</span><span>EC-Earth3-CC <span className="meta-separator">/</span> SSP2-4.5</span></div>
-            <EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
+            <p role="status" aria-live="polite">{sizingBusy?"Selecting equipment sizes and quantities...":sizingFailure??""}</p><DesignSizingSummary design={result.design} station={designStation} sizing={designSizing} school={school} onStation={stationId=>setDesignStationChoice({placeKey:designPlaceKey,stationId})}/><EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/><EquipmentDistributions results={comparisonResults} active={activeSystem} onActive={setActiveSystem}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
             <div className="hourly-heading"><h3>Hourly results · {scenarioName(systems[activeSystem])}</h3><span>Cooling − · Heating + · Electricity in kWh per hour</span></div>
+            <details className="distribution-note"><summary>How fan electricity, stage, on-time, and derate are calculated</summary><p>Supply fan kW = sum of unit count × (rated gross − net cooling capacity) / 3,412.14. Fans run 60 minutes during occupied hours or heating, cooling, or ventilation calls, with no fan derate or compressor duty scaling. Fan heat reduces heating demand and adds to cooling demand; fan electricity is counted once. Stage and on-time show each unit’s hourly totals, with separate profiles for mixed sizes. Cycling PLF = 1 − 0.15 × (1 − load / minimum-stage capacity) below minimum stage; on-time includes this loss. PLF 1 means no cycling derate. These times do not describe individual cycles or start counts. Resistance and chiller switching data are unavailable (—); chiller air-handler fans are excluded. Curve boundary estimates appear in the CSV and are not an additional derate.</p></details>
             <div className="table-scroll" tabIndex={0} aria-label="Hourly weather, building loads and equipment performance"><Table className="school-table"><TableHeader><TableRow>
-              {["#", "Date", "Time (local)", "Outdoor dry bulb (°F)", "Dew point (°F)", "DHI / DNI / GHI (W/m²)", "Solar heat gain (BTU/hr)", "Sensible cooling (BTU/hr · −)", "Total cooling (BTU/hr · −)", "Building heat need (BTU/hr · +)", "Mixed entering dry bulb (°F)", "Mixed entering wet bulb (°F)", "Outdoor-air fraction", "Available heat (BTU/hr)", "Available cooling (BTU/hr)", "Heating COP · full output", "Cooling COP · full-output net", "Cooling SHR", "Equipment electricity (kWh)", "Supply fan electricity (kWh)", "Supply fan heat (BTU/hr)", systems[activeSystem]?.heating==="gas"&&systems[activeSystem]?.boilerSizeClass==="large"?`Fuel input (${curveResult?.summary.boilerFuelUnit??"units"})`:"Gas input (therms)", "Unmet heat (BTU/hr)", "Unmet cooling (BTU/hr)", "Status"].map(label => <TableHead key={label}>{label}</TableHead>)}
+              {["#", "Date", "Time (local)", "Outdoor dry bulb (°F)", "Dew point (°F)", "DHI / DNI / GHI (W/m²)", "Solar heat gain (BTU/hr)", "Sensible cooling (BTU/hr · −)", "Total cooling (BTU/hr · −)", "Building heat need (BTU/hr · +)", "Mixed entering dry bulb (°F)", "Mixed entering wet bulb (°F)", "Outdoor-air fraction", "Available heat (BTU/hr)", "Available cooling (BTU/hr)", "Heating COP · full output", "Cooling COP · full-output net", "Cooling SHR", "Equipment electricity (kWh)", "Supply fan electricity (kWh)", "Supply fan heat (BTU/hr)", "Fan on-time (min/h)", "Heating stage", "Heating on-time (min/h per unit)", "Heating cycling derate (PLF)", "Cooling stage", "Cooling on-time (min/h per unit)", "Cooling cycling derate (PLF)", systems[activeSystem]?.heating==="gas"&&systems[activeSystem]?.boilerSizeClass==="large"?`Fuel input (${curveResult?.summary.boilerFuelUnit??"units"})`:"Gas input (therms)", "Unmet heat (BTU/hr)", "Unmet cooling (BTU/hr)", "Status"].map(label => <TableHead key={label}>{label}</TableHead>)}
             </TableRow></TableHeader><TableBody>{rows.map((row, index) => { const p = curveResult?.rows[start + index]; return <TableRow key={start + index}>
               <TableCell>{start + index + 1}</TableCell><TableCell className="date-cell">{row.year}-{pad(row.month)}-{pad(row.day)}</TableCell><TableCell>{pad(row.hour)}:{pad(row.minute)}</TableCell>
               <TableCell>{row.temperatureF?.toFixed(2) ?? "—"}</TableCell><TableCell>{row.dewPointF?.toFixed(2) ?? "—"}</TableCell><TableCell>{[row.dhi, row.dni, row.ghi].map(v => v === null ? "—" : v.toFixed(0)).join(" / ")}</TableCell>
               {[row.solarGain, row.sensibleCooling, row.totalCooling, row.heating].map((v, i) => <TableCell className="numeric" key={i}>{formatLoad(v)}</TableCell>)}
               <TableCell>{p?.enteringDryBulbF?.toFixed(2) ?? "—"}</TableCell><TableCell>{p?.enteringWetBulbF?.toFixed(2) ?? "—"}</TableCell><TableCell>{p?.outdoorAirFraction?.toFixed(3) ?? "—"}</TableCell><TableCell>{formatLoad(p?.availableHeating ?? null)}</TableCell><TableCell>{formatLoad(p?.availableCooling ?? null)}</TableCell>
               <TableCell>{p?.heatingCop?.toFixed(2) ?? "—"}</TableCell><TableCell>{p?.coolingCop?.toFixed(2) ?? "—"}</TableCell><TableCell>{p?.coolingShr?.toFixed(3) ?? "—"}</TableCell>
-              <TableCell>{p?.electricity?.toFixed(2) ?? "—"}</TableCell><TableCell>{p?.fanElectricity?.toFixed(2) ?? "—"}</TableCell><TableCell>{formatLoad(p?.fanHeat ?? null)}</TableCell><TableCell>{systems[activeSystem]?.heating==="gas"&&systems[activeSystem]?.boilerSizeClass==="large"?p?.boilerFuelConsumption?.toFixed(3)??"—":p?.gasTherms?.toFixed(4)??"—"}</TableCell><TableCell>{formatLoad(p?.unmetHeating ?? null)}</TableCell><TableCell>{formatLoad(p?.unmetCooling ?? null)}</TableCell><TableCell>{!p?"Equipment selection pending":p.electricity===null||p.gasTherms===null?"Required data unavailable":(p.unmetHeating??0)>1||(p.unmetCooling??0)>1?"Unmet load":"Calculated"}</TableCell>
+              <TableCell>{p?.electricity?.toFixed(2) ?? "—"}</TableCell><TableCell>{p?.fanElectricity?.toFixed(2) ?? "—"}</TableCell><TableCell>{formatLoad(p?.fanHeat ?? null)}</TableCell><TableCell>{p?.fanOnMinutes?.toFixed(0) ?? "—"}</TableCell>{[p?.heatingStage,p?.heatingOnMinutes,p?.heatingDerate,p?.coolingStage,p?.coolingOnMinutes,p?.coolingDerate].map((value,i)=><TableCell key={`operation-${i}`}>{value ?? "—"}</TableCell>)}<TableCell>{systems[activeSystem]?.heating==="gas"&&systems[activeSystem]?.boilerSizeClass==="large"?p?.boilerFuelConsumption?.toFixed(3)??"—":p?.gasTherms?.toFixed(4)??"—"}</TableCell><TableCell>{formatLoad(p?.unmetHeating ?? null)}</TableCell><TableCell>{formatLoad(p?.unmetCooling ?? null)}</TableCell><TableCell>{!p?"Equipment selection pending":p.electricity===null||p.gasTherms===null?"Required data unavailable":(p.unmetHeating??0)>1||(p.unmetCooling??0)>1?"Unmet load":"Calculated"}</TableCell>
             </TableRow>; })}</TableBody></Table></div>
             <div className="table-pagination"><div className="rows-control"><span>Rows</span><Choice id="page-size" label="Rows per page" value={pageSize} onChange={v => {setPageSize(v); setPage(1);}}>{[25, 50, 100].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</Choice><span className="record-range" aria-live="polite">{(start + 1).toLocaleString()}–{Math.min(start + Number(pageSize), total).toLocaleString()} of {total.toLocaleString()}</span></div><Pagination className="page-nav"><PaginationContent><PaginationItem><button className="page-button" aria-label="First page" disabled={page === 1} onClick={() => setPage(1)}><ChevronsLeft size={17}/></button></PaginationItem><PaginationItem><button className="page-button" aria-label="Previous page" disabled={page === 1} onClick={() => setPage(p => p - 1)}><ChevronLeft size={17}/></button></PaginationItem><PaginationItem><span className="page-count">{page} / {pages}</span></PaginationItem><PaginationItem><button className="page-button" aria-label="Next page" disabled={page >= pages} onClick={() => setPage(p => p + 1)}><ChevronRight size={17}/></button></PaginationItem><PaginationItem><button className="page-button" aria-label="Last page" disabled={page >= pages} onClick={() => setPage(pages)}><ChevronsRight size={17}/></button></PaginationItem></PaginationContent></Pagination></div>
             <div className="table-notes"><Info size={15}/><p>Equipment energy includes heating, cooling and supply-fan operation. Fan heat is included in the load balance. Values are screening estimates; calculation assumptions are available in the engineering guide and CSV. {result.data.rows.some(r => r.temperature === null || r.humidity === null) ? "Missing inputs leave dependent results blank." : ""}</p></div>

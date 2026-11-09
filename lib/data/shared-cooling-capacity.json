@@ -1,0 +1,50 @@
+{
+  "id": "shared-normalized-cooling-capacity-v1",
+  "source_sha256": "4bdbf610e98bd81a8ef291d9daf711c9cc4c25d6ed7e0eb88bd0d6a971a8209d",
+  "basis": "Pooled accepted maximum-airflow data, normalized by each source model's 95/67/80 F reference; equal total weight per source model. Applied to all sizes by modeling assumption, including added large sizes; not an independently validated large-unit fit.",
+  "reference_temperatures_F": [
+    95,
+    67,
+    80
+  ],
+  "temperature_scales_F": [
+    20,
+    6,
+    10
+  ],
+  "terms": [
+    "1",
+    "x",
+    "y",
+    "z",
+    "x^2",
+    "x*y",
+    "x*z",
+    "y^2",
+    "y*z",
+    "z^2"
+  ],
+  "capacity_coefficients": [
+    1.0,
+    -0.11384216922408799,
+    0.07128878725933706,
+    0.052020838029531315,
+    -0.006091094620631708,
+    -0.01389042518888544,
+    0.0041774693639764805,
+    0.022316621643313213,
+    -0.04797469944615107,
+    0.020410774889192126
+  ],
+  "source_models": 24,
+  "source_fit": {
+    "points": 1432,
+    "relative_rmse_percent": 1.7544067120119067,
+    "max_relative_error_percent": 8.653338917494667
+  },
+  "leave_one_size_out": {
+    "points": 1432,
+    "relative_rmse_percent": 1.8663238923286938,
+    "max_relative_error_percent": 9.22924758524001
+  }
+}

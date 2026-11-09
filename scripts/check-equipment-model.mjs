@@ -31,9 +31,11 @@ function load(path) {
 const { DEFAULT_SCHOOL, simulateSchool, humidityRatio, celsius }=load('lib/school.ts');
 const { newScenario,scenarioName,coolingFor }=load('lib/equipment.ts');
 const { UNIT_RATINGS,unitRatingFor }=load('lib/unit-ratings.ts');
-const { simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
+const { simulateEquipment:simulateEquipmentModel, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
+// These component fixtures explicitly serve as their own controlled design days.
+const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel(rows,school,scenario,selection,{rows,basis:'Controlled design fixture',metadata:{Sizing_basis:'Controlled design fixture'},error:null});
 const { airContext, mixAir, enthalpy, wetBulbF }=load('lib/mixed-air.ts');
-const { coolingPoint, COOLING_MODELS }=load('lib/packaged-cooling.ts');
+const { coolingPoint, SOURCE_COOLING_MODELS: COOLING_MODELS }=load('lib/packaged-cooling.ts');
 const { heatingPoint, heatingModelFor, HEATING_MODELS }=load('lib/packaged-heating.ts');
 const { operatingCoolingPoint, operatingHeatingPoint }=load('lib/curve-evaluation.ts');
 const { parseCsv }=load('lib/csv.ts');
@@ -48,7 +50,8 @@ near(enthalpy(celsius(mixed.dryF),mixed.humidityRatio),.9*context.returnH+.1*con
 assert.ok(mixed.dryF>80&&mixed.dryF<95);assert.ok(mixed.wetF<mixed.dryF);
 near(mixAir({...context,ventilationCfm:0},4000).dryF,80);
 near(mixAir({...context,ventilationCfm:4000},4000).dryF,95);
-assert.equal(mixAir(context,300),null);
+near(mixAir(context,300).outdoorFraction,1);near(mixAir(context,300).unmetVentilationCfm,100);near(mixAir(context,300).dryF,95);
+assert.equal(mixAir(context,0),null);
 assert.equal(wetBulbF(80,.2),null);
 const infiltrating=airContext({...row,infiltrationCfm:100000,outdoorAirCfm:100400},DEFAULT_SCHOOL);
 near(mixAir(infiltrating,4000).wetF,mixed.wetF);
@@ -101,25 +104,25 @@ const expectedHighPower=[2.81,3.83,4.69,5.94,7.33,8.76,10.35,12.4,15.21,18.23,22
 UNIT_RATINGS.forEach((r,i)=>{near(r.cooling_system_power_kW,i<12?expectedPower[i]:expectedHighPower[i-12]);near(r.inferred_supply_fan_heat_Btu_hr,r.rated_gross_cooling_Btu_hr-r.rated_net_cooling_Btu_hr);near(r.inferred_supply_fan_power_kW*BTU_PER_KWH,r.inferred_supply_fan_heat_Btu_hr);near(r.cooling_non_supply_fan_power_kW+r.inferred_supply_fan_power_kW,r.cooling_system_power_kW);assert.ok(unitRatingFor({nominal_tons:r.nominal_tons,efficiency:'high'}));});
 const gasScenario={...newScenario('gas'),cooling:'heat-pump',gasEfficiencyPercent:80},resistanceScenario={...newScenario('resistance'),cooling:'heat-pump'};
 assert.equal(coolingFor(newScenario()),'heat-pump');assert.equal(newScenario('gas').cooling,null);assert.equal('name' in newScenario(),false);
-assert.equal(scenarioName(gasScenario),'Heat Pump Cooling + Natural Gas Heating');assert.equal(scenarioName(resistanceScenario),'Heat Pump Cooling + Electric Resistance Heating');
+assert.equal(scenarioName(gasScenario),'Heat Pump Cooling + Small Non-Condensing Boiler Heating');assert.equal(scenarioName(resistanceScenario),'Heat Pump Cooling + Electric Resistance Heating');
 const missingCooling=simulateEquipment([row],DEFAULT_SCHOOL,newScenario('gas'));assert.match(missingCooling.error,/Choose cooling/);assert.equal(missingCooling.rows[0].electricity,null);assert.equal(missingCooling.selection,null);
 const hp=simulateEquipment([row],DEFAULT_SCHOOL,newScenario());
 assert.ok(hp.selection);assert.ok(hp.selection.supplyCfm>=row.ventilationCfm);assert.equal(hp.selection.provisional,true);assert.ok(hp.rows[0].unmetCooling<=1);assert.ok(hp.rows[0].electricity>0);
-const operating=hp.rows[0],rating=unitRatingFor(hp.selection.model),point=coolingPoint(hp.selection.model,95,operating.enteringWetBulbF,operating.enteringDryBulbF);
+const operating=hp.rows[0],rating=unitRatingFor(hp.selection.groups[0].model),point=coolingPoint(hp.selection.groups[0].model,95,operating.enteringWetBulbF,operating.enteringDryBulbF);
 near(operating.availableCooling,hp.selection.count*point.capacityBtuHr);near(operating.outdoorAirFraction,400/hp.selection.supplyCfm);
 near(operating.fanElectricity,hp.selection.count*rating.inferred_supply_fan_power_kW);near(operating.fanHeat,operating.fanElectricity*BTU_PER_KWH);
 near(operating.coolingCop,(operating.availableCooling-operating.fanHeat)/(hp.selection.count*rating.cooling_system_power_kW*BTU_PER_KWH));
 near(operating.electricity,operating.heatingElectricity+operating.coolingElectricity+operating.fanElectricity);
 near(operating.coolingOperatingCop,Math.max(0,operating.deliveredCooling-operating.fanHeat)/(operating.electricity*BTU_PER_KWH));
-const fixed=hp.selection,referencePoint=coolingPoint(fixed.model,95,operating.enteringWetBulbF,operating.enteringDryBulbF);
+const fixed=hp.selection,referencePoint=coolingPoint(fixed.groups[0].model,95,operating.enteringWetBulbF,operating.enteringDryBulbF);
 const fullRow={...row,sensibleCooling:-(fixed.count*referencePoint.capacityBtuHr*referencePoint.shr-operating.fanHeat),coolBalance:fixed.count*referencePoint.capacityBtuHr*referencePoint.shr-operating.fanHeat,latentCooling:-fixed.count*referencePoint.capacityBtuHr*(1-referencePoint.shr)};
 const full=simulateEquipment([fullRow],DEFAULT_SCHOOL,newScenario(),fixed).rows[0];near(full.electricity,fixed.count*rating.cooling_system_power_kW,1e-7);near(full.coolingCop,full.coolingOperatingCop);
 const heatRow={...row,temperatureF:47,temperature:celsius(47),freeFloatF:70,heatingSetpointF:70,coolingSetpointF:80,ventilationCfm:0,heating:15500,heatBalance:15500,coolBalance:-300000,sensibleCooling:0,latentCooling:0,totalCooling:0};
 const heating=simulateEquipment([heatRow],DEFAULT_SCHOOL,newScenario());
-assert.equal(heating.selection.count,1);assert.equal(heating.selection.model.nominal_tons,3);assert.equal(heating.selection.verifiedHeatingHours,1);
+assert.equal(heating.selection.count,1);assert.equal(heating.selection.groups[0].model.nominal_tons,3);assert.equal(heating.selection.verifiedHeatingHours,1);
 const fkw=1000/BTU_PER_KWH;
 near(heating.rows[0].availableHeating,31000);near(heating.rows[0].deliveredHeating,15500);near(heating.rows[0].fanElectricity,fkw);
-near(heating.rows[0].electricity,(2.6-fkw)*(14500/30000)+fkw);near(heating.rows[0].unmetHeating,0);near(heating.rows[0].heatingCop,31000/(BTU_PER_KWH*2.6));
+near(heating.rows[0].electricity,(2.6-fkw)*(14500/30000)/(.85+.15*(14500/30000))+fkw);near(heating.rows[0].unmetHeating,0);near(heating.rows[0].heatingCop,31000/(BTU_PER_KWH*2.6));
 const undersized=simulateEquipment([{...heatRow,heating:62000,heatBalance:62000}],DEFAULT_SCHOOL,newScenario(),heating.selection).rows[0];near(undersized.deliveredHeating,31000);near(undersized.unmetHeating,31000);near(undersized.electricity,2.6);
 const gas=simulateEquipment([heatRow],DEFAULT_SCHOOL,gasScenario),resistance=simulateEquipment([heatRow],DEFAULT_SCHOOL,resistanceScenario);
 for(const r of [gas,resistance]){assert.ok(r.selection);near(r.heatingCapacityBtuHr,14500);near(r.rows[0].fanHeat,1000);near(r.rows[0].fanElectricity,fkw);near(r.rows[0].unmetHeating,0);near(r.rows[0].unmetCooling,0);assert.ok(r.rows[0].enteringWetBulbF!==null);}
@@ -129,8 +132,9 @@ const noRh=simulateEquipment([{...heatRow,humidity:null,latentCooling:null,total
 const fanOnly={...heatRow,heating:0,heatBalance:-10000,coolBalance:-5000,ventilationCfm:100};
 const ventilation=simulateEquipment([fanOnly],DEFAULT_SCHOOL,gasScenario).rows[0];near(ventilation.electricity,fkw);near(ventilation.heatingElectricity,0);near(ventilation.coolingElectricity,0);near(ventilation.gasTherms,0);
 const induced=simulateEquipment([{...row,heating:0,sensibleCooling:0,latentCooling:0,totalCooling:0,coolBalance:-100,ventilationCfm:100}],DEFAULT_SCHOOL,gasScenario).rows[0];assert.ok(induced.coolingElectricity>0);assert.ok(induced.fanHeat>0);assert.ok(induced.unmetCooling<=1);
-const off=simulateEquipment([{...fanOnly,ventilationCfm:0}],DEFAULT_SCHOOL,resistanceScenario).rows[0];near(off.electricity,0);near(off.fanElectricity,0);near(off.fanHeat,0);
-const high=simulateEquipment([row],DEFAULT_SCHOOL,{...newScenario(),efficiency:'high'});assert.ok(high.rows[0].coolingElectricity>0);assert.ok(high.rows[0].fanElectricity>0);near(high.rows[0].electricity,high.rows[0].heatingElectricity+high.rows[0].coolingElectricity+high.rows[0].fanElectricity);assert.equal(unitRatingFor({nominal_tons:30,efficiency:'high'}),null);
+const scheduled=simulateEquipment([{...fanOnly,occupied:true,ventilationCfm:0}],DEFAULT_SCHOOL,resistanceScenario).rows[0];near(scheduled.electricity,fkw);near(scheduled.fanElectricity,fkw);near(scheduled.coolingElectricity,0);
+const offResult=simulateEquipmentModel([{...fanOnly,occupied:false,ventilationCfm:0}],DEFAULT_SCHOOL,resistanceScenario,resistance.selection,{rows:[heatRow],basis:'Occupied design, unoccupied annual hour',metadata:{},error:null});assert.equal(offResult.error,null);const off=offResult.rows[0];near(off.electricity,0);near(off.fanElectricity,0);near(off.fanHeat,0);
+const high=simulateEquipment([row],DEFAULT_SCHOOL,{...newScenario(),efficiency:'high'});assert.ok(high.rows[0].coolingElectricity>0);assert.ok(high.rows[0].fanElectricity>0);near(high.rows[0].electricity,high.rows[0].heatingElectricity+high.rows[0].coolingElectricity+high.rows[0].fanElectricity);assert.equal(unitRatingFor({nominal_tons:30,efficiency:'high'}).scaledFromNominalTons,25);
 const highHeat=simulateEquipment([heatRow],DEFAULT_SCHOOL,{...newScenario(),efficiency:'high'});assert.ok(highHeat.rows[0].electricity>0);assert.ok(highHeat.rows[0].fanElectricity>0);
 const strictScenario={...newScenario(),rangeMode:'strict'};
 const coldGap=simulateEquipment([{...heatRow,temperatureF:-9,temperature:celsius(-9)}],DEFAULT_SCHOOL,strictScenario);assert.equal(coldGap.rows[0].availableHeating,null);assert.equal(coldGap.rows[0].electricity,null);assert.equal(coldGap.rows[0].unmetHeating,null);assert.equal(coldGap.selection.unverifiedHeatingHours,1);assert.equal(coldGap.selection.unverifiedCoolingHours,0);
@@ -167,7 +171,7 @@ for(const result of [hp,gas,resistance]){const exported=parseCsv(equipmentResult
 const comparison=parseCsv(equipmentComparisonCsv([hp,gas,resistance]));comparison.slice(1).forEach(r=>assert.equal(r.length,comparison[0].length));
 const {EquipmentScenarios}=load('components/equipment-scenarios.tsx');
 const html=renderToStaticMarkup(createElement(EquipmentScenarios,{choices:[hp.scenario,gasScenario,resistanceScenario],results:[hp,gas,resistance],active:0,onActive:()=>{},onChange:()=>{}}));
-assert.match(html,/Cooling equipment/);assert.match(html,/required/);assert.match(html,/Heat Pump Cooling \+ Natural Gas Heating/);assert.doesNotMatch(html,/Scenario name|Heating only|COP is still awaiting|type="file"/);assert.match(html,/Supply-fan|supply.fan/);
+assert.match(html,/Cooling equipment/);assert.match(html,/required/);assert.match(html,/Heat Pump Cooling \+ Small Non-Condensing Boiler Heating/);assert.doesNotMatch(html,/Scenario name|Heating only|COP is still awaiting|type="file"/);assert.match(html,/Supply-fan|supply.fan/);
 assert.doesNotMatch(html,/<details|Use defaults|Modify values|flagged source/i);assert.doesNotMatch(html,/Outside supplied|Trane|Precedent|Cooling power and COP available|Boundary estimates included/i);
 console.log('Equipment checks passed: source heating fits and nominal power, inferred fans, no double counting, gas/resistance fan heat credit, fan-only ventilation and induced cooling, required cooling, derived names, COP, domains, both efficiency families, annual energy, CSVs and rendered controls.');
 
@@ -193,3 +197,39 @@ near(largerGas.heatingCapacityBtuHr-smallGas.heatingCapacityBtuHr,5000);
 const sizeExport=parseCsv(equipmentResultsCsv(smallLoads,smallBuilding,smallGas,'Test','UTC'));
 assert.equal(sizeExport[1][sizeExport[0].indexOf('Floor_area_ft2')],'1000');
 assert.equal(sizeExport[1][sizeExport[0].indexOf('Number_of_floors')],'1');
+
+// Hourly readouts expose the same operating profile used for energy, and survive CSV export.
+const { hourlyOperation }=load('lib/hourly-operation.ts');
+const { zonedSystemOperation }=load('lib/equipment-staging.ts');
+const cyclingReadout=hourlyOperation([{model:'test',count:2,staging:zonedSystemOperation(25,100,2,[.5,1])}]);
+assert.equal(cyclingReadout.onMinutes,'16.9');
+assert.equal(cyclingReadout.derate,'0.8875');
+assert.match(cyclingReadout.stage,/Stage 1 .*16.9 min/);
+const sharedReadout=hourlyOperation([{model:'test',count:2,staging:zonedSystemOperation(150,100,2,[.5,1])}]);
+assert.equal(sharedReadout.onMinutes,'60.0');
+assert.equal(sharedReadout.derate,'1.0000');
+assert.match(sharedReadout.stage,/Stage 1 .*30.0 min.*Stage 2 .*30.0 min/);
+const mixedReadout=hourlyOperation([
+ {model:'small',count:2,staging:zonedSystemOperation(25,100,2,[.5,1])},
+ {model:'large',count:1,staging:zonedSystemOperation(100,100,1,[1])}
+]);
+assert.match(mixedReadout.onMinutes,/2 × small: 16.9; 1 × large: 60.0/);
+assert.equal(operating.fanOnMinutes,60);
+assert.equal(ventilation.fanOnMinutes,60);
+assert.equal(scheduled.fanOnMinutes,60);
+assert.equal(off.fanOnMinutes,0);
+assert.equal(ventilation.coolingStage,'Off');
+assert.equal(gas.rows[0].heatingDerate,'1.0000');
+assert.equal(gas.rows[0].heatingOnMinutes,(gas.rows[0].boilerRuntimeFraction*60).toFixed(1));
+assert.equal(resistance.rows[0].heatingStage,null);
+assert.equal(operating.heatingStage,'Off');
+assert.ok(operating.coolingStage);
+assert.equal(missingCooling.rows[0].coolingStage,null);
+for(const result of [hp,gas,resistance]){
+ const exported=parseCsv(equipmentResultsCsv([result===hp?row:heatRow],DEFAULT_SCHOOL,result,'Test','UTC'));
+ for(const [header,key] of [['Heating_stage_and_minutes','heatingStage'],['Heating_on_minutes_per_unit','heatingOnMinutes'],['Heating_cycling_PLF','heatingDerate'],['Cooling_stage_and_minutes','coolingStage'],['Cooling_on_minutes_per_unit','coolingOnMinutes'],['Cooling_cycling_PLF','coolingDerate'],['Supply_fan_on_minutes','fanOnMinutes']]){
+  assert.ok(exported[2].includes(header));
+  assert.equal(exported[3][exported[2].indexOf(header)],String(result.rows[0][key]??''));
+ }
+}
+console.log('Hourly operation checks passed: cycling loss, stage time sharing, mixed sizes, missing data, fan runtime, CSV column alignment.');
