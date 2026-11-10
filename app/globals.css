@@ -419,6 +419,13 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 @media (max-width: 900px) { .operation-grid .distribution-basis { min-height: 0; } }
 @media (max-width: 600px) { .distribution-controls > label { width: 100%; } }
 .billing-breakdown { margin-top: 24px; }
+.end-use-breakdown { margin-top: 28px; }
+.end-use-breakdown h3 { font-size: 1.1rem; font-weight: 650; margin-bottom: 8px; }
+.end-use-breakdown > p { font-size: .85rem; line-height: 1.6; color: #475569; margin: 10px 0 14px; }
+.end-use-breakdown thead th[colspan] { white-space: normal; min-width: 280px; max-width: 400px; }
+.end-use-breakdown td { text-align: right; background: white; }
+.end-use-consumption { display: block; color: #475569; font-size: .75rem; margin-top: 4px; }
+.end-use-breakdown tfoot th, .end-use-breakdown tfoot td { font-weight: 650; background: #e7f0f5; border-top: 2px solid #cbd9e3; }
 .billing-breakdown summary { cursor: pointer; font-weight: 600; }
 .billing-breakdown h4 { font-weight: 650; margin: 18px 0 8px; }
 @media (max-width: 900px) { .annual-graphs { grid-template-columns: 1fr; } }
