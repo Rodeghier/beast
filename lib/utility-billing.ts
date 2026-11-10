@@ -17,7 +17,12 @@ export type BillingHour = Pick<ClimateRow, "year" | "month" | "day" | "hour" | "
 export type ElectricMonth = { energy: number; demand: number; fixed: number; minimum: number; total: number };
 export type ElectricityBill = { months: ElectricMonth[]; total: number | null; reason: string | null; warnings: string[] };
 export type MonthlyPerformance = { month: number; energy: number; electricity: number; gasTherms:number; fuelConsumption:number; fuelUnit:BoilerFuelUnit|null; gasCost:number|null; gasPeriod:string|null; cost: number | null; co2e: number | null };
+export type AnnualEndUse = {
+  id:"heating"|"cooling"|"fans";electricity:number|null;fuelConsumption:number|null;fuelUnit:BoilerFuelUnit|null;
+  energy:number|null;co2e:number|null;
+};
 export type AnnualPerformance = {
+  endUses:AnnualEndUse[];
   months: MonthlyPerformance[]; energy: number | null; cost: number | null; co2e: number | null; fuelUnit:BoilerFuelUnit|null;
   electricBill: ElectricityBill; emissionsReason: string | null; reason: string | null; gasReason:string|null;
 };
@@ -152,7 +157,7 @@ export function annualPerformance(result: EquipmentResult, rows: ClimateRow[], t
   const invalid=!!result.error || !result.summary.fullYear || rows.length!==8760 || dates.size!==8760 || !calendar || result.rows.length!==rows.length || result.rows.some(r=>!valid(r.electricity)||!valid(r.gasTherms)||!valid(r.boilerFuelConsumption)||!valid(r.boilerFuelInputBtu));
   if(invalid){
     const reason=result.error || result.rows.find(r=>r.electricity===null||r.gasTherms===null)?.status || "A complete year of valid equipment energy is required.";
-    return {months:[],energy:null,cost:null,co2e:null,fuelUnit:result.summary.boilerFuelUnit,electricBill:{months:[],total:null,reason,warnings:[]},reason,emissionsReason:null,gasReason:null};
+    return {endUses:[],months:[],energy:null,cost:null,co2e:null,fuelUnit:result.summary.boilerFuelUnit,electricBill:{months:[],total:null,reason,warnings:[]},reason,emissionsReason:null,gasReason:null};
   }
   const hours=rows.map((row,i)=>({...row,electricity:result.rows[i].electricity!}));
   const electricBill:ElectricityBill=hours.every(h=>h.electricity===0)?{months:Array.from({length:12},()=>({energy:0,demand:0,fixed:0,minimum:0,total:0})),total:0,reason:null,warnings:["No modeled electricity use; no separate electricity account charges assigned."]}:electricityBill(hours,tariff,manualRate);
@@ -171,7 +176,21 @@ export function annualPerformance(result: EquipmentResult, rows: ClimateRow[], t
     return {month:month+1,electricity,gasTherms,fuelConsumption,fuelUnit,energy:electricity*3412.141633/1e6+fuelInputBtu/1e6,gasCost,gasPeriod:price?.period??null,cost:electricCost===null||gasCost===null?null:electricCost+gasCost,co2e};
   });
   const total=(key:"energy"|"cost"|"co2e")=>months.every(m=>m[key]!==null)?months.reduce((sum,m)=>sum+m[key]!,0):null;
-  return {months,energy:total("energy"),cost:total("cost"),co2e:total("co2e"),fuelUnit:result.summary.boilerFuelUnit,electricBill,reason:null,
+  // Keep all fan use separate: simultaneous heating/cooling calls must not
+  // count the fan twice. Missing components remain unavailable, never zero.
+  const componentSum=(key:"heatingElectricity"|"coolingElectricity"|"fanElectricity"|"boilerFuelConsumption"|"boilerFuelInputBtu"|"gasTherms")=>result.rows.every(r=>valid(r[key]))?result.rows.reduce((sum,r)=>sum+r[key]!,0):null;
+  const endUses:AnnualEndUse[]=(["heating","cooling","fans"] as const).map(id=>{
+    const electricity=componentSum(id==="heating"?"heatingElectricity":id==="cooling"?"coolingElectricity":"fanElectricity");
+    const fuelConsumption=id==="heating"?componentSum("boilerFuelConsumption"):0;
+    const fuelInput=id==="heating"?componentSum("boilerFuelInputBtu"):0;
+    const gasTherms=id==="heating"?componentSum("gasTherms"):0;
+    const fuelUnit=id==="heating"?result.summary.boilerFuelUnit:null;
+    const emissions=energyEmissions(electricity,gasTherms,region,combustion).co2e;
+    return {id,electricity,fuelConsumption,fuelUnit,
+      energy:electricity===null||fuelInput===null?null:electricity*3412.141633/1e6+fuelInput/1e6,
+      co2e:fuelConsumption===null||(fuelConsumption>0&&fuelUnit!=="therms")||emissions===null?null:emissions/1000};
+  });
+  return {endUses,months,energy:total("energy"),cost:total("cost"),co2e:total("co2e"),fuelUnit:result.summary.boilerFuelUnit,electricBill,reason:null,
     gasReason:months.some(m=>m.gasCost===null)?result.summary.boilerFuelUnit!=="therms"?"Propane and No. 2 light-oil price data are not connected; fuel cost is unavailable for those fuels.":"Natural-gas cost requires an EIA monthly price for each used month and a valid heat-content conversion. Refresh gas data or configure the EIA connection.":null,
     emissionsReason:months.some(m=>m.co2e===null)?result.summary.boilerFuelUnit!=="therms"?"Propane and No. 2 light-oil combustion emissions factors are not connected; total emissions are unavailable.":"Required EPA electricity or natural-gas emissions factors are unavailable.":null};
 }

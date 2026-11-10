@@ -2,7 +2,7 @@
 
 An engineering handbook for readers with basic Python experience
 
-Prepared from the local repository on November 4 2026
+Prepared from the local repository on November 8 2026
 
 ## 1 What this guide helps you do
 
@@ -296,6 +296,10 @@ Heating outputs follow the catalog basis: integrated net capacity and total powe
 
 `unitRatingFor` matches size and efficiency family. Nominal total cooling kW is held constant at full output because no operating-temperature power correction is supplied. The inferred supply-fan heat is rated gross capacity minus rated net capacity. Inferred fan kW is that heat divided by 3412.141633.
 
+The source is the supplied Trane catalog PKGP-PRC023F-EN extract `Unit_data_full.pdf`, general-data tables 6 and 7, printed pages 24–29. Table 6 supplies standard-efficiency ratings; table 7 supplies high-efficiency ratings. `scripts/extract-unit-data.py` reads the rows labeled “Gross Cooling Capacity,” “AHRI Net Cooling Capacity” and “System Power (kW)” into `lib/data/precedent-unit-ratings.json` and `public/references/packaged-unit-ratings.csv`. The source PDF is not bundled. These fixed nominal/AHRI ratings are separate from the hourly gross cooling capacity evaluated at mixed-air conditions and maximum catalog airflow.
+
+For the standard 3-ton WSK036, gross cooling is 38,000 BTU/hr and AHRI net cooling is 37,000 BTU/hr. The inferred fan heat is 1,000 BTU/hr and fan input is approximately 0.2931 kW. Net cooling accounts for fan motor heat; gross cooling excludes that heat. `bankRatings` sums each group's per-unit fan value times its installed count. Extended sizes scale the selected family's 25-ton rating as described above. The fan estimate is held at its rating value during annual operation; it is not recomputed from hourly curve capacity.
+
 This fan estimate is not motor nameplate horsepower converted to operating watts. It is also not corrected by an airflow fan law. These distinctions explain why an hourly capacity curve and a nominal power rating can be combined only as a screening estimate.
 
 ## 10 Temperature range policy
@@ -344,9 +348,11 @@ The fan runs for the full hour during scheduled occupied operation or a building
 
 ### Cooling duty example
 
-Consider a hypothetical installed gross cooling capacity of 100,000 BTU/hr, SHR 0.75, nominal system input 10 kW, and inferred fan input 1 kW. Fan heat is 3,412.141633 BTU/hr. Suppose sensible demand after fan heat is 45,000 BTU/hr and latent demand is 10,000 BTU/hr.
+Consider a hypothetical unit with gross cooling capacity of 100,000 BTU/hr, SHR 0.75, nominal system input 10 kW, and inferred fan input 1 kW. Assume 50% and 100% capacity stages. Fan heat is 3,412.141633 BTU/hr. Suppose sensible demand after fan heat is 45,000 BTU/hr and latent demand is 10,000 BTU/hr.
 
 Sensible availability is 75,000 BTU/hr and latent availability is 25,000 BTU/hr. The two required duty fractions are 0.60 and 0.40, so duty is 0.60. Gross cooling delivered is 60,000 BTU for that one-hour record. Cooling electricity excluding the supply fan is `(10 - 1) * 0.60 = 5.4 kWh`. Adding the full-hour fan gives 6.4 kWh total cooling-mode electricity.
+
+The hourly readout shows 48 minutes at the 50% stage and 12 minutes at the 100% stage, total ON time 60 minutes and PLF 1.0000. A single-stage unit at the same load would cycle with degradation and require a different electricity calculation.
 
 Full-output net COP is approximately 2.83. Operating net COP is approximately 2.59 because delivered net cooling is 60,000 minus fan heat, while fan input is not reduced with coil duty. The two COP fields answer different questions; they should not be expected to match at part duty.
 
@@ -371,6 +377,28 @@ Duty is limited to one. An overloaded unit records unmet heating or component co
 These charts report hourly time totals. They cannot determine whether 30 ON minutes occurred in one run or several starts. The model does not resolve thermostat cycle periods or actual zone diversity. Same-size units have identical assumed loads and profiles. Boiler firing uses its existing runtime fraction; resistance and the chiller placeholder do not have stage switching data and therefore do not receive invented stage or runtime distributions. Their bank-average capacity and power view remains available.
 
 Low bank demand is distributed across all assigned zones, so local compressor cycling may increase instead of concentrating the load in a few full-stage units. Sensible and latent cooling requirements are checked separately. Heating and ventilation airflow are diagnostics only; they do not set the bank size. `PackagedSelection.designLoading` records the maximum available design load/capacity ratios for heating, sensible cooling, latent cooling and ventilation. The UI displays these ratios; CSV metadata exports them as `Design_check_loading_JSON`. This helps distinguish a lightly loaded installed bank from a cycling individual unit.
+
+### Hourly stage on time and cycling derate columns
+
+The hourly results table and `equipmentResultsCsv` expose heating and cooling stages, total ON minutes per unit, cycling part-load factor (PLF), and supply-fan ON minutes. `lib/hourly-operation.ts` formats the same group `StageOperation` records used by dispatch and energy calculations. It does not resize equipment, recalculate energy or add a second cycling penalty. `simulateEquipment` stores these readouts in `EquipmentHour`; `app/page.tsx` displays them and the CSV appends matching fields.
+
+| Hourly CSV column | EquipmentHour field | Meaning |
+| --- | --- | --- |
+| `Heating_stage_and_minutes` | `heatingStage` | Active heating stages, capacity percentages and minutes at each stage |
+| `Heating_on_minutes_per_unit` | `heatingOnMinutes` | Total compressor or burner ON minutes per unit during the hour |
+| `Heating_cycling_PLF` | `heatingDerate` | Heating cycling efficiency factor; 1 means no additional cycling derate |
+| `Cooling_stage_and_minutes` | `coolingStage` | Active cooling stages, capacity percentages and minutes at each stage |
+| `Cooling_on_minutes_per_unit` | `coolingOnMinutes` | Total compressor ON minutes per unit during the hour |
+| `Cooling_cycling_PLF` | `coolingDerate` | Cooling cycling efficiency factor; 1 means no cycling derate |
+| `Supply_fan_on_minutes` | `fanOnMinutes` | 60 while the modeled supply fan runs, otherwise 0; unknown fan energy leaves it unavailable |
+
+The six heating/cooling readouts are strings. A mixed bank includes separate model/count labels and semicolon-separated profiles in each cell, so a single cell may contain more than one number. ON minutes are per unit, not summed across the bank. Stage minutes describe how long a unit occupies a capacity stage; they sum to its ON minutes. One known idle mode is `Off`, 0.0 minutes and PLF 1.0000. Unavailable switching data or a scenario error leaves the mode readouts null, shown as an em dash in the table and an empty cell in the CSV.
+
+Below minimum stage, let `r` be the assigned unit load divided by minimum-stage capacity. The model uses `PLF = 1 - 0.15 * (1 - r)` and `ON minutes = 60 * r / PLF`. A factor of 0.8875 represents an 11.25% reduction in cycling efficiency, not an 11.25% reduction in catalog capacity. For example, at 12.5% full-capacity load with a 50% minimum stage, `r = 0.25`, PLF is 0.8875 and ON time is about 16.9 minutes. Between 50% and 100% stages at 75% load, each stage runs 30 minutes, total ON time is 60 minutes and PLF is 1.0000. These hourly totals do not establish individual run lengths or starts per hour.
+
+For a boiler, the stage is `Full firing` or `Off`, ON minutes equal `60 * boilerRuntimeFraction`, and PLF is 1.0000 because no extra cycling derate is applied. Resistance heating and the provisional chiller have no switching model, so their stage, ON-time and PLF cells remain unavailable. Chiller air-handler fans are excluded, so their supply-fan ON-time is 0. Packaged supply fans retain their full-hour rating estimate independently of compressor cycling, with no fan derate. Fan electricity and heat are counted once in the shared energy and load balance.
+
+CSV metadata `Cycling_derate_basis` explains the factor and `Stage_time_basis` explains the unit/hour basis. `Equipment_group_performance_JSON` retains unrounded group stage fractions for analysis. Boundary estimates evaluate performance at covered curve conditions; they do not apply an additional derate. Existing boundary flags and evaluated curve temperatures identify those estimates separately. The expandable explanation above the hourly table covers the same interpretation.
 
 ## 13 Annual energy cost and emissions
 
@@ -504,7 +532,9 @@ The development command requests port 5173. Dependency installation and server s
 | `node scripts/check-school-model.mjs` | Building balance psychrometrics schedule signs and missing data |
 | `node scripts/check-mixed-equipment.mjs` | Mixed integer objective against exhaustive counts, occupancy reductions, ignored checks, group energy, worker contract and exports |
 | `node scripts/check-design-sizing.mjs` | Published station conditions, daily profiles, design schedules, sizing independence, API and exports |
-| `node scripts/check-equipment-model.mjs` | Accepted fitting data curve evaluation sizing fans COP exports and controls |
+| `node scripts/check-equipment-model.mjs` | Curve evaluation, sizing, fans, COP, hourly stage/on-time/PLF readouts, mixed profiles, unavailable values, CSV alignment and controls |
+| `node scripts/check-equipment-operation.mjs` | Unit stage/runtime arithmetic, histogram conservation, idle/missing records and boiler firing |
+| `node scripts/check-equipment-utilization.mjs` | Bank-average capacity and power distributions and available-hour coverage |
 | `node scripts/check-beast-scorecard.mjs` | Tariffs annual completeness costs emissions and result displays |
 | `node scripts/check-location-energy.mjs` | Provider parsing region resolution and source-data conventions |
 | `pnpm build` | Browser/server production compilation |
@@ -593,6 +623,9 @@ Edit the relevant component and `app/globals.css`. Keep engineering calculations
 | `lib/unit-ratings.ts` | `unitRatingFor` power and fan lookup |
 | `lib/equipment.ts` | Scenario inputs matching names and defaults |
 | `lib/equipment-model.ts` | `autosizePackaged` and `simulateEquipment` |
+| `lib/hourly-operation.ts` | `hourlyOperation` formats per-group stages, ON minutes and cycling PLF for the table and CSV |
+| `lib/equipment-staging.ts` | `zonedSystemOperation` and `stageTimeFractions` calculate unit profiles |
+| `lib/equipment-operation.ts` | `equipmentOperation` aggregates unit stage and ON/OFF histograms |
 | `lib/utility-billing.ts` | `electricityBill` and `annualPerformance` |
 | `lib/emissions.ts` | `energyEmissions` and `totalCo2e` |
 | `lib/location-energy.ts` | Provider schemas parsers and EPA geometry |
