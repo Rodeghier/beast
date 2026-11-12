@@ -21,14 +21,14 @@ function load(path) {
   if (!existsSync(file)) file += existsSync(file + ".tsx") ? ".tsx" : ".ts";
   if (file.endsWith(".json")) return JSON.parse(readFileSync(file, "utf8"));
   if (cache.has(file)) return cache.get(file).exports;
-  const module = { exports: {} }; cache.set(file, module);
+  const loadedModule = { exports: {} }; cache.set(file, loadedModule);
   const { outputText } = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } });
   const localRequire = name => name.startsWith("@/") ? load(name.slice(2)) : name.startsWith(".") ? load(resolve(dirname(file), name)) : require(name);
-  new Function("require", "module", "exports", outputText)(localRequire, module, module.exports);
-  return module.exports;
+  new Function("require", "module", "exports", outputText)(localRequire, loadedModule, loadedModule.exports);
+  return loadedModule.exports;
 }
 
-const { DEFAULT_SCHOOL, simulateSchool, humidityRatio, celsius }=load('lib/school.ts');
+const { DEFAULT_SCHOOL, simulateSchool, celsius }=load('lib/school.ts');
 const { newScenario,scenarioName,coolingFor }=load('lib/equipment.ts');
 const { UNIT_RATINGS,unitRatingFor }=load('lib/unit-ratings.ts');
 const { simulateEquipment:simulateEquipmentModel, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
@@ -227,9 +227,59 @@ assert.ok(operating.coolingStage);
 assert.equal(missingCooling.rows[0].coolingStage,null);
 for(const result of [hp,gas,resistance]){
  const exported=parseCsv(equipmentResultsCsv([result===hp?row:heatRow],DEFAULT_SCHOOL,result,'Test','UTC'));
- for(const [header,key] of [['Heating_stage_and_minutes','heatingStage'],['Heating_on_minutes_per_unit','heatingOnMinutes'],['Heating_cycling_PLF','heatingDerate'],['Cooling_stage_and_minutes','coolingStage'],['Cooling_on_minutes_per_unit','coolingOnMinutes'],['Cooling_cycling_PLF','coolingDerate'],['Supply_fan_on_minutes','fanOnMinutes']]){
-  assert.ok(exported[2].includes(header));
-  assert.equal(exported[3][exported[2].indexOf(header)],String(result.rows[0][key]??''));
+ const header=exported[2],data=exported[3],cell=name=>data[header.indexOf(name)];
+ assert.equal(header.length,data.length);
+ assert.equal(new Set(header).size,header.length);
+ assert.ok(!header.includes('Heating_stage_and_minutes'));
+ assert.ok(!header.includes('Cooling_stage_and_minutes'));
+ assert.equal(cell('Supply_fan_on_minutes'),String(result.rows[0].fanOnMinutes??''));
+ for(const name of header.filter(h=>/_(stage_\d+_minutes_per_unit|on_minutes_per_unit|off_minutes_per_unit|runtime_fraction|cycling_PLF)$/.test(h))){
+  const value=cell(name);assert.ok(value===''||Number.isFinite(Number(value)),`${name}: ${value}`);
  }
+ if(result===gas){near(Number(cell('Heating_stage_1_minutes_per_unit')),60*result.rows[0].boilerRuntimeFraction);near(Number(cell('Heating_cycling_PLF')),1);}
+ if(result===resistance)assert.equal(cell('Heating_on_minutes_per_unit'),'');
 }
-console.log('Hourly operation checks passed: cycling loss, stage time sharing, mixed sizes, missing data, fan runtime, CSV column alignment.');
+
+// Exercise the full CSV with a mixed bank whose stages and duty profiles differ.
+const smallModel=COOLING_MODELS.find(m=>m.efficiency==='standard'&&m.nominal_tons===3);
+const largeModel=COOLING_MODELS.find(m=>m.efficiency==='standard'&&m.nominal_tons===6);
+const mixedGroups=[{model:smallModel,heatingModel:heatingModelFor(smallModel),count:2},{model:largeModel,heatingModel:heatingModelFor(largeModel),count:1}];
+const mixedResult={...hp,error:null,selection:{...hp.selection,groups:mixedGroups,count:3},rows:[{...hp.rows[0],heatingElectricity:0,coolingElectricity:1,groupPerformance:JSON.stringify({cooling:[
+ {model:smallModel.id,staging:zonedSystemOperation(50,100,2,[1])},
+ {model:largeModel.id,staging:zonedSystemOperation(50,100,1,[.34,.66,1])}
+]})}]};
+const mixedCsv=parseCsv(equipmentResultsCsv([row],DEFAULT_SCHOOL,mixedResult,'Test','UTC'));
+const mixedHeader=mixedCsv[2],mixedData=mixedCsv[3],mixedCell=name=>mixedData[mixedHeader.indexOf(name)];
+assert.equal(mixedHeader.length,mixedData.length);
+assert.equal(mixedCell('Cooling_group_1_model'),smallModel.id);
+assert.equal(mixedCell('Cooling_group_2_model'),largeModel.id);
+near(Number(mixedCell('Cooling_group_1_unit_count')),2);
+near(Number(mixedCell('Cooling_group_1_stage_1_capacity_percent')),100);
+near(Number(mixedCell('Cooling_group_1_stage_1_minutes_per_unit')),60*.25/.8875);
+near(Number(mixedCell('Cooling_group_1_cycling_PLF')),.8875);
+near(Number(mixedCell('Cooling_group_2_stage_1_minutes_per_unit')),30);
+near(Number(mixedCell('Cooling_group_2_stage_2_minutes_per_unit')),30);
+near(Number(mixedCell('Cooling_group_2_stage_3_minutes_per_unit')),0);
+near(Number(mixedCell('Cooling_group_2_cycling_PLF')),1);
+for(const [mode,stageCounts] of [['Heating',[1,3]],['Cooling',[1,3]]])for(let i=0;i<stageCounts.length;i++){
+ const prefix=`${mode}_group_${i+1}`,on=Number(mixedCell(`${prefix}_on_minutes_per_unit`)),off=Number(mixedCell(`${prefix}_off_minutes_per_unit`));
+ near(on+off,60);
+ near(on,Array.from({length:stageCounts[i]},(_,j)=>Number(mixedCell(`${prefix}_stage_${j+1}_minutes_per_unit`))).reduce((a,b)=>a+b,0));
+ near(Number(mixedCell(`${prefix}_runtime_fraction`)),on/60);
+ if(mode==='Heating'){near(on,0);near(off,60);}
+}
+// Missing operation and scenario errors leave numeric times blank, not zero.
+for(const changes of [{coolingElectricity:null},{groupPerformance:'invalid JSON'}]){
+ const invalid={...mixedResult,rows:[{...mixedResult.rows[0],...changes}]};
+ const csv=parseCsv(equipmentResultsCsv([row],DEFAULT_SCHOOL,invalid,'Test','UTC'));
+ assert.equal(csv[3][csv[2].indexOf('Cooling_group_1_stage_1_minutes_per_unit')],'');
+ assert.equal(csv[3][csv[2].indexOf('Cooling_group_2_cycling_PLF')],'');
+}
+const failedCsv=parseCsv(equipmentResultsCsv([row],DEFAULT_SCHOOL,{...mixedResult,error:'Unavailable selection'},'Test','UTC'));
+assert.equal(failedCsv[3][failedCsv[2].indexOf('Heating_group_1_off_minutes_per_unit')],'');
+// Full-output four-stage units spend all 60 minutes in their highest stage.
+const fourStageModel=COOLING_MODELS.find(m=>m.efficiency==='standard'&&m.nominal_tons===20);
+const fourStageResult={...mixedResult,selection:{...mixedResult.selection,groups:[{model:fourStageModel,heatingModel:heatingModelFor(fourStageModel),count:1}],count:1},rows:[{...mixedResult.rows[0],groupPerformance:JSON.stringify({cooling:[{model:fourStageModel.id,staging:zonedSystemOperation(100,100,1,[.24,.36,.64,1])}]})}]};
+const fourCsv=parseCsv(equipmentResultsCsv([row],DEFAULT_SCHOOL,fourStageResult,'Test','UTC'));
+for(let stage=1;stage<=4;stage++)near(Number(fourCsv[3][fourCsv[2].indexOf(`Cooling_stage_${stage}_minutes_per_unit`)]),stage===4?60:0);
+console.log('Hourly operation checks passed: numeric CSV stage times, unrounded cycling, mixed groups, time conservation, idle/unknown/error states, four stages, boiler and fan runtime.');
