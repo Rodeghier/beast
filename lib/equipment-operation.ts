@@ -5,7 +5,7 @@
 import type { EquipmentResult, EquipmentHour } from "./equipment-model";
 import { coolingFor } from "./equipment";
 import { compressorStages } from "./precedent-stages";
-import type { StageOperation } from "./equipment-staging";
+import { CYCLING_DEGRADATION_COEFFICIENT, type StageOperation } from "./equipment-staging";
 import type { UtilizationMode } from "./equipment-utilization";
 
 export type OperationScope="operating"|"all"|"unit";
@@ -67,6 +67,39 @@ function operationForHour(row:EquipmentHour,source:OperationSource,mode:Utilizat
     const op=Array.isArray(groups)?groups.find(g=>g.model===source.id)?.staging:null;
     return validOperation(op,source)?op:null;
   }catch{return null;}
+}
+
+/** Flat numeric CSV readouts from the same validated profiles as the histograms.
+ * Keep mixed-size groups separate: stage numbers can mean different capacities.
+ * Minutes are per unit (unit-count means for legacy lead/lag group records). */
+export function equipmentOperationCsv(result:EquipmentResult) {
+  const groups=(["heating","cooling"] as const).flatMap(mode=>{
+    const sources=operationSources(result,mode).sources;
+    return (sources.length?sources:[null]).map((source,i)=>({mode,source,
+      prefix:`${mode==="heating"?"Heating":"Cooling"}${sources.length>1?`_group_${i+1}`:""}`}));
+  });
+  const headers=groups.flatMap(({source,prefix})=>[
+    `${prefix}_model`,`${prefix}_unit_count`,
+    ...(source?.stages??[]).flatMap((_,i)=>[`${prefix}_stage_${i+1}_capacity_percent`,`${prefix}_stage_${i+1}_minutes_per_unit`]),
+    `${prefix}_on_minutes_per_unit`,`${prefix}_off_minutes_per_unit`,`${prefix}_runtime_fraction`,`${prefix}_cycling_PLF`,
+  ]);
+  const values=(row:EquipmentHour)=>groups.flatMap(({mode,source})=>{
+    const op=source&&!result.error?operationForHour(row,source,mode):null;
+    const stageValues=(source?.stages??[]).flatMap((level,i)=>{
+      if(!op)return [level*100,null];
+      const partial=op.partialUnits??(op.partialUnitLoadFraction>0?1:0);
+      const fullTime=i===op.stageLevels.length-1?op.fullUnits:0;
+      return [level*100,60*(fullTime+partial*op.partialUnitStageTimes[i])/op.unitCount];
+    });
+    if(!op)return [source?.id??null,source?.count??null,...stageValues,null,null,null,null];
+    const partial=op.partialUnits??(op.partialUnitLoadFraction>0?1:0);
+    const runtime=Math.min(1,Math.max(0,(op.fullUnits+partial*op.partialUnitRuntimeFraction)/op.unitCount));
+    const partialPlf=source!.kind==="compressor"&&op.belowMinimumStage
+      ?1-CYCLING_DEGRADATION_COEFFICIENT*(1-op.partialUnitLoadFraction/op.stageLevels[0]):1;
+    const plf=1-partial*(1-partialPlf)/op.unitCount;
+    return [source!.id,source!.count,...stageValues,60*runtime,60*(1-runtime),runtime,plf];
+  });
+  return {headers,values};
 }
 const minuteBin=(minutes:number)=>minutes<=1e-7?0:Math.min(6,Math.max(1,Math.ceil((minutes-1e-7)/10)));
 

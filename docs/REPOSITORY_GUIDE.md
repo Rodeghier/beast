@@ -380,23 +380,30 @@ Low bank demand is distributed across all assigned zones, so local compressor cy
 
 ### Hourly stage on time and cycling derate columns
 
-The hourly results table and `equipmentResultsCsv` expose heating and cooling stages, total ON minutes per unit, cycling part-load factor (PLF), and supply-fan ON minutes. `lib/hourly-operation.ts` formats the same group `StageOperation` records used by dispatch and energy calculations. It does not resize equipment, recalculate energy or add a second cycling penalty. `simulateEquipment` stores these readouts in `EquipmentHour`; `app/page.tsx` displays them and the CSV appends matching fields.
+The hourly results table retains readable stage and cycling descriptions. `equipmentResultsCsv` exports separate numeric columns for each stage's time, total ON and OFF minutes, runtime fraction and cycling part-load factor (PLF). `lib/equipment-operation.ts` uses the same validated group `StageOperation` records as the operation histograms. It does not resize equipment, recalculate energy or add another cycling penalty. `lib/hourly-operation.ts` continues formatting the table readouts.
 
-| Hourly CSV column | EquipmentHour field | Meaning |
-| --- | --- | --- |
-| `Heating_stage_and_minutes` | `heatingStage` | Active heating stages, capacity percentages and minutes at each stage |
-| `Heating_on_minutes_per_unit` | `heatingOnMinutes` | Total compressor or burner ON minutes per unit during the hour |
-| `Heating_cycling_PLF` | `heatingDerate` | Heating cycling efficiency factor; 1 means no additional cycling derate |
-| `Cooling_stage_and_minutes` | `coolingStage` | Active cooling stages, capacity percentages and minutes at each stage |
-| `Cooling_on_minutes_per_unit` | `coolingOnMinutes` | Total compressor ON minutes per unit during the hour |
-| `Cooling_cycling_PLF` | `coolingDerate` | Cooling cycling efficiency factor; 1 means no cycling derate |
-| `Supply_fan_on_minutes` | `fanOnMinutes` | 60 while the modeled supply fan runs, otherwise 0; unknown fan energy leaves it unavailable |
+For a single equipment group, the column prefix is `Heating` or `Cooling`. Mixed banks use `Heating_group_1`, `Heating_group_2`, `Cooling_group_1`, etc., in installed selection order. Each group identifies its model and unit count. Group stage numbers are local to that model; their capacity percentages can differ across models.
 
-The six heating/cooling readouts are strings. A mixed bank includes separate model/count labels and semicolon-separated profiles in each cell, so a single cell may contain more than one number. ON minutes are per unit, not summed across the bank. Stage minutes describe how long a unit occupies a capacity stage; they sum to its ON minutes. One known idle mode is `Off`, 0.0 minutes and PLF 1.0000. Unavailable switching data or a scenario error leaves the mode readouts null, shown as an em dash in the table and an empty cell in the CSV.
+| Hourly CSV column (single-group example) | Meaning |
+| --- | --- |
+| `Heating_model`, `Heating_unit_count` | Equipment model identifier and installed count; cooling has equivalent columns |
+| `Heating_stage_1_capacity_percent` | Stage 1 capacity as a percentage of that model's full output |
+| `Heating_stage_1_minutes_per_unit` | Numeric minutes spent at stage 1 per unit in the hour; repeats for every installed stage and for cooling |
+| `Heating_on_minutes_per_unit` | Sum of the heating stage minutes |
+| `Heating_off_minutes_per_unit` | 60 minus heating ON minutes |
+| `Heating_runtime_fraction` | Heating ON minutes divided by 60 |
+| `Heating_cycling_PLF` | Dimensionless heating cycling efficiency factor; 1 means no additional cycling derate |
+| `Cooling_on_minutes_per_unit`, `Cooling_off_minutes_per_unit` | Equivalent cooling compressor ON and OFF minutes |
+| `Cooling_runtime_fraction`, `Cooling_cycling_PLF` | Equivalent cooling runtime fraction and cycling factor |
+| `Supply_fan_on_minutes` | 60 while the modeled supply fan runs, otherwise 0; unknown fan energy leaves it unavailable |
+
+These numeric CSV columns replace the combined `Heating_stage_and_minutes` and `Cooling_stage_and_minutes` strings. Numeric values retain calculation precision rather than the table's one-decimal display rounding. Stage columns are present even when that stage is unused during the hour. Known idle equipment has zero stage/ON minutes, 60 OFF minutes, runtime fraction 0 and PLF 1. Unknown operation or a scenario error leaves time, runtime and PLF cells blank. Resistance heating and the provisional chiller have no modeled switching times; their numeric operation values stay blank.
+
+Minutes are per unit, not summed across the bank. Current zoned units share their group's profile, so each unit in a group has the exported times. For legacy lead/lag records with different profiles inside one group, stage times and PLF are unit-count-weighted group means. Multiply minutes by the exported unit count to obtain total unit-minutes. Separate mixed-group columns preserve different stage capacities and duty profiles.
 
 Below minimum stage, let `r` be the assigned unit load divided by minimum-stage capacity. The model uses `PLF = 1 - 0.15 * (1 - r)` and `ON minutes = 60 * r / PLF`. A factor of 0.8875 represents an 11.25% reduction in cycling efficiency, not an 11.25% reduction in catalog capacity. For example, at 12.5% full-capacity load with a 50% minimum stage, `r = 0.25`, PLF is 0.8875 and ON time is about 16.9 minutes. Between 50% and 100% stages at 75% load, each stage runs 30 minutes, total ON time is 60 minutes and PLF is 1.0000. These hourly totals do not establish individual run lengths or starts per hour.
 
-For a boiler, the stage is `Full firing` or `Off`, ON minutes equal `60 * boilerRuntimeFraction`, and PLF is 1.0000 because no extra cycling derate is applied. Resistance heating and the provisional chiller have no switching model, so their stage, ON-time and PLF cells remain unavailable. Chiller air-handler fans are excluded, so their supply-fan ON-time is 0. Packaged supply fans retain their full-hour rating estimate independently of compressor cycling, with no fan derate. Fan electricity and heat are counted once in the shared energy and load balance.
+For a boiler, CSV stage 1 represents full firing at 100% rated output; stage-1 and ON minutes equal `60 * boilerRuntimeFraction`. The table labels this `Full firing` or `Off`, and PLF is 1.0000 because no extra cycling derate is applied. Resistance heating and the provisional chiller have no switching model, so their stage, ON-time and PLF cells remain unavailable. Chiller air-handler fans are excluded, so their supply-fan ON-time is 0. Packaged supply fans retain their full-hour rating estimate independently of compressor cycling, with no fan derate. Fan electricity and heat are counted once in the shared energy and load balance.
 
 CSV metadata `Cycling_derate_basis` explains the factor and `Stage_time_basis` explains the unit/hour basis. `Equipment_group_performance_JSON` retains unrounded group stage fractions for analysis. Boundary estimates evaluate performance at covered curve conditions; they do not apply an additional derate. Existing boundary flags and evaluated curve temperatures identify those estimates separately. The expandable explanation above the hourly table covers the same interpretation.
 
@@ -623,7 +630,7 @@ Edit the relevant component and `app/globals.css`. Keep engineering calculations
 | `lib/unit-ratings.ts` | `unitRatingFor` power and fan lookup |
 | `lib/equipment.ts` | Scenario inputs matching names and defaults |
 | `lib/equipment-model.ts` | `autosizePackaged` and `simulateEquipment` |
-| `lib/hourly-operation.ts` | `hourlyOperation` formats per-group stages, ON minutes and cycling PLF for the table and CSV |
+| `lib/hourly-operation.ts` | `hourlyOperation` formats per-group stages, ON minutes and cycling PLF for the table; `equipmentOperationCsv` in `lib/equipment-operation.ts` exports numeric stage times |
 | `lib/equipment-staging.ts` | `zonedSystemOperation` and `stageTimeFractions` calculate unit profiles |
 | `lib/equipment-operation.ts` | `equipmentOperation` aggregates unit stage and ON/OFF histograms |
 | `lib/utility-billing.ts` | `electricityBill` and `annualPerformance` |
