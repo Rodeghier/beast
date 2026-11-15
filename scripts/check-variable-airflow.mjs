@@ -86,7 +86,7 @@ for(let i=0;i<rows.length;i++){
 assert.ok(air.some(p=>p.reheatNeed>0),'Humid mild weather should require reheat');
 const sizing={rows,basis:'Controlled variable-airflow design',metadata:{},error:null};
 const prepared={groups,count:3,totalTons:30,supplyCfm:groups[0].count*4800,referenceCoolingBtuHr:groups[0].count*model.reference_capacity_Btu_hr,referenceHeatingBtuHr:groups[0].count*groups[0].heatingModel.reference_capacity_Btu_hr,verifiedCoolingHours:5,estimatedCoolingHours:0,unverifiedCoolingHours:0,verifiedHeatingHours:5,estimatedHeatingHours:0,unverifiedHeatingHours:0,rangeMode:'bounded',heatingAirflowApproximation:true,includesHeatPumpHeating:true,provisional:true,optimizationComplete:false,basis:'Controlled fixture',designLoading:{heating:0,sensibleCooling:0,latentCooling:0,ventilation:0}};
-const scenarios=[{...newScenario('gas'),cooling:'heat-pump',gasEfficiencyPercent:80},{...newScenario('resistance'),cooling:'heat-pump'},{...newScenario(),backupHeating:'gas',backupSwitchoverF:30,backupGasEfficiencyPercent:80}];
+const scenarios=[{...newScenario('gas'),cooling:'heat-pump',gasEfficiencyPercent:80,reheatOption:'natural-gas'},{...newScenario('resistance'),cooling:'heat-pump'},{...newScenario(),backupHeating:'gas',backupSwitchoverF:30,backupGasEfficiencyPercent:80}];
 for(const scenario of scenarios){
   const result=simulateEquipment(rows,school,scenario,prepared,sizing);assert.equal(result.error,null);
   assert.ok(result.reheatCapacityBtuHr>0);

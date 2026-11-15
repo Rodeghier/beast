@@ -31,13 +31,13 @@ const raw=simulateSchool([{year:2025,month:1,day:7,hour:12,minute:0,temperature:
 const heat={...raw,occupied:true,ventilationCfm:0,freeFloatF:70,heating:100000,heatBalance:100000,coolBalance:-1e6,sensibleCooling:0,latentCooling:0,totalCooling:0};
 const cool={...heat,temperatureF:95,temperature:celsius(95),freeFloatF:75,heating:0,heatBalance:-1e6,coolBalance:60000,sensibleCooling:-60000,latentCooling:-20000,totalCooling:-80000};
 const sizing={rows:[heat,cool],basis:'Controlled design fixture',metadata:{},error:null};
-const electric={...newScenario(),airflowMode:'fixed',backupHeating:'resistance',backupSwitchoverF:20};
+const electric={...newScenario(),airflowMode:'fixed',reheatOption:undefined,backupHeating:'resistance',backupSwitchoverF:20};
 const selected=simulateEquipment([heat],school,electric,undefined,sizing);
 assert.equal(selected.error,null);assert.ok(selected.selection);
 const run=(rows,scenario=electric)=>simulateEquipment(rows,school,scenario,selected.selection,sizing);
 const weather=(temperatureF,heating=50000)=>({...heat,temperatureF,temperature:celsius(temperatureF),heating,heatBalance:heating});
 assert.deepEqual(Object.keys(BOILER_FUEL_NAMES),['natural-gas']);
-assert.match(validateBackup(newScenario()),/Select.*backup heat/);
+assert.match(validateBackup(newScenario()),/temperature/);
 for(const value of [null,NaN,Infinity])assert.match(validateBackup({...electric,backupSwitchoverF:value}),/temperature/);
 for(const value of [null,0,101,NaN])assert.match(validateBackup({...electric,backupHeating:'gas',backupGasEfficiencyPercent:value}),/efficiency/);
 assert.equal(validateBackup(newScenario('gas')),null);

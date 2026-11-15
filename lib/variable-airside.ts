@@ -3,7 +3,8 @@
  * ventilation here because the mixed-air coil balance already conditions it.
  * Fan heat is downstream of cooling. Reheat is solved separately from primary heat. */
 import type { PackagedGroup } from "./packaged-bank";
-import type { CurveRangeMode } from "./equipment";
+import { mhgrhPoint } from "./mhgrh";
+import type { ReheatOption, CurveRangeMode } from "./equipment";
 import { celsius, humidityRatio, type SchoolAssumptions, type SchoolRow } from "./school";
 import { airContext, mixAir } from "./mixed-air";
 import { airflowCoolingPoint, coolingAirflowRange } from "./airflow-cooling";
@@ -64,7 +65,8 @@ export function coolingForAirState(dryF:number,w:number,cfm:number,capacity:numb
   return {required:meets(full)?delivered:null,linearRequired:required,delivered,leaving,deliverableCapacity,availableSensible:full.sensible,availableLatent:full.latent};
 }
 
-function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,share:number,mode:CurveRangeMode,runs:boolean){
+export type AirsideOptions={airflowMode?:"variable"|"fixed";reheatOption?:ReheatOption;reheatGasEfficiencyPercent?:number|null};
+function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,share:number,mode:CurveRangeMode,runs:boolean,options:AirsideOptions){
   const fan=variableFanModel(group.model),range=coolingAirflowRange(group.model),rating=unitRatingFor(group.model),context=airContext(row,school);
   if(!fan||!range||!rating||!context||!finite(row.coolBalance)||!finite(row.latentCooling)||!finite(row.heating))return null;
   const count=group.count,vent=Math.max(0,row.ventilationCfm*share),zone=context.returnF;
@@ -105,12 +107,15 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     // Prefer supported conditions meeting sensible and latent loads, then
     // minimize compressor+fan+ideal electric reheat input. Fuel conversion is
     // applied later using the selected heating system's reheat fuel.
-    const penalty=unmet+missingOutdoor*1000;
-    const score=penalty*1000+electricity+fanKw+reheatNeed/BTU_PER_KWH;
+    const recovery=options.reheatOption==="mhgrh"&&delivered>0?mhgrhPoint(group.model,context.outdoorF,mixed.wetF,mixed.dryF,cfm/count,mode):null;
+    const recoveryCapacity=recovery?Math.min(recovery.maxBtuHr*(operation.fullUnits+(operation.partialUnits??0)*operation.partialUnitRuntimeFraction),delivered+electricity*BTU_PER_KWH):0;
+    const reheatShortfall=options.reheatOption==="mhgrh"?Math.max(0,reheatNeed-recoveryCapacity):0;
+    const penalty=unmet+missingOutdoor*1000+reheatShortfall;
+    const score=penalty*1000+electricity+fanKw+(options.reheatOption==="mhgrh"?0:reheatNeed/(BTU_PER_KWH*(options.reheatOption==="natural-gas"?(options.reheatGasEfficiencyPercent??80)/100:1)));
     return {model:group.model.id,count,share,cfm,returnCfm:Math.max(0,cfm-vent),outdoorCfm:admitted,
       fanKw,fanHeat,fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed,
       cooling:point,capacity,shr,deliverableCapacity,availableSensible,availableLatent,sensibleNeed,latentNeed,required,linearRequired,delivered,deliveredSensible:leaving.sensible,deliveredLatent:leaving.latent,
-      electricity,staging:operation,called,coilLeavingF:leaving.dryF,supplyHumidityRatio:leaving.humidityRatio,
+      electricity,staging:operation,called,recovery,recoveryCapacity,coilLeavingF:leaving.dryF,supplyHumidityRatio:leaving.humidityRatio,
       desiredSupplyF,beforeReheatF,dehumidifying,primaryHeatNeed,reheatNeed,requiredPostCoilHeat,
       unmet,unmetSensible,unmetLatent,unmetVentilationCfm:missingOutdoor,score};
   };
@@ -118,11 +123,12 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     // No fan or conditioning call: do not request source curves at zero CFM.
     return {model:group.model.id,count,share,cfm:0,returnCfm:0,outdoorCfm:0,fanKw:0,fanHeat:0,
       fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed:null,cooling:null,capacity:0,shr:1,deliverableCapacity:0,availableSensible:0,availableLatent:0,
-      sensibleNeed:0,latentNeed:0,required:0,linearRequired:0,delivered:0,deliveredSensible:0,deliveredLatent:0,electricity:0,
+      sensibleNeed:0,latentNeed:0,required:0,linearRequired:0,delivered:0,deliveredSensible:0,deliveredLatent:0,electricity:0,recovery:null,recoveryCapacity:0,
       staging:zonedSystemOperation(0,1,count,stages),called:false,coilLeavingF:zone,supplyHumidityRatio:context.returnW,
       desiredSupplyF:zone,beforeReheatF:zone,dehumidifying:false,primaryHeatNeed:0,reheatNeed:0,requiredPostCoilHeat:0,
       unmet:0,unmetSensible:0,unmetLatent:0,unmetVentilationCfm:0,score:0};
   }
+  if(options.airflowMode==="fixed")return evaluate(Math.min(fan.referenceCfm,fan.maxCfm)*count);
   const sourceMin=range[0]*count;
   const candidates=new Set<number>([minimum,maxCfm,Math.max(minimum,Math.min(maxCfm,sourceMin)),
     ...[300,330,360,380,400,420,440,460,480].map(perTon=>Math.max(minimum,Math.min(maxCfm,perTon*group.model.nominal_tons*count)))]);
@@ -132,9 +138,9 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
 }
 
 export type VariableAirside=NonNullable<ReturnType<typeof solveVariableAirside>>;
-export function solveVariableAirside(groups:PackagedGroup[],row:SchoolRow,school:SchoolAssumptions,mode:CurveRangeMode,runs=true){
+export function solveVariableAirside(groups:PackagedGroup[],row:SchoolRow,school:SchoolAssumptions,mode:CurveRangeMode,runs=true,options:AirsideOptions={}){
   const tons=groups.reduce((s,g)=>s+g.count*g.model.nominal_tons,0);if(!(tons>0))return null;
-  const details=groups.map(g=>solveGroup(g,row,school,g.count*g.model.nominal_tons/tons,mode,runs));
+  const details=groups.map(g=>solveGroup(g,row,school,g.count*g.model.nominal_tons/tons,mode,runs,options));
   if(details.some(d=>!d))return null;
   const known=details.map(d=>d!);
   const sum=(key:"cfm"|"returnCfm"|"outdoorCfm"|"fanKw"|"fanHeat"|"capacity"|"deliverableCapacity"|"availableSensible"|"availableLatent"|"delivered"|"deliveredSensible"|"deliveredLatent"|"electricity"|"primaryHeatNeed"|"reheatNeed"|"unmet"|"unmetLatent"|"unmetVentilationCfm"|"maxCfm")=>known.reduce((s,d)=>s+d[key],0);

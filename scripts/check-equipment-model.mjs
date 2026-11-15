@@ -31,7 +31,7 @@ function load(path) {
 const { DEFAULT_SCHOOL, simulateSchool, celsius }=load('lib/school.ts');
 const {newScenario:createScenario,scenarioName,coolingFor }=load('lib/equipment.ts');
 // Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
-const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed',reheatOption:undefined});
 const { UNIT_RATINGS,unitRatingFor }=load('lib/unit-ratings.ts');
 const { simulateEquipment:simulateEquipmentModel, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
 // These component fixtures explicitly serve as their own controlled design days.
@@ -105,9 +105,9 @@ assert.equal(UNIT_RATINGS.length,24);
 const expectedHighPower=[2.81,3.83,4.69,5.94,7.33,8.76,10.35,12.4,15.21,18.23,22.02,25.74];
 UNIT_RATINGS.forEach((r,i)=>{near(r.cooling_system_power_kW,i<12?expectedPower[i]:expectedHighPower[i-12]);near(r.inferred_supply_fan_heat_Btu_hr,r.rated_gross_cooling_Btu_hr-r.rated_net_cooling_Btu_hr);near(r.inferred_supply_fan_power_kW*BTU_PER_KWH,r.inferred_supply_fan_heat_Btu_hr);near(r.cooling_non_supply_fan_power_kW+r.inferred_supply_fan_power_kW,r.cooling_system_power_kW);assert.ok(unitRatingFor({nominal_tons:r.nominal_tons,efficiency:'high'}));});
 const gasScenario={...newScenario('gas'),cooling:'heat-pump',gasEfficiencyPercent:80},resistanceScenario={...newScenario('resistance'),cooling:'heat-pump'};
-assert.equal(coolingFor(newScenario()),'heat-pump');assert.equal(newScenario('gas').cooling,null);assert.equal('name' in newScenario(),false);
+assert.equal(coolingFor(newScenario()),'heat-pump');assert.equal(newScenario('gas').cooling,'heat-pump');assert.equal('name' in newScenario(),false);
 assert.equal(scenarioName(gasScenario),'Heat Pump Cooling + Small Non-Condensing Boiler Heating');assert.equal(scenarioName(resistanceScenario),'Heat Pump Cooling + Electric Resistance Heating');
-const missingCooling=simulateEquipment([row],DEFAULT_SCHOOL,newScenario('gas'));assert.match(missingCooling.error,/Choose cooling/);assert.equal(missingCooling.rows[0].electricity,null);assert.equal(missingCooling.selection,null);
+const missingCooling=simulateEquipment([row],DEFAULT_SCHOOL,{...newScenario('gas'),cooling:null});assert.match(missingCooling.error,/Choose cooling/);assert.equal(missingCooling.rows[0].electricity,null);assert.equal(missingCooling.selection,null);
 const hp=simulateEquipment([row],DEFAULT_SCHOOL,newScenario());
 assert.ok(hp.selection);assert.ok(hp.selection.supplyCfm>=row.ventilationCfm);assert.equal(hp.selection.provisional,true);assert.ok(hp.rows[0].unmetCooling<=1);assert.ok(hp.rows[0].electricity>0);
 const operating=hp.rows[0],rating=unitRatingFor(hp.selection.groups[0].model),point=coolingPoint(hp.selection.groups[0].model,95,operating.enteringWetBulbF,operating.enteringDryBulbF);

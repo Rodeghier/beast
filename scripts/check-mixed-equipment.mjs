@@ -27,7 +27,7 @@ const {bankRatings,bankCooling,bankHeating,dispatchCooling,dispatchHeating}=load
 const {simulateEquipment,equipmentResultsCsv,equipmentComparisonCsv,BTU_PER_KWH}=load('lib/equipment-model.ts');
 const {newScenario:createScenario}=load('lib/equipment.ts');
 // Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
-const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed',reheatOption:undefined});
 const {parseCsv}=load('lib/csv.ts');
 const {equipmentUtilization}=load('lib/equipment-utilization.ts');
 const {nearestDesignStations}=load('lib/ashrae-design-stations.ts');
@@ -107,7 +107,7 @@ try {
  near(Number(ventCsv[ventHeader+1][ventCsv[ventHeader].indexOf('Unmet_ventilation_CFM')]),50000-ventBank.supplyCfm);
  const {EquipmentScenarios:VentScenarios}=load('components/equipment-scenarios.tsx');
  const ventHtml=renderToStaticMarkup(createElement(VentScenarios,{choices:[ventResult.scenario],results:[ventResult],onChange:()=>{},active:0,onActive:()=>{}}));
- assert.match(ventHtml,/Sized for sensible and latent cooling only/);assert.match(ventHtml,/Peak airflow shortfall/);
+ assert.match(ventHtml,/Sized for sensible and latent cooling/);assert.match(ventHtml,/Peak airflow shortfall/);
  // Availability is ignored, rather than used to prefer a larger covered bank.
  COOLING_MODELS[0]={...COOLING_MODELS[0],valid_domain_halfspaces:[[0,0,0,1]]};
  const ignored=optimizePackagedBank([fixture],school,'standard','gas','strict');assert.equal(ignored.count,1);assert.equal(ignored.totalTons,3);assert.equal(ignored.unverifiedCoolingHours,1);

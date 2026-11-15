@@ -24,7 +24,7 @@ const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel
 const {DEFAULT_SCHOOL,simulateSchool,celsius}=load('lib/school.ts');
 const {newScenario:createScenario}=load('lib/equipment.ts');
 // Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
-const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed',reheatOption:undefined});
 const {unitRatingFor}=load('lib/unit-ratings.ts');
 const near=(a,b,t=1e-7)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 const values=[null,NaN,Infinity,-1,0,0,.001,10,10.00000000002,10.1,20,99,100,100.001];

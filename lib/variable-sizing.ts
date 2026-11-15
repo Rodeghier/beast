@@ -14,7 +14,7 @@ import type { PackagedGroup, PackagedSelection } from "./packaged-bank";
 import { bankHeating } from "./packaged-bank";
 import { airContext, mixAir } from "./mixed-air";
 
-export function optimizeVariablePackagedBank(rows:SchoolRow[],school:SchoolAssumptions,efficiency:"standard"|"high",heating:HeatingEquipment="heat-pump",rangeMode:CurveRangeMode="bounded",stage:EquipmentStage="automatic"):PackagedSelection|null {
+export function optimizeVariablePackagedBank(rows:SchoolRow[],school:SchoolAssumptions,efficiency:"standard"|"high",heating:HeatingEquipment="heat-pump",rangeMode:CurveRangeMode="bounded",stage:EquipmentStage="automatic",airflowMode:"variable"|"fixed"="variable"):PackagedSelection|null {
   const seed=optimizePackagedBank(rows,school,efficiency,heating,rangeMode,stage);if(!seed)return null;
   const states=new Map<string,{row:SchoolRow;weight:number}>();
   for(const row of rows.filter(r=>r.occupied)){
@@ -27,10 +27,10 @@ export function optimizeVariablePackagedBank(rows:SchoolRow[],school:SchoolAssum
   const better=(a:PackagedSelection,b:PackagedSelection|null)=>!b||a.count<b.count||a.count===b.count&&a.totalTons<b.totalTons;
   const evaluate=(groups:PackagedGroup[]):PackagedSelection|null=>{
     const count=groups.reduce((s,g)=>s+g.count,0),totalTons=groups.reduce((s,g)=>s+g.count*g.model.nominal_tons,0);
-    const maxAir=groups.reduce((s,g)=>s+g.count*(variableFanModel(g.model)?.maxCfm??0),0);
+    const maxAir=groups.reduce((s,g)=>{const fan=variableFanModel(g.model);return s+g.count*(fan?(airflowMode==="fixed"?Math.min(fan.referenceCfm,fan.maxCfm):fan.maxCfm):0);},0);
     const referenceCoolingBtuHr=groups.reduce((s,g)=>s+g.count*g.model.reference_capacity_Btu_hr,0);
     if(maxAir<peakVent-1e-7||referenceCoolingBtuHr<peakCool/2)return null;
-    const points=design.map(r=>solveVariableAirside(groups,r,school,rangeMode,true));
+    const points=design.map(r=>solveVariableAirside(groups,r,school,rangeMode,true,{airflowMode}));
     if(points.some(p=>p&&(p.unmet>1||p.unmetVentilationCfm>1e-6)))return null;
     const known=points.filter(p=>p!==null);
     const estimated=points.reduce((s,p,i)=>s+(p?.boundaryEstimate?weights[i]:0),0),unknown=points.reduce((s,p,i)=>s+(p===null?weights[i]:0),0);
