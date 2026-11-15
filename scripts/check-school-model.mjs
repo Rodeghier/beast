@@ -60,12 +60,16 @@ try {
   assert.equal(parseClimateCsv(csvHead + "2025,1,1,0,0,20,50,100,-999,740", 2025).rows[0].dni, null);
   assert.throws(() => parseClimateCsv("DHI Units\nkWh/m2\n" + csvHead + "2025,1,1,0,0,20,50,1,1,1", 2025), /Unsupported DHI Units/);
   close(m.fahrenheit(0), 32); close(m.fahrenheit(100), 212); close(m.fahrenheit(-40), -40);
-  // PsychroLib's published 25°C / 80% example, independent of this code.
-  close(m.dewPointF(25, 80), 21.309397163661785 * 1.8 + 32, 0.0001);
-  close(m.dewPointF(-15, 100), 5); close(m.dewPointF(30, 100), 86);
-  close(m.humidityRatio(25, 50), 0.009881043690749623, 1e-8);
-  assert.equal(m.dewPointF(25, 0), null); assert.equal(m.dewPointF(null, 50), null);
-  assert.equal(m.dewPointF(20, -1), null); assert.equal(m.dewPointF(20, 101), null);
+  // Compare derived outdoor wet bulb to independent PsychroLib reference cases.
+  const references=JSON.parse(readFileSync(new URL('fixtures/mixed-air-reference.json',import.meta.url),'utf8'));
+  for(const reference of references.cases){
+    const derived=m.simulateSchool([row(m.celsius(reference.dryF),reference.rh)],bare)[0];
+    close(derived.wetBulbF,reference.wetF,.003);
+  }
+  close(m.wetBulbF(86,m.humidityRatio(30,100)),86,.00001);
+  close(m.humidityRatio(25,50),0.009881043690749623,1e-8);
+  for(const invalid of [[null,50],[20,-1],[20,101],[20,null]]) assert.equal(m.simulateSchool([row(...invalid)],bare)[0].wetBulbF,null);
+  assert.ok(Number.isFinite(m.simulateSchool([row(25,0)],bare)[0].wetBulbF));
   assert.equal(m.humidityRatio(25, 0), 0);
   // With only envelope UA=15,000 BTU/hr°F, these are hand calculations.
   const hot = m.simulateSchool([row(m.celsius(90), 0)], bare)[0];
@@ -135,7 +139,7 @@ try {
     for (const r of annual) {
       assert.ok(r.sensibleCooling <= 0 && r.totalCooling <= r.sensibleCooling && r.heating >= 0);
       assert.ok(!(r.heating > 0 && r.sensibleCooling < 0));
-      assert.ok(r.dewPointF === null || r.dewPointF <= r.temperatureF + 1e-6);
+      assert.ok(r.wetBulbF === null || r.wetBulbF <= r.temperatureF + 1e-6);
       close(r.totalCooling, r.sensibleCooling + r.latentCooling);
     }
     const summary = m.summarizeLoads(annual);

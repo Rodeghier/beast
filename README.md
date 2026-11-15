@@ -4,15 +4,27 @@ For an engineering-oriented introduction to the code, start with [Repository Rea
 
 Building Energy Analysis Selection Tool: hourly building loads, selected heating/cooling equipment, supply-fan energy and heat, and utility/emissions comparisons.
 
+## Variable-airflow packaged equipment
+
+Packaged units now use all five supplied cooling airflows (300–480 CFM/ton). One normalized capacity surface is fitted across all 24 source units; each unit has its own airflow-dependent SHR fit. All 46 supported size/family combinations use these fits, with larger units scaling the corresponding 25-ton data. The complete assumptions, equations, source audit and validation are in [Variable Airflow](docs/VARIABLE_AIRFLOW.md).
+
+Supply CFM includes outdoor air plus return air. Standard-motor HP limits bound the cubic fan-power model; high-static motors are excluded. Sensible and latent loads determine cooling; no fixed supply-temperature target or dew-point trigger is applied. Coil-leaving and final supply temperatures remain available for user analysis in the CSV. Reheat sets final supply temperature and is included in heating energy: NG for primary gas heating, resistance for primary heat pumps/resistance. Reheat is sized from design airside operation; annual shortfalls are reported. CSVs expose actual flows, coil/final supply temperatures, humidity ratio, reheat output and its gas/electricity subsets.
+
+The former fixed-airflow calculations below remain available for explicit comparison and source regression checks. The website uses variable airflow by default. Nominal-airflow heating curves, off-rating compressor input power, and part-stage performance remain approximations; see the detailed notes.
+
 ## Equipment and names
 
 Heating choices are Rooftop Packaged Heat Pump, Natural Gas and Electric Resistance. Every combination includes cooling. A heat pump includes its cooling automatically; gas and resistance require the user to select cooling, either Rooftop Packaged Heat Pump or the provisional air-cooled chiller. The chiller uses flat 0.6 kW/ton and autosizes to ASHRAE design-day cooling load; separate air-handler fan and pump power are excluded. The interface and calculation validation reject a missing cooling selection. Gas/resistance no longer represent heating-only comparisons.
 
-There is no editable scenario name or stored name field. `scenarioName()` derives labels such as **Heat Pump Cooling + Natural Gas Heating** for cards, tables, graphs and CSVs. Each combination can choose standard or high efficiency for its heat-pump equipment. Natural-gas heating offers a small-boiler path that retains user-entered AFUE and a large commercial path using Cleaver-Brooks CBLE-4D hot-water ratings. The large path selects the smallest listed rated output that meets ASHRAE design heating demand after fan-heat credit, then uses the selected fuel's table consumption/hour multiplied by hourly runtime. Natural gas, propane, and No. 2 light oil are selectable for the large boiler. On/off firing is modeled; modulating is shown as unavailable pending manufacturer data. Small-boiler AFUE is applied as effective hourly efficiency with no additional cycling penalty. Propane/oil fuel quantities and site energy are reported, while fuel cost and combustion emissions remain unavailable until data sources are added. Boiler ratings are in `lib/data/cleaver-brooks-cble-4d-hot-water-ratings.json` and the source-table CSV is under `public/references/`.
+There is no editable scenario name or stored name field. `scenarioName()` derives labels such as **Heat Pump Cooling + Natural Gas Heating** for cards, tables, graphs and CSVs. Each combination can choose standard or high efficiency for its heat-pump equipment. Natural-gas heating offers a small-boiler path that retains user-entered AFUE and a large commercial path using Cleaver-Brooks CBLE-4D hot-water ratings. The large path selects the smallest listed rated output that meets ASHRAE design heating demand after fan-heat credit, then uses the selected fuel's table consumption/hour multiplied by hourly runtime. Natural gas is the only supported boiler fuel. On/off firing is modeled; modulating is shown as unavailable pending manufacturer data. Small-boiler AFUE is applied as effective hourly efficiency with no additional cycling penalty. Boiler ratings are in `lib/data/cleaver-brooks-cble-4d-hot-water-ratings.json` and the source-table CSV is under `public/references/`.
 
 The equipment form's **Stage** choice filters the automatically sized heat-pump models to automatic, single-stage or multi-stage operation. Variable-speed is shown as unavailable until stage-specific modulation data is supplied. Equipment sizes remain automatically selected from the loads.
 
 Annual results report the percentage of evaluated heat-pump heating/cooling call hours below the selected unit's minimum stage. For the on/off boiler they report heating-call hours with less-than-full-hour firing. This is an expected cycling share, not a count of starts. Hours without a load call or without an evaluable performance point are excluded.
+
+Heat-pump heating requires electric resistance or natural-gas backup and an explicitly entered switchover outdoor dry-bulb temperature (°F). Backup replaces heat-pump heating at or below that temperature; there is no supplemental backup above it. Backup heater output is autosized to the full occupied design heating load after supply-fan heat credit. Electric resistance uses COP 1; natural gas requires an entered effective efficiency. Backup electricity and therms are included in hourly and annual energy, billing and emissions. Separate CSV columns identify backup operation, heater output and purchased energy; compressor stage/runtime charts show the heat pump OFF while backup operates.
+
+Hourly weather displays and building/equipment CSVs report outdoor wet bulb instead of dew point. Wet bulb uses the ASHRAE relation at 101325 Pa from dry bulb and RH, with missing inputs left blank. Mixed entering wet bulb remains a separate equipment input. Published ASHRAE dew-point design conditions are retained internally for latent-load sizing.
 
 ## Supplied equipment data
 
@@ -30,7 +42,7 @@ Coefficient, source, error and nominal-rating CSVs are served under `public/refe
 
 The runtime adds 30, 40, 55, 60, 70, 75, 90, 105, 120, 130 and 150 tons. For each added size, reference capacity, heating capacity/power, cooling kW, fan heat/kW and airflow scale from the selected family's 25-ton data by nominal tonnage. SHR, temperature domain and fractional stage levels reuse the 25-ton patterns. These are authorized modeling assumptions, not independent large-unit manufacturer data. Source-only downloads retain the original supplied tables. CSV metadata identify the shared fit, scaling assumptions and assigned-zone control policy.
 
-## Cooling power, COP and supply fan
+## Reference ratings and fixed-airflow comparison
 
 Nominal **total** cooling system power is held constant at full output because no off-rating power curve was provided. Fan heat per unit = rated gross cooling minus AHRI net cooling. Inferred fan kW = that heat / 3412.141633, assuming all electrical input becomes air heat. This is a rating-derived estimate, not a measured operating fan curve. Nameplate motor HP is not converted into operating fan watts.
 
@@ -54,9 +66,9 @@ Fan heat reduces heating demand and enters the **signed** sensible cooling balan
 
 For small natural-gas boilers, output capacity is provisionally set to ASHRAE design heating demand after fan heat credit. On/off runtime fraction = hourly delivered output / output capacity. Gas therms = capacity × runtime / (100000 × entered AFUE fraction). For the large CBLE-4D path, choose the smallest listed rated hot-water output that meets ASHRAE design heating demand after fan heat credit; use the selected fuel's listed consumption/hour × hourly runtime fraction. Propane is reported in ft³ and No. 2 light oil in gal; their listed heating values convert consumption to site MMBtu. If demand exceeds the 800 HP rating, cap delivered boiler output at that rating and report unmet heat. Modulating firing is not available. Resistance element kWh = element output / 3412.141633. Fan electricity is separate and its heat also serves the building, preventing duplicate heating input.
 
-For heat-pump heating, subtract inferred fan heat/input from integrated heating capacity/power before determining coil duty. Apply `PLF = 1 − Cd × (1 − PLR)` only when load is below the minimum stage; above minimum stage, adjacent stages are time-shared using the provisional proportional-power assumption. Add fan heat to delivered building heat and fan electricity once to total input. `Cd = 0.15` is provisional. No extra defrost term, auxiliary heat or reheat is supplied. Total kWh = heating coil input + cooling input excluding supply fan + supply-fan input.
+For heat-pump heating, subtract inferred fan heat/input from integrated heating capacity/power before determining coil duty. Apply `PLF = 1 − Cd × (1 − PLR)` only when load is below the minimum stage; above minimum stage, adjacent stages are time-shared using the provisional proportional-power assumption. Add fan heat to delivered building heat and fan electricity once to total input. `Cd = 0.15` is provisional. No extra defrost term or reheat is supplied. Required backup heating replaces heat-pump heating at or below the user-entered outdoor switchover temperature. Total kWh = heating coil input + cooling input excluding supply fan + supply-fan input.
 
-## Mixed air and automatic unit selection
+## Mixed air and fixed-airflow reference selection
 
 Entering wet bulb is calculated, not entered. Return dry bulb follows the baseline free-float temperature limited by active setpoints; return RH uses the indoor RH target. Mix scheduled ventilation and return air using humidity ratio and moist-air enthalpy. At 101325 Pa, standard-volume CFM fractions approximate dry-air mass fractions. Solve mixed dry bulb from enthalpy/humidity, then wet bulb by inversion of the ASHRAE water/ice relations (PsychroLib). Wet bulbs and RH are not averaged. Infiltration remains in building loads and is excluded from the mixer.
 
@@ -98,6 +110,9 @@ Build and hosting use Vinext and Cloudflare directly. See [Local setup and hosti
 - `node scripts/check-equipment-utilization.mjs`
 - `node scripts/check-equipment-operation.mjs`
 - `node scripts/check-school-model.mjs`
+- `node scripts/check-backup-heating.mjs`
+- `node scripts/check-variable-airflow.mjs`
+- `node scripts/check-air-state-control.mjs`
 - `node scripts/check-beast-scorecard.mjs`
 - `node scripts/check-location-energy.mjs`
 - `pnpm build`
@@ -113,9 +128,9 @@ Building characteristics and assumptions is a single collapsible panel with one 
 
 ## Stage and cycling histograms
 
-The Results tab defaults to **Unit stages and ON/OFF time**. Select a size group and inspect units with mode demand, all installed units, or one numbered unit. Units of the same size have identical assumed zone shares and profiles. The default excludes fully idle unit-hours while retaining the cycling OFF portion of units called to run. One unit-hour represents one unit observed for one hour. Compressor operation excludes the separately reported supply fan. Unit ON means at least one compressor is running; this is not the on-time of every individual compressor inside a multi-compressor unit.
+The Results tab defaults to **Unit stages and time ON**. Select a size group and inspect units with mode demand, all installed units, or one numbered unit. Units of the same size have identical assumed zone shares and profiles. The default excludes fully idle unit-hours while retaining the cycling OFF portion of units called to run. One unit-hour represents one unit observed for one hour. Compressor operation excludes the separately reported supply fan. Unit ON means at least one compressor is running; this is not the on-time of every individual compressor inside a multi-compressor unit.
 
-The stage histogram accumulates fractional unit-hours at each modeled capacity stage and OFF. Every unit receives its own proportional load share; all units in a group stage or cycle on that same per-unit part-load ratio. Below minimum stage, ON fraction is the existing minimum-stage PLR divided by PLF, with Cd = 0.15. Between stages, time is shared between adjacent stages while unit ON time remains 60 minutes. The paired histogram counts unit-hours by total ON and OFF minutes, using zero and ten-minute intervals through 60. Both series conserve the included unit-hour count; stage time sums to that same count. Missing operation records are excluded, never plotted as OFF.
+The stage histogram accumulates fractional unit-hours at each modeled capacity stage and OFF. Every unit receives its own proportional load share; all units in a group stage or cycle on that same per-unit part-load ratio. Below minimum stage, ON fraction is the existing minimum-stage PLR divided by PLF, with Cd = 0.15. Between stages, time is shared between adjacent stages while unit ON time remains 60 minutes. The time-ON histogram counts unit-hours by total ON minutes, using zero and ten-minute intervals through 60. Its single series conserves the included unit-hour count; stage time sums to that same count. Missing operation records are excluded, never plotted as OFF.
 
 These are mode-specific hourly estimates using fixed nominal-tonnage load shares assigned to each unit. Separate zone thermostat states are not simulated. The estimates do not identify individual cycle lengths, starts per hour, lead rotation or individual-compressor switching. Boiler burner charts use the existing on/off runtime fraction. Resistance and the chiller placeholder have no supplied stage/switching model, so their stage view gives a reason rather than inventing operation; their capacity/power view remains available.
 

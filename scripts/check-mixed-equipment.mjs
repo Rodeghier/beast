@@ -25,7 +25,9 @@ const {DEFAULT_SCHOOL,simulateSchool,celsius}=load('lib/school.ts');
 const {optimizePackagedBank}=load('lib/packaged-optimizer.ts');
 const {bankRatings,bankCooling,bankHeating,dispatchCooling,dispatchHeating}=load('lib/packaged-bank.ts');
 const {simulateEquipment,equipmentResultsCsv,equipmentComparisonCsv,BTU_PER_KWH}=load('lib/equipment-model.ts');
-const {newScenario}=load('lib/equipment.ts');
+const {newScenario:createScenario}=load('lib/equipment.ts');
+// Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
 const {parseCsv}=load('lib/csv.ts');
 const {equipmentUtilization}=load('lib/equipment-utilization.ts');
 const {nearestDesignStations}=load('lib/ashrae-design-stations.ts');
@@ -176,6 +178,19 @@ if(process.argv.includes('--built-worker')){
  assert.equal(reply.error,null);assert.equal(largeActual.count,largeExpected.count);assert.ok(largeActual.groups.some(g=>g.model.nominal_tons>25));
  assert.equal(JSON.stringify(largeActual.groups.map(g=>[g.model.id,g.count])),JSON.stringify(largeExpected.groups.map(g=>[g.model.id,g.count])));
  assert.equal(largeActual.groups[0].model.capacityCurveId,'shared-normalized-cooling-capacity-v1');
+ // The website appends the variable-flow policy to its request. Exercise that
+ // production branch as well as the retained fixed-flow comparison requests.
+ const {optimizeVariablePackagedBank}=load('lib/variable-sizing.ts');
+ const variableSchool={...DEFAULT_SCHOOL,floorAreaFt2:10000,people:50,stories:1};
+ const variableRows=simulateSchool([{year:2025,month:5,day:5,hour:12,minute:0,temperature:35,humidity:65,dhi:0,dni:0,ghi:0}],variableSchool);
+ const variableRequest='gas:standard:true:bounded:automatic:variable';
+ context.onmessage({data:{rows:variableRows,school:variableSchool,requests:`${variableRequest}|${variableRequest}`}});
+ assert.equal(reply.error,null);
+ const variableExpected=optimizeVariablePackagedBank(variableRows,variableSchool,'standard','gas'),variableActual=reply.selections[0];
+ assert.ok(variableActual);assert.match(variableActual.basis,/all-airflow/);
+ assert.equal(variableActual.count,variableExpected.count);assert.equal(variableActual.totalTons,variableExpected.totalTons);
+ assert.equal(JSON.stringify(variableActual.groups.map(g=>[g.model.id,g.count])),JSON.stringify(variableExpected.groups.map(g=>[g.model.id,g.count])));
+ assert.equal(reply.selections[0],reply.selections[1]);
  console.log('PASS: compiled production worker is self-contained and matches the source selector.');
 }
 console.log('PASS: mixed integer objective against exhaustive counts, occupied-only design, seasonal reduction, ignored unknown checks, individual curves/stages/fans, energy reconciliation, utilization, UI and exports.');

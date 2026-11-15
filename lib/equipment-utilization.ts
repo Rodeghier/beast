@@ -40,6 +40,10 @@ export function equipmentUtilization(result: EquipmentResult, mode: UtilizationM
     // An invalid/unsupported selection is not an idle system. Its samples must
     // remain unavailable even if some component fields happen to contain zero.
     if (result.error) { capacity.push(null); power.push(null); continue; }
+    if (mode === "heating" && result.scenario.heating === "heat-pump" && row.backupActive) {
+      const known = finite(row.heatingElectricity) && finite(row.deliveredHeating);
+      capacity.push(known ? 0 : null); power.push(known ? 0 : null); continue;
+    }
     if (mode === "cooling") {
       capacity.push(percent(row.deliveredCooling, row.availableCooling));
       power.push(percent(row.coolingElectricity, coolingFullKw));
@@ -49,7 +53,8 @@ export function equipmentUtilization(result: EquipmentResult, mode: UtilizationM
       capacity.push(percent(row.boilerPartLoadRatio, 1));
       power.push(percent(row.boilerRuntimeFraction, 1));
     } else {
-      const delivered = finite(row.deliveredHeating) && finite(row.fanHeat)
+      const primaryElectricity=result.scenario.heating === "heat-pump"&&result.scenario.airflowMode!=="fixed"&&row.heatingCompressorElectricity!==undefined?row.heatingCompressorElectricity:finite(row.heatingElectricity)?row.heatingElectricity-(row.reheatElectricity??0):null;
+      const delivered = result.scenario.heating === "heat-pump"&&primaryElectricity===0?0:finite(row.deliveredHeating) && finite(row.fanHeat)
         ? Math.max(0, row.deliveredHeating - row.fanHeat) : null;
       const fullCapacity = result.scenario.heating === "heat-pump"
         ? finite(row.availableHeating) && finite(row.fanHeat) ? Math.max(0, row.availableHeating - row.fanHeat) : null
@@ -58,10 +63,10 @@ export function equipmentUtilization(result: EquipmentResult, mode: UtilizationM
       // installed full input, then remove the fan already counted separately.
       const fullKw = result.scenario.heating === "heat-pump"
         ? finite(row.availableHeating) && finite(row.heatingCop) && row.heatingCop > 0 && fanKw !== null
-          ? row.availableHeating / (BTU_PER_KWH * row.heatingCop) - fanKw : null
+          ? row.availableHeating / (BTU_PER_KWH * row.heatingCop) - (result.scenario.airflowMode!=="fixed"?row.fanElectricity??fanKw:fanKw) : null
         : finite(fullCapacity) ? fullCapacity / BTU_PER_KWH : null;
       capacity.push(percent(delivered, fullCapacity));
-      power.push(percent(row.heatingElectricity, fullKw));
+      power.push(percent(primaryElectricity, fullKw));
     }
   }
   return { capacity, power };

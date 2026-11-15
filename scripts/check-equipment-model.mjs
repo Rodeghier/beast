@@ -29,7 +29,9 @@ function load(path) {
 }
 
 const { DEFAULT_SCHOOL, simulateSchool, celsius }=load('lib/school.ts');
-const { newScenario,scenarioName,coolingFor }=load('lib/equipment.ts');
+const {newScenario:createScenario,scenarioName,coolingFor }=load('lib/equipment.ts');
+// Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
 const { UNIT_RATINGS,unitRatingFor }=load('lib/unit-ratings.ts');
 const { simulateEquipment:simulateEquipmentModel, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
 // These component fixtures explicitly serve as their own controlled design days.

@@ -1,5 +1,6 @@
 /** Run integer equipment selection off the UI thread so inputs remain usable.
  * A replaced calculation is cancelled by terminating its worker in page.tsx. */
+import { optimizeVariablePackagedBank } from "./variable-sizing";
 import { optimizePackagedBank } from "./packaged-optimizer";
 import type { PackagedSelection } from "./packaged-bank";
 import type { SchoolAssumptions, SchoolRow } from "./school";
@@ -11,9 +12,9 @@ scope.onmessage=({data})=>{
   try {
     const cache=new Map<string,PackagedSelection|null>();
     const selections=data.requests.split("|").map(request=>{
-      const [mode,efficiency,selected,rangeMode,stage]=request.split(":");
+      const [mode,efficiency,selected,rangeMode,stage,airflowMode]=request.split(":");
       if(selected!=="true")return null;
-      if(!cache.has(request))cache.set(request,optimizePackagedBank(data.rows,data.school,efficiency as "standard"|"high",mode as "heat-pump"|"gas",rangeMode as CurveRangeMode,stage as EquipmentStage));
+      if(!cache.has(request))cache.set(request,(airflowMode==="variable"?optimizeVariablePackagedBank:optimizePackagedBank)(data.rows,data.school,efficiency as "standard"|"high",mode as "heat-pump"|"gas",rangeMode as CurveRangeMode,stage as EquipmentStage));
       return cache.get(request)!;
     });
     scope.postMessage({selections,error:null});
