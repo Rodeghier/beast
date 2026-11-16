@@ -2,7 +2,8 @@
  * SOLAR HEAT GAINS. Turns weather irradiance and simple rectangular geometry into
  * window and opaque-surface heat gains in BTU/hr. Input irradiance is W/m2.
  * Read solarLocation -> sunVector -> wallIrradiance -> solarGains.
- * The envelope UA in school.ts still handles ordinary temperature conduction.
+ * Roof and wall U-values are shared with school.ts, which uses them for both
+ * ordinary envelope conduction and the solar correction.
  */
 
 import type { ClimateRow } from "./csv";

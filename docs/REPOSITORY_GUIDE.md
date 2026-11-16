@@ -241,7 +241,7 @@ For latent demand, outdoor and indoor humidity ratios are converted to grains/lb
 
 The rectangular footprint comes from floor area divided by stories and the entered plan aspect ratio. Window gains use glazing area, SHGC and the solar multiplier. Opaque gains use the sol-air temperature effect from absorptance, irradiance and the exterior film coefficient.
 
-The roof and wall U-values in this solar calculation affect the added opaque solar term. The entered total envelope UA continues to control ordinary outdoor-temperature conduction. Changing both without understanding that split can alter two different parts of the load balance.
+The roof and wall U-values are shared with `school.ts`. The school model calculates conductive envelope UA from roof area and opaque wall area (gross façade area less the entered window fraction), using the rectangular geometry, floor area, stories and ceiling height. Those same U-values also affect the added opaque solar term.
 
 `school.ts` also contains saturation-pressure, dew-point and humidity-ratio functions. They use Celsius internally. `mixed-air.ts` uses those relations and an enthalpy equation to obtain entering wet bulb. These functions return null for invalid or unsupported physical states rather than guessing a replacement.
 
