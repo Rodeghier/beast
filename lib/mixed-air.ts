@@ -5,30 +5,11 @@
  * Infiltration affects building loads but does not pass through this mixer.
  */
 
-import { celsius, fahrenheit, humidityRatio, saturationPressure, type SchoolAssumptions, type SchoolRow } from "./school";
+import { celsius, fahrenheit, humidityRatio, wetBulbF, type SchoolAssumptions, type SchoolRow } from "./school";
+
+export { wetBulbF, humidityRatioAtWetBulb } from "./school";
 
 export const MIXING_PRESSURE_PA = 101325;
-const saturatedRatio = (c: number) => { const p=saturationPressure(c); return p===null || p>=MIXING_PRESSURE_PA ? null : .621945*p/(MIXING_PRESSURE_PA-p); };
-/** ASHRAE wet-bulb relations, adapted from PsychroLib (MIT; THIRD_PARTY_NOTICES.md). */
-export function humidityRatioAtWetBulb(dryC: number, wetC: number): number | null {
-  const ws=saturatedRatio(wetC);
-  if (ws===null || !Number.isFinite(dryC) || wetC>dryC) return null;
-  return wetC>=0 ? ((2501-2.326*wetC)*ws-1.006*(dryC-wetC))/(2501+1.86*dryC-4.186*wetC)
-    : ((2830-.24*wetC)*ws-1.006*(dryC-wetC))/(2830+1.86*dryC-2.1*wetC);
-}
-// Invert the humidity-ratio relation by bisection. Wet bulb is bounded by dry bulb;
-// supersaturated/invalid inputs return null. Wet bulbs are not averaged directly.
-export function wetBulbF(dryF: number, w: number): number | null {
-  const dry=celsius(dryF), saturated=saturatedRatio(dry);
-  if (!Number.isFinite(w) || w<0 || saturated===null || w>saturated+1e-10) return null;
-  let low=-100, high=dry;
-  for (let i=0;i<32;i++) {
-    const middle=(low+high)/2, candidate=humidityRatioAtWetBulb(dry,middle);
-    if (candidate===null) return null;
-    if (candidate>w) high=middle; else low=middle;
-  }
-  return fahrenheit((low+high)/2);
-}
 export const enthalpy = (dryC: number,w: number) => 1.006*dryC+w*(2501+1.86*dryC);
 export type AirContext = { outdoorF: number; outdoorW: number; outdoorH: number; returnF: number; returnW: number; returnH: number; ventilationCfm: number };
 // Prepare the outdoor and return states once the building conditions are known.

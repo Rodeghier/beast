@@ -12,7 +12,7 @@ import { EXTENDED_UNIT_TONS } from "./catalog-sizes";
 export type HeatingModel = typeof catalog.models[number] & {scaledFromNominalTons?:number};
 export const HEATING_MODELS = catalog.models;
 export const HEATING_SOURCE = catalog.source;
-export const HEATING_BASIS = "Heating uses published nominal-airflow, integrated net capacity and total power at 70% outdoor RH. Mixed air uses maximum cooling airflow; an airflow/fan correction was not supplied. This is a screening approximation.";
+export const HEATING_BASIS = "Heating uses published nominal-airflow, integrated net capacity and total power at 70% outdoor RH. Mixed-air temperature follows the selected supply airflow. The original rating fan is removed before adding modeled fan input/heat, but a heating-coil capacity correction for airflow was not supplied. Nominal-airflow heating performance is a screening approximation.";
 
 // Some heating tables are shared by the two efficiency families. Match size and
 // either the exact family or the table marked shared; missing matches return null.

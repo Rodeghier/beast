@@ -1,7 +1,7 @@
 "use client";
 /** Present recorded unit stages and hourly on/off totals without changing loads
  * or inventing cycle lengths. All aggregation is in equipment-operation.ts. */
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import type { OperationDistribution } from "@/lib/equipment-operation";
 
@@ -23,17 +23,17 @@ export function EquipmentOperationGraphs({data}:{data:OperationDistribution}) {
         </ChartContainer>:<p className="graph-empty">{empty}</p>}
         <table className="sr-only"><caption>Stage runtime distribution values</caption><thead><tr><th>Stage</th><th>Unit-hours</th><th>Share of included time</th></tr></thead><tbody>{data.stages.map(stage=><tr key={stage.label}><th>{stage.label}</th><td>{n(stage.unitHours)}</td><td>{n(stage.percent)}%</td></tr>)}</tbody></table>
       </figure>
-      <figure><figcaption>{data.source?.kind==="burner"?"Burner":"Unit"} ON/OFF time per hour</figcaption>
-        <p className="distribution-basis">{data.source?.kind==="compressor"&&"ON means at least one compressor is running. "}Each bar counts unit-hours with that ON/OFF minute total. Individual cycle lengths and starts are not resolved.</p>
-        {data.includedUnitHours>0?<ChartContainer className="utilization-graph" config={{on:{label:"ON time",color:"#2878a1"},off:{label:"OFF time",color:"#94a3b8"}}}>
+      <figure><figcaption>{data.source?.kind==="burner"?"Burner":"Unit"} time ON distribution</figcaption>
+        <p className="distribution-basis">{data.source?.kind==="compressor"&&"ON means at least one compressor is running. "}Each bar counts unit-hours with that total time ON. Individual cycle lengths and starts are not resolved.</p>
+        {data.includedUnitHours>0?<ChartContainer className="utilization-graph" config={{on:{label:"ON time",color:"#2878a1"}}}>
           <BarChart accessibilityLayer data={data.minutes} margin={{left:0,right:12,top:12,bottom:12}}>
             <CartesianGrid vertical={false}/><XAxis dataKey="range" interval={0} height={55} tick={{fontSize:10}} label={{value:"Minutes per hour",position:"insideBottom",offset:0}}/>
             <YAxis allowDecimals={false} width={75} tickFormatter={v=>Number(v).toLocaleString(undefined,{notation:"compact"})} label={{value:"Unit-hours",angle:-90,position:"insideLeft"}}/>
-            <Tooltip formatter={(value,name)=>[`${n(Number(value))} unit-hours`,name==="on"||name==="ON time"?"ON time":"OFF time"]} labelFormatter={range=>`${range} minutes per hour`}/><Legend/>
-            <Bar dataKey="on" name="ON time" fill="#2878a1" isAnimationActive={false} radius={[3,3,0,0]}/><Bar dataKey="off" name="OFF time" fill="#94a3b8" isAnimationActive={false} radius={[3,3,0,0]}/>
+            <Tooltip formatter={value=>[`${n(Number(value))} unit-hours`,"Time ON"]} labelFormatter={range=>`${range} minutes ON per hour`}/>
+            <Bar dataKey="on" name="ON time" fill="#2878a1" isAnimationActive={false} radius={[3,3,0,0]}/>
           </BarChart>
         </ChartContainer>:<p className="graph-empty">{empty}</p>}
-        <table className="sr-only"><caption>Hourly ON/OFF time distribution values</caption><thead><tr><th>Minutes per hour</th><th>ON time unit-hours</th><th>OFF time unit-hours</th></tr></thead><tbody>{data.minutes.map(bin=><tr key={bin.range}><th>{bin.range}</th><td>{n(bin.on)}</td><td>{n(bin.off)}</td></tr>)}</tbody></table>
+        <table className="sr-only"><caption>Hourly time ON distribution values</caption><thead><tr><th>Minutes per hour</th><th>ON time unit-hours</th></tr></thead><tbody>{data.minutes.map(bin=><tr key={bin.range}><th>{bin.range}</th><td>{n(bin.on)}</td></tr>)}</tbody></table>
       </figure>
     </div>
     <p className="distribution-coverage">{n(data.includedUnitHours)} unit-hours included · {n(data.idleUnitHoursExcluded)} idle unit-hours excluded · Unavailable weather hours: {n(data.unavailableClockHours)}. ON time: {n(data.onUnitHours)} unit-hours; OFF time: {n(data.offUnitHours)} unit-hours.</p>
