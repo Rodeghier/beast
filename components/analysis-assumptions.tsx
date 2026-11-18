@@ -26,6 +26,8 @@ export function AnalysisAssumptions({ school, onSchool }: {
         <label><input type="radio" name={id} checked={custom} onChange={() => setCustom(true)}/>Modify values</label>
       </div>
       <p className="assumption-intro">Total floor area includes all conditioned floors. Floors have equal areas; conditioned height is per floor.</p>
+      <p className="assumption-intro">The thermostat deadband allows heating below its setpoint minus the band and cooling above its setpoint plus the band. Humidity control stays active. Design sizing uses the entered setpoints. Hourly results do not resolve individual compressor starts or minimum off-times.</p>
+      <p className="assumption-intro">Packaged compressors stay off below the minimum load percentage of their available capacity for that hour, including humidity-only cooling calls. Fans retain their ventilation schedule. Unserved loads are reported as unmet.</p>
       <fieldset className="assumptions-values" disabled={!custom}><legend className="sr-only">Building input values</legend>
         {SCHOOL_FIELDS.map(group => <fieldset className="assumption-group" key={group.title}>
           <legend>{group.title}</legend><div className="assumption-grid">{group.fields.map(field => <div className="form-field" key={field.key}>

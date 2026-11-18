@@ -45,28 +45,33 @@ export function bankHeating(groups:PackagedGroup[],outdoor:number,dry:number,mod
  * represented by its nominal tons / total installed tons. A unit's spare output
  * is not transferred to another zone. All units stage/cycle on their own loads;
  * fans retain full-hour operation across the bank on scheduled calls. */
-export function dispatchHeating(bank:NonNullable<ReturnType<typeof bankHeating>>,need:number) {
+export function dispatchHeating(bank:NonNullable<ReturnType<typeof bankHeating>>,need:number,minimumLoadFraction=0) {
   let electricity=0,delivered=0,belowMinimumStage=false;
   const totalTons=bank.evaluated.reduce((s,{g})=>s+g.count*g.model.nominal_tons,0);
   const details=bank.evaluated.map(({g,rating,point})=>{
     const zoneShare=g.count*g.model.nominal_tons/totalTons,assignedLoad=Math.max(0,need)*zoneShare;
     const capacity=Math.max(0,point.capacityBtuHr-rating.inferred_supply_fan_heat_Btu_hr);
-    const served=Math.min(assignedLoad,g.count*capacity),op=zonedSystemOperation(served,capacity,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
+    const minimumLoadLockout=assignedLoad>0&&assignedLoad<minimumLoadFraction*g.count*capacity;
+    const served=minimumLoadLockout?0:Math.min(assignedLoad,g.count*capacity),op=zonedSystemOperation(served,capacity,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
     delivered+=served;electricity+=(point.powerKw-rating.inferred_supply_fan_power_kW)*op.powerEquivalentUnits;belowMinimumStage ||=op.belowMinimumStage;
-    return {model:g.model.id,count:g.count,zoneShare,assignedHeatingBtuHr:assignedLoad,unmetHeatingBtuHr:assignedLoad-served,heating:point,heatingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
+    return {model:g.model.id,count:g.count,zoneShare,minimumLoadLockout,assignedHeatingBtuHr:assignedLoad,unmetHeatingBtuHr:assignedLoad-served,heating:point,heatingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
   });
   return {delivered,electricity:bank.evaluated.some(v=>v.point.powerKw<v.rating.inferred_supply_fan_power_kW)?null:electricity,belowMinimumStage,details};
 }
-export function dispatchCooling(bank:NonNullable<ReturnType<typeof bankCooling>>,sensible:number,latent:number) {
+export function dispatchCooling(bank:NonNullable<ReturnType<typeof bankCooling>>,sensible:number,latent:number,minimumLoadFraction=0) {
   let unmet=0,electricity=0,delivered=0,belowMinimumStage=false;
   const totalTons=bank.evaluated.reduce((s,{g})=>s+g.count*g.model.nominal_tons,0);
   const details=bank.evaluated.map(({g,rating,point})=>{
     const zoneShare=g.count*g.model.nominal_tons/totalTons,s=Math.max(0,sensible)*zoneShare,l=Math.max(0,latent)*zoneShare;
-    const need=Math.max(s>0?s/point.shr:0,l>0?l/(1-point.shr):0),served=Math.min(need,g.count*point.capacityBtuHr);
+    // Required gross output must satisfy both component loads. Latent-only calls
+    // use the same cutoff; no rated/nominal-tonnage or runtime proxy is used.
+    const need=Math.max(s>0?s/point.shr:0,l>0?l/(1-point.shr):0);
+    const minimumLoadLockout=need>0&&need<minimumLoadFraction*g.count*point.capacityBtuHr;
+    const served=minimumLoadLockout?0:Math.min(need,g.count*point.capacityBtuHr);
     const op=zonedSystemOperation(served,point.capacityBtuHr,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
     const zoneUnmet=Math.max(0,s-served*point.shr)+Math.max(0,l-served*(1-point.shr));unmet+=zoneUnmet;
     electricity+=rating.cooling_non_supply_fan_power_kW*op.powerEquivalentUnits;delivered+=served;belowMinimumStage ||=op.belowMinimumStage;
-    return {model:g.model.id,count:g.count,zoneShare,assignedSensibleBtuHr:s,assignedLatentBtuHr:l,unmetCoolingBtuHr:zoneUnmet,cooling:point,coolingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
+    return {model:g.model.id,count:g.count,zoneShare,minimumLoadLockout,assignedSensibleBtuHr:s,assignedLatentBtuHr:l,unmetCoolingBtuHr:zoneUnmet,cooling:point,coolingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
   });
   return {delivered,electricity,unmet,belowMinimumStage,details};
 }
