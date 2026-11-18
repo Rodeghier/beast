@@ -22,7 +22,9 @@ const {simulateEquipment:simulateEquipmentModel,BTU_PER_KWH,stagedSystemOperatio
 // These component fixtures explicitly serve as their own controlled design days.
 const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel(rows,school,scenario,selection,{rows,basis:'Controlled design fixture',metadata:{Sizing_basis:'Controlled design fixture'},error:null});
 const {DEFAULT_SCHOOL,simulateSchool,celsius}=load('lib/school.ts');
-const {newScenario}=load('lib/equipment.ts');
+const {newScenario:createScenario}=load('lib/equipment.ts');
+// Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed',reheatOption:undefined});
 const {unitRatingFor}=load('lib/unit-ratings.ts');
 const near=(a,b,t=1e-7)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 const values=[null,NaN,Infinity,-1,0,0,.001,10,10.00000000002,10.1,20,99,100,100.001];
@@ -53,7 +55,7 @@ const gap={...cooling,rows:[{...cooling.rows[0],deliveredCooling:null,coolingEle
 assert.deepEqual(equipmentUtilization(gap,'cooling'),{capacity:[null],power:[null]});
 const noCapacity={...cooling,rows:[{...cooling.rows[0],availableCooling:null}]};assert.equal(equipmentUtilization(noCapacity,'cooling').capacity[0],null);
 const boiler={...hp,scenario:{...newScenario('gas'),cooling:'heat-pump'},rows:[{...hp.rows[0],boilerPartLoadRatio:.4,boilerRuntimeFraction:.6}]};
-for(const fuel of ['natural-gas','propane','light-oil']){
+for(const fuel of ['natural-gas']){
  const sample=equipmentUtilization({...boiler,scenario:{...boiler.scenario,boilerFuel:fuel}},'heating');near(sample.capacity[0],40);near(sample.power[0],60);
 }
 const resistance={...hp,scenario:newScenario('resistance'),heatingCapacityBtuHr:10*BTU_PER_KWH,rows:[{...hp.rows[0],deliveredHeating:5*BTU_PER_KWH+1000,fanHeat:1000,heatingElectricity:5}]};
@@ -66,7 +68,7 @@ const actual=equipmentUtilization(hp,'heating');assert.ok(actual.power[0]>actual
 const {EquipmentDistributions}=load('components/equipment-distributions.tsx');
 const chartCooling={...cooling,rows:[{...cooling.rows[0],groupPerformance:JSON.stringify({cooling:[{model:hp.selection.groups[0].model.id,staging:stagedSystemOperation(50000,100000,1,[1])}]})}]};
 const html=renderToStaticMarkup(createElement(EquipmentDistributions,{results:[chartCooling],active:0,onActive:()=>{}}));
-assert.match(html,/Equipment stages and cycling/);assert.match(html,/Time at each unit stage/);assert.match(html,/Unit ON\/OFF time per hour/);assert.match(html,/Unit stages and ON\/OFF time/);assert.match(html,/distribution values/);assert.match(html,/Unavailable weather hours: 0/);
+assert.match(html,/Equipment stages and cycling/);assert.match(html,/Time at each unit stage/);assert.match(html,/Unit time ON distribution/);assert.match(html,/Unit stages and time ON/);assert.match(html,/distribution values/);assert.match(html,/Unavailable weather hours: 0/);
 const errorHtml=renderToStaticMarkup(createElement(EquipmentDistributions,{results:[{...cooling,error:'Unsupported selection'}],active:0,onActive:()=>{}}));
 assert.match(errorHtml,/Unavailable weather hours: 1/);assert.match(errorHtml,/No valid hourly stage data/);
 const page=readFileSync(resolve(root,'app/page.tsx'),'utf8');assert.match(page,/<EquipmentDistributions results=\{comparisonResults\} active=\{activeSystem\} onActive=\{setActiveSystem\}/);

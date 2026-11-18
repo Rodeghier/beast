@@ -191,6 +191,6 @@ export function annualPerformance(result: EquipmentResult, rows: ClimateRow[], t
       co2e:fuelConsumption===null||(fuelConsumption>0&&fuelUnit!=="therms")||emissions===null?null:emissions/1000};
   });
   return {endUses,months,energy:total("energy"),cost:total("cost"),co2e:total("co2e"),fuelUnit:result.summary.boilerFuelUnit,electricBill,reason:null,
-    gasReason:months.some(m=>m.gasCost===null)?result.summary.boilerFuelUnit!=="therms"?"Propane and No. 2 light-oil price data are not connected; fuel cost is unavailable for those fuels.":"Natural-gas cost requires an EIA monthly price for each used month and a valid heat-content conversion. Refresh gas data or configure the EIA connection.":null,
-    emissionsReason:months.some(m=>m.co2e===null)?result.summary.boilerFuelUnit!=="therms"?"Propane and No. 2 light-oil combustion emissions factors are not connected; total emissions are unavailable.":"Required EPA electricity or natural-gas emissions factors are unavailable.":null};
+    gasReason:months.some(m=>m.gasCost===null)?result.summary.boilerFuelUnit!=="therms"?"Unsupported fuel unit; natural gas must be reported in therms.":"Natural-gas cost requires an EIA monthly price for each used month and a valid heat-content conversion. Refresh gas data or configure the EIA connection.":null,
+    emissionsReason:months.some(m=>m.co2e===null)?result.summary.boilerFuelUnit!=="therms"?"Unsupported fuel unit; natural gas emissions require therms.":"Required EPA electricity or natural-gas emissions factors are unavailable.":null};
 }

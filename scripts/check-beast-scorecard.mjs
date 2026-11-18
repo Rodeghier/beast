@@ -168,6 +168,6 @@ assert.match(breakdownHtml,/Cooling, excluding supply fans/);
 assert.match(breakdownHtml,/Supply fans, all operating hours/);
 assert.match(breakdownHtml,/Total equipment/);
 assert.match(breakdownHtml,/39.7 MMBtu across 54 hours/);
-assert.match(breakdownHtml,/No backup energy or emissions/);
+assert.match(breakdownHtml,/Unmet loads remain after any configured backup heating/);
 assert.match(breakdownHtml,/colSpan="2"/i);
 console.log('End-use breakdown checks passed: component reconciliation, gas and oil, missing factors/components, zero use, incomplete years, comparison table and unmet-load notes.');

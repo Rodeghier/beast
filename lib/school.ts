@@ -9,7 +9,7 @@
 import type { ClimateRow } from "./csv";
 import { solarGains, type SolarLocation } from "./solar";
 
-export const MODEL_VERSION = "building-solar-2.3";
+export const MODEL_VERSION = "building-solar-2.4";
 export const BTU_PER_WH = 3.412141633;
 const PRESSURE_PA = 101325;
 
@@ -120,22 +120,32 @@ function vaporPressure(c: number | null, rh: number | null): number | null {
   return saturation === null ? null : saturation * rh / 100;
 }
 
-export function dewPointF(c: number | null, rh: number | null): number | null {
-  const pv = vaporPressure(c, rh);
-  // RH=0 has no finite dew point. Do not invent a value or clamp low humidity.
-  if (pv === null || pv <= 0 || c === null || pv < saturationPressure(-100)!) return null;
-  if (rh === 100) return fahrenheit(c);
-  let low = -100, high = c;
-  for (let i = 0; i < 48; i++) {
-    const mid = (low + high) / 2;
-    if (saturationPressure(mid)! > pv) high = mid; else low = mid;
-  }
-  return fahrenheit((low + high) / 2);
-}
-
 export function humidityRatio(c: number | null, rh: number | null): number | null {
   const pv = vaporPressure(c, rh);
   return pv === null || pv >= PRESSURE_PA ? null : 0.621945 * pv / (PRESSURE_PA - pv);
+}
+
+const saturatedRatio = (c: number) => { const p=saturationPressure(c); return p===null || p>=PRESSURE_PA ? null : .621945*p/(PRESSURE_PA-p); };
+/** ASHRAE wet-bulb relations, adapted from PsychroLib (MIT; THIRD_PARTY_NOTICES.md). */
+export function humidityRatioAtWetBulb(dryC: number, wetC: number): number | null {
+  const ws=saturatedRatio(wetC);
+  if (ws===null || !Number.isFinite(dryC) || wetC>dryC) return null;
+  return wetC>=0 ? ((2501-2.326*wetC)*ws-1.006*(dryC-wetC))/(2501+1.86*dryC-4.186*wetC)
+    : ((2830-.24*wetC)*ws-1.006*(dryC-wetC))/(2830+1.86*dryC-2.1*wetC);
+}
+// Invert the humidity-ratio relation by bisection. Wet bulb is bounded by dry bulb;
+// supersaturated/invalid inputs return null. Wet bulbs are not averaged directly.
+export function wetBulbF(dryF: number, w: number): number | null {
+  if (!Number.isFinite(dryF)) return null;
+  const dry=celsius(dryF), saturated=saturatedRatio(dry);
+  if (!Number.isFinite(w) || w<0 || saturated===null || w>saturated+1e-10) return null;
+  let low=-100, high=dry;
+  for (let i=0;i<32;i++) {
+    const middle=(low+high)/2, candidate=humidityRatioAtWetBulb(dry,middle);
+    if (candidate===null) return null;
+    if (candidate>w) high=middle; else low=middle;
+  }
+  return fahrenheit((low+high)/2);
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -145,7 +155,7 @@ export const timeLabel = (r: ClimateRow) => `${pad(r.hour)}:${pad(r.minute)}`;
 // An enriched hourly weather record. The & operator combines the ClimateRow fields
 // with the calculated fields below, similar to adding keys to a Python dict.
 export type SchoolRow = ClimateRow & {
-  temperatureF: number | null; dewPointF: number | null;
+  temperatureF: number | null; wetBulbF: number | null;
   sensibleCooling: number | null; latentCooling: number | null; totalCooling: number | null; heating: number | null;
   occupied: boolean; occupants: number; outdoorAirCfm: number;
   ventilationCfm: number; infiltrationCfm: number;
@@ -189,7 +199,8 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     const solar = solarGains(row, a, area, site);
     // Initialize dependent results as null. If temperature or solar data are missing,
     // return this record instead of treating an unknown load as zero.
-    const base: SchoolRow = { ...row, temperatureF: tempF, dewPointF: dewPointF(row.temperature, row.humidity), sensibleCooling: null, latentCooling: null, totalCooling: null, heating: null, occupied, occupants, outdoorAirCfm,
+    const outdoorW = humidityRatio(row.temperature, row.humidity);
+    const base: SchoolRow = { ...row, temperatureF: tempF, wetBulbF: tempF === null || outdoorW === null ? null : wetBulbF(tempF, outdoorW), sensibleCooling: null, latentCooling: null, totalCooling: null, heating: null, occupied, occupants, outdoorAirCfm,
       ventilationCfm: ventilation, infiltrationCfm: infiltration, heatBalance: null, coolBalance: null, heatTransfer, freeFloatF: null, heatingSetpointF: heatSetpoint, coolingSetpointF: coolSetpoint,
       solarGain: solar.total, windowSolarGain: solar.windows, opaqueSolarGain: solar.opaque, solarStatus: solar.status };
     if (tempF === null || solar.total === null) return base;
@@ -208,7 +219,6 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     const zoneF = Math.min(coolSetpoint, Math.max(heatSetpoint, tempF + gains / heatTransfer));
     // Calculate moisture demand separately. The 0.68 coefficient uses CFM and grains/lb;
     // 7000 converts humidity ratio from lb/lb to grains/lb before that multiplication.
-    const outdoorW = humidityRatio(row.temperature, row.humidity);
     const indoorW = humidityRatio(celsius(zoneF), a.indoorRh)!;
     const latent = outdoorW === null ? null : Math.max(0, 0.68 * outdoorAirCfm * 7000 * (outdoorW - indoorW) + occupants * a.latentPerson);
     return { ...base, sensibleCooling: sensible === 0 ? 0 : -sensible, latentCooling: latent === null ? null : latent === 0 ? 0 : -latent,
@@ -254,13 +264,14 @@ export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: str
     Envelope_UA_BTU_hr_F: envelopeUA(a),
     Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; envelope conduction UA is calculated from roof and opaque-wall U-values and modeled geometry; windows are excluded from conductive UA",
     Dew_point: "ASHRAE ice/water saturation convention; frost point below freezing; blank at RH=0 or missing input",
+    Wet_bulb: "ASHRAE wet-bulb relations at 101325 Pa from dry bulb and RH; blank for missing or invalid input",
     ...Object.fromEntries(SCHOOL_FIELDS.flatMap(g => g.fields.map(f => [`${f.label} (${f.unit})`, a[f.key]]))),
   };
   const escape = (v: unknown) => v === null || v === undefined ? "" : `"${String(v).replace(/"/g, '""')}"`;
   const line = (values: unknown[]) => values.map(escape).join(",");
   const precision = (v: number | null) => v === null ? null : Number(v.toFixed(4));
   return [line(Object.keys(metadata)), line(Object.values(metadata)), "",
-    line(["Date", "Time_local", "Air_temperature_F", "Dew_point_F", "Sensible_cooling_BTU_hr", "Latent_cooling_BTU_hr", "Total_cooling_BTU_hr", "Heating_BTU_hr", "Occupied", "Occupants", "Outdoor_air_including_infiltration_CFM", "DHI_W_m2", "DNI_W_m2", "GHI_W_m2", "Solar_gain_BTU_hr", "Window_solar_gain_BTU_hr", "Opaque_solar_gain_BTU_hr", "Solar_status"]),
-    ...rows.map(r => line([dateLabel(r), timeLabel(r), precision(r.temperatureF), precision(r.dewPointF), precision(r.sensibleCooling), precision(r.latentCooling), precision(r.totalCooling), precision(r.heating), r.occupied ? "Yes" : "No", r.occupants, precision(r.outdoorAirCfm), r.dhi, r.dni, r.ghi, precision(r.solarGain), precision(r.windowSolarGain), precision(r.opaqueSolarGain), r.solarStatus])),
+    line(["Date", "Time_local", "Air_temperature_F", "Wet_bulb_F", "Sensible_cooling_BTU_hr", "Latent_cooling_BTU_hr", "Total_cooling_BTU_hr", "Heating_BTU_hr", "Occupied", "Occupants", "Outdoor_air_including_infiltration_CFM", "DHI_W_m2", "DNI_W_m2", "GHI_W_m2", "Solar_gain_BTU_hr", "Window_solar_gain_BTU_hr", "Opaque_solar_gain_BTU_hr", "Solar_status"]),
+    ...rows.map(r => line([dateLabel(r), timeLabel(r), precision(r.temperatureF), precision(r.wetBulbF), precision(r.sensibleCooling), precision(r.latentCooling), precision(r.totalCooling), precision(r.heating), r.occupied ? "Yes" : "No", r.occupants, precision(r.outdoorAirCfm), r.dhi, r.dni, r.ghi, precision(r.solarGain), precision(r.windowSolarGain), precision(r.opaqueSolarGain), r.solarStatus])),
   ].join("\r\n");
 }

@@ -58,8 +58,9 @@ function operationForHour(row:EquipmentHour,source:OperationSource,mode:Utilizat
     return {unitCount:1,fullUnits:partial?0:1,idleUnits:0,stageLevels:[1],partialUnitLoadFraction:partial?runtime:0,
       partialUnitStageTimes:[partial?runtime:0],partialUnitRuntimeFraction:partial?runtime:0,powerEquivalentUnits:runtime,belowMinimumStage:partial};
   }
-  const electricity=mode==="cooling"?row.coolingElectricity:row.heatingElectricity;
+  const electricity=mode==="cooling"?row.coolingElectricity:row.heatingCompressorElectricity===undefined?row.heatingElectricity:row.heatingCompressorElectricity;
   if(!finite(electricity)||electricity<0)return null;
+  if(mode==="heating"&&row.backupActive)return idleOperation(source); // Backup energy is separate from compressor runtime.
   if(electricity===0)return idleOperation(source); // A known idle compressor needs no curve evaluation.
   try {
     const detail=row.groupPerformance?JSON.parse(row.groupPerformance):null;

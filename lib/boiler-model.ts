@@ -1,7 +1,7 @@
 import CBLE4DHotWaterRatings from "./data/cleaver-brooks-cble-4d-hot-water-ratings.json";
 import type { BoilerFuel } from "./equipment";
 
-export type BoilerFuelUnit = "therms" | "ft³" | "gal";
+export type BoilerFuelUnit = "therms";
 export type CBLE4DFuelRating = { consumptionPerHour: number; unit: BoilerFuelUnit; inputBtuPerHour: number };
 
 /** Small units use user-entered AFUE. Large units use CBLE-4D rated output and
@@ -64,8 +64,7 @@ export type OnOffBoilerHour = {
 
 /** Manufacturer table consumption rate and listed fuel heat-content basis. */
 export function cble4dFuelRatingFor(rating: CBLE4DBoilerRating, fuel: BoilerFuel): CBLE4DFuelRating {
-  if (fuel === "propane") return { consumptionPerHour: rating.propaneCubicFeetPerHr, unit: "ft³", inputBtuPerHour: rating.propaneCubicFeetPerHr * 2550 };
-  if (fuel === "light-oil") return { consumptionPerHour: rating.lightOilGalPerHr, unit: "gal", inputBtuPerHour: rating.lightOilGalPerHr * 140_000 };
+  if (fuel !== "natural-gas") throw new Error("Only natural gas is supported.");
   return { consumptionPerHour: rating.naturalGasThermsPerHr, unit: "therms", inputBtuPerHour: rating.naturalGasThermsPerHr * 100_000 };
 }
 
@@ -118,7 +117,7 @@ export function calculateRatedBoilerHour(
   const deliveredOutputBtuHr = Math.min(loadBtuHr, rating.ratedOutputBtuHr);
   const partLoadRatio = deliveredOutputBtuHr / rating.ratedOutputBtuHr;
   const fuelConsumption = fuelRating.consumptionPerHour * partLoadRatio * durationHours;
-  const gasTherms = fuel === "natural-gas" ? fuelConsumption : 0;
+  const gasTherms = fuelConsumption;
   return {
     capacityBtuHr,
     deliveredOutputBtuHr,

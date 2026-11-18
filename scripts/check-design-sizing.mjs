@@ -24,7 +24,9 @@ const {DEFAULT_SCHOOL,simulateSchool,validateSchool,humidityRatio,celsius}=load(
 const {wetBulbF}=load('lib/mixed-air.ts');
 const {sunVector}=load('lib/solar.ts');
 const {simulateEquipment,autosizePackaged,equipmentResultsCsv,equipmentComparisonCsv}=load('lib/equipment-model.ts');
-const {newScenario}=load('lib/equipment.ts');
+const {newScenario:createScenario}=load('lib/equipment.ts');
+// Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
 const {parseCsv}=load('lib/csv.ts');
 const near=(a,b,t=1e-6)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 const site={latitude:43.14,longitude:-89.35,utcOffset:-6};
