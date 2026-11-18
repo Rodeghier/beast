@@ -20,7 +20,7 @@ export const DEFAULT_SCHOOL = {
   coolingDesignPercent: 1, heatingDesignPercent: 99,
   heatingF: 70, coolingF: 75, setbackHeatingF: 60, setbackCoolingF: 85, indoorRh: 50,
   people: 1200, startHour: 7, endHour: 17, summerPercent: 10,
-  envelopeUa: 0.10, ceilingFt: 14, infiltrationAch: 0.15,
+  ceilingFt: 14, infiltrationAch: 0.15,
   ventilationPerson: 10, ventilationArea: 0.12,
   lightingW: 0.9, equipmentW: 0.6, sensiblePerson: 245, latentPerson: 155,
   stories: 2, aspectRatio: 2, rotationDeg: 0, windowPercent: 25, shgc: 0.35, shadeFactor: 1,
@@ -54,7 +54,6 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "summerPercent", label: "June–August occupancy", unit: "% of full", min: 0, max: 100, step: 1 },
   ] },
   { title: "Envelope and outdoor air", fields: [
-    { key: "envelopeUa", label: "Envelope UA / floor area", unit: "BTU/hr·ft²·°F", min: 0.001, max: 2, step: 0.001 },
     { key: "infiltrationAch", label: "Infiltration (all hours)", unit: "air changes/hr", min: 0, max: 3, step: 0.01 },
     { key: "ventilationPerson", label: "Outdoor air per occupant", unit: "CFM/person", min: 0, max: 50, step: 0.5 },
     { key: "ventilationArea", label: "Outdoor air per floor area", unit: "CFM/ft²", min: 0, max: 1, step: 0.01 },
@@ -69,8 +68,8 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "windowPercent", label: "Window-to-wall area", unit: "% on each façade", min: 0, max: 95, step: 1 },
     { key: "shgc", label: "Glazing SHGC", unit: "fraction of incident solar gain", min: 0, max: 1, step: 0.01 },
     { key: "shadeFactor", label: "Window solar multiplier", unit: "0 = fully shaded; 1 = unshaded", min: 0, max: 1, step: 0.05 },
-    { key: "roofU", label: "Roof U-value for solar correction", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
-    { key: "wallU", label: "Opaque wall U-value for solar correction", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
+    { key: "roofU", label: "Roof U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
+    { key: "wallU", label: "Opaque wall U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
     { key: "solarAbsorptance", label: "Roof / wall solar absorptance", unit: "fraction", min: 0, max: 1, step: 0.05 },
     { key: "outdoorFilm", label: "Exterior surface film coefficient", unit: "BTU/hr·ft²·°F", min: 1, max: 10, step: 0.1 },
     { key: "groundReflectance", label: "Ground solar reflectance", unit: "fraction", min: 0, max: 1, step: 0.05 },
@@ -94,6 +93,14 @@ export function validateSchool(a: SchoolAssumptions): string | null {
 
 export const fahrenheit = (c: number) => c * 9 / 5 + 32;
 export const celsius = (f: number) => (f - 32) * 5 / 9;
+
+export function envelopeUA(a: SchoolAssumptions): number {
+  const footprint = a.floorAreaFt2 / a.stories;
+  const length = Math.sqrt(footprint * a.aspectRatio), width = footprint / length;
+  const roofArea = footprint;
+  const opaqueWallArea = 2 * (length + width) * a.stories * a.ceilingFt * (1 - a.windowPercent / 100);
+  return a.roofU * roofArea + a.wallU * opaqueWallArea;
+}
 
 // ASHRAE Fundamentals saturation pressure equations, SI coefficients as
 // documented by PsychroLib. Ice below the triple point; water above it.
@@ -163,10 +170,12 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
   const error = validateSchool(a); if (error) throw new Error(error);
   // Area already includes every floor. Multiplying by height per floor gives
   // total conditioned volume; multiplying by stories again would double count.
-  // The UA input is per square foot of total conditioned floor area.
   const area = a.floorAreaFt2;
   const infiltration = a.infiltrationAch * area * a.ceilingFt / 60;
-  const ua = a.envelopeUa * area;
+  // Calculate conductive envelope UA from the same roof and opaque-wall
+  // U-values used by the solar model. Geometry matches solarGains: equal
+  // floor plates, a rectangular footprint, and glazing spread over façades.
+  const ua = envelopeUA(a);
   return rows.map(row => {
     // Use the CSV's calendar directly. Date.UTC avoids shifting weekdays in
     // a visitor's browser time zone; the source excludes daylight saving time.
@@ -252,7 +261,9 @@ export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: str
     Schedule: "Mon-Fri; June-Aug reduced occupancy; no holidays; fixed local standard time; no Feb 29",
     Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and steady-state sol-air correction; no thermal lag or longwave sky correction",
     Solar_latitude: site?.latitude ?? "", Solar_longitude: site?.longitude ?? "", Solar_UTC_offset: site?.utcOffset ?? "",
-    Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; roof/wall U-values affect solar correction only; entered total envelope UA controls air-temperature conduction",
+    Envelope_UA_BTU_hr_F: envelopeUA(a),
+    Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; envelope conduction UA is calculated from roof and opaque-wall U-values and modeled geometry; windows are excluded from conductive UA",
+    Dew_point: "ASHRAE ice/water saturation convention; frost point below freezing; blank at RH=0 or missing input",
     Wet_bulb: "ASHRAE wet-bulb relations at 101325 Pa from dry bulb and RH; blank for missing or invalid input",
     ...Object.fromEntries(SCHOOL_FIELDS.flatMap(g => g.fields.map(f => [`${f.label} (${f.unit})`, a[f.key]]))),
   };
