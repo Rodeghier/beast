@@ -2,7 +2,6 @@
 
 An engineering handbook for readers with basic Python experience
 
-Prepared from the local repository on November 8 2026
 
 ## 1 What this guide helps you do
 
@@ -261,20 +260,38 @@ Installed airflow equals unit count multiplied by the catalog's fixed maximum co
 
 Supply-fan heat is applied later in the sensible/heating balances. It is not added to entering air again in this mixer.
 
+### Current packaged-airside path
+
+The website defaults to variable airflow and electric resistance reheat. Both the variable and constant dropdown choices use the physical airside model in `lib/variable-airside.ts`. Constant mode holds running fans at each unit's AHRI reference airflow, capped by the standard-motor limit. It does not hold airflow at 480 CFM/ton. That maximum catalog airflow is the normalization basis of the cooling-capacity data, a different quantity from AHRI reference airflow.
+
+`solveVariableAirside` solves each installed group's nominal-tonnage share. It removes scheduled mechanical-ventilation heat and moisture from the zone demand before conditioning mixed outdoor and return air, preventing double counting. Infiltration remains a zone load and is excluded from the mixer. Airflow candidates are ranked by service before purchased input energy. The model uses sensible and latent demand rather than a fixed supply-temperature target or dew-point trigger.
+
+The controller conserves modeled sensible-plus-latent cooling while correcting coil-leaving air for nonnegative humidity and saturation consistency. It solves duty against this corrected state, checks full available output before reporting a shortfall, and enforces a provisional 45 F minimum coil-leaving temperature. Fan heat enters downstream; primary heat and reheat then establish final supply temperature. Reheat changes dry bulb without adding moisture. Source-curve SHR and final operating SHR can therefore differ.
+
+The older `mixAir` plus fixed-rating fan worksheet remains available for reference callers that explicitly choose fixed airflow and omit `reheatOption`. It is not the constant-airflow dropdown's current calculation. Sections below label the older arithmetic where it remains useful for tracing ratings and stages. See `docs/VARIABLE_AIRFLOW.md` and `docs/MHGRH.md` for focused technical notes.
+
 ## 9 Equipment curves and ratings
 
 The equipment JSON datasets have different jobs. Keep those jobs distinct when adding or replacing data.
 
 | Application dataset | Runtime reader | Role |
 | --- | --- | --- |
-| `lib/data/shared-cooling-capacity.json` | `packaged-cooling.ts` | One runtime normalized gross-capacity curve across all sizes |
+| `lib/data/precedent-airflow-cooling.json` | `airflow-cooling.ts` | Current shared temperature/airflow capacity surface and per-source-unit SHR numerators |
+| `lib/data/mhgrh.json` | `mhgrh.ts` | Interpolated hot-gas reheat temperature-rise limits |
+| `lib/data/shared-cooling-capacity.json` | `packaged-cooling.ts` | Maximum-airflow reference curve used by legacy checks and sizing seeds |
 | `lib/data/precedent-cooling.json` | `packaged-cooling.ts` | Source reference capacities, SHR fits and domains; original capacity fits retained as provenance |
 | `lib/data/precedent-heating.json` | `packaged-heating.ts` | Per-unit net heating capacity and total kW fits |
 | `lib/data/precedent-unit-ratings.json` | `unit-ratings.ts` | Nominal cooling system kW and inferred fan component |
 
 The internal dataset filenames are retained source identifiers. The user-facing reference downloads use generic `packaged-` filenames. Do not rename data files without also updating their imports and preparation tools.
 
-### Cooling evaluator
+### Current airflow-dependent cooling evaluator
+
+`lib/airflow-cooling.ts` evaluates one anchored quadratic capacity surface using outdoor DB, entering WB, entering DB and CFM per nominal ton. Source airflows are 300, 360, 400, 440 and 480 CFM/ton. The reference is each unit's actual catalog capacity at 95 F outdoor, 67 F entering WB, 80 F entering DB and 480 CFM/ton; nominal tons times 12,000 is not substituted. Individual SHR numerator fits divided by the shared normalized capacity give source SHR, clipped to 0-1.
+
+The data preserve 7,260 source slots, with 7,192 accepted samples after the two existing 17.5-ton exclusions. Capacity relative RMS error is 1.983%, and whole-unit holdout RMS is 2.046%. SHR RMS is 0.002256; holding out 400 CFM/ton gives 0.002125 RMS. These are catalog-fit errors, not estimates of building simulation accuracy. The 22 added large size/family combinations scale 25-ton source assemblies; all 46 combinations use the airflow-dependent surface. Temperature boundaries follow source coverage; airflow is never extrapolated.
+
+### Maximum-airflow reference evaluator
 
 `coolingPoint` takes outdoor DB, entering WB and entering DB in Fahrenheit. It checks the valid domain, creates normalized temperature variables and forms polynomial terms. A coefficient/term dot product gives normalized capacity. Multiplication by the unit's reference capacity gives gross BTU/hr.
 
@@ -296,11 +313,13 @@ Heating outputs follow the catalog basis: integrated net capacity and total powe
 
 `unitRatingFor` matches size and efficiency family. Nominal total cooling kW is held constant at full output because no operating-temperature power correction is supplied. The inferred supply-fan heat is rated gross capacity minus rated net capacity. Inferred fan kW is that heat divided by 3412.141633.
 
-The source is the supplied Trane catalog PKGP-PRC023F-EN extract `Unit_data_full.pdf`, general-data tables 6 and 7, printed pages 24–29. Table 6 supplies standard-efficiency ratings; table 7 supplies high-efficiency ratings. `scripts/extract-unit-data.py` reads the rows labeled “Gross Cooling Capacity,” “AHRI Net Cooling Capacity” and “System Power (kW)” into `lib/data/precedent-unit-ratings.json` and `public/references/packaged-unit-ratings.csv`. The source PDF is not bundled. These fixed nominal/AHRI ratings are separate from the hourly gross cooling capacity evaluated at mixed-air conditions and maximum catalog airflow.
+The source is the supplied Trane catalog PKGP-PRC023F-EN extract `Unit_data_full.pdf`, general-data tables 6 and 7, printed pages 24–29. Table 6 supplies standard-efficiency ratings; table 7 supplies high-efficiency ratings. `scripts/extract-unit-data.py` reads the rows labeled “Gross Cooling Capacity,” “AHRI Net Cooling Capacity” and “System Power (kW)” into `lib/data/precedent-unit-ratings.json` and `public/references/packaged-unit-ratings.csv`. The source PDF is not bundled. These fixed nominal/AHRI ratings are separate from hourly gross cooling capacity evaluated at actual mixed-air conditions and selected airflow.
 
-For the standard 3-ton WSK036, gross cooling is 38,000 BTU/hr and AHRI net cooling is 37,000 BTU/hr. The inferred fan heat is 1,000 BTU/hr and fan input is approximately 0.2931 kW. Net cooling accounts for fan motor heat; gross cooling excludes that heat. `bankRatings` sums each group's per-unit fan value times its installed count. Extended sizes scale the selected family's 25-ton rating as described above. The fan estimate is held at its rating value during annual operation; it is not recomputed from hourly curve capacity.
+For the standard 3-ton WSK036, gross cooling is 38,000 BTU/hr and AHRI net cooling is 37,000 BTU/hr. The inferred fan heat is 1,000 BTU/hr and fan input is approximately 0.2931 kW. Net cooling accounts for fan motor heat; gross cooling excludes that heat. `bankRatings` sums each group's per-unit fan value times its installed count. Extended sizes scale the selected family's 25-ton rating as described above. The rating estimate anchors fan input at AHRI airflow; current operation scales it with actual flow as described below. Legacy reference operation holds this rating estimate constant.
 
-This fan estimate is not motor nameplate horsepower converted to operating watts. It is also not corrected by an airflow fan law. These distinctions explain why an hourly capacity curve and a nominal power rating can be combined only as a screening estimate.
+`lib/variable-fan.ts` applies `fan kW = reference kW * (actual CFM / AHRI CFM)^3`. Standard-motor shaft HP limits are converted to electrical ceilings using provisional 90% motor and 97% drive efficiency. If the cubic curve reaches the ceiling before 480 CFM/ton, attainable maximum CFM is reduced. RPM limits do not constitute an operating RPM curve. High-static motors are excluded; larger proxies scale the 25-ton assembly.
+
+All fan electricity is assumed to heat the supply air. A provisional 20% maximum-flow floor applies without compressors, while compressor airflow stays within catalog coverage. The cubic law assumes a fixed resistance curve; static-pressure reset and part-load motor/drive efficiency maps are unavailable. No airflow-dependent compressor input map was recovered. Heating retains its nominal-airflow capacity/power basis, removing the original rating fan before adding actual fan input; no heating-capacity airflow correction is invented.
 
 ## 10 Temperature range policy
 
@@ -315,6 +334,16 @@ The variables `curveOutdoorF`, `curveWetF` and `curveDryF` record where the equi
 Cooling source coverage is generally outdoor 85–125°F, entering WB 61–73°F and entering DB 75–90°F. Standard 10-ton outdoor coverage ends at 120°F. Heating source coverage is outdoor −8–72°F and entering DB 40–80°F. Boundary-held performance beyond those limits is an estimate; cold-weather heating performance can be overstated.
 
 ## 11 How automatic selection works
+
+### Current selection and legacy seed search
+
+The current page runs `optimizePackagedBank` in `lib/equipment-sizing.worker.ts` and passes that prepared selection to `simulateEquipment`. The worker request key includes heating mode, efficiency, packaged-cooling choice, range policy and stage preference, but not airflow mode or reheat choice. Consequently, the page's installed bank still comes from the legacy cooling-only optimizer; changing airflow/reheat changes annual dispatch and design reheat calculations but does not invoke the nonlinear bank recheck.
+
+`simulateEquipment` calls `optimizeVariablePackagedBank` in `lib/variable-sizing.ts` only when its prepared-selection argument is omitted (`undefined`) for a physical-airside scenario. Explicit `null` does not request sizing. This distinction matters when comparing direct-call checks with the browser path.
+
+The nonlinear helper starts with a legacy seed, expands seed groups if necessary and examines homogeneous alternatives. It checks selected airflow mode, fan limits, ventilation and sensible/latent cooling at occupied design hours. Ventilation can reject a candidate here; heating remains diagnostic. Among evaluated feasible banks it prefers fewest units, then lowest nominal tons. It always reports `optimizationComplete=false`, so a global minimum is not proven. Unknown curve checks remain flagged and excluded. It uses default electric-reheat ranking rather than optimizing annual energy or guaranteeing every reheat demand. These checks describe the helper, not the prepared selections currently supplied by the page.
+
+The linear optimizer described below is both the current page's selection path and the nonlinear helper's seed search.
 
 Start with `lib/design-sizing.ts`. Annual `schoolRows` calculate energy and unmet loads; a separate `designSizing.rows` supplies equipment sizes. The server route `/api/design-conditions` calls `nearestDesignStations` in `lib/ashrae-design-stations.ts`, returning the ten nearest complete stations within 250 km. The catalog stays on the server. Results initially select the nearest station, with an engineer override for nearby climate/elevation differences.
 
@@ -336,9 +365,30 @@ The search starts with feasible homogeneous banks, then tests mixed banks. Conti
 
 `lib/equipment-sizing.worker.ts` performs optimization outside the UI thread. The page terminates a superseded worker and accepts only results for the current design loads, school assumptions and sizing request. The annual simulation begins after selection completes. CSV metadata include all installed groups, while hourly `Equipment_group_performance_JSON` records each evaluated group and its power-equivalent operating count. Single-value curve temperatures are blank when group evaluation temperatures differ; group detail preserves the individual conditions.
 
-All heating selections use the same cooling-only packaged-bank sizing policy. Heating and ventilation airflow cannot enlarge the bank; ventilation heat/moisture still contribute to cooling loads. Small-boiler and resistance output are sized from the maximum design-day heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted design demand.
+In the legacy seed search, all heating selections use cooling-only packaged-bank sizing, with heating and ventilation airflow diagnostic. The optional nonlinear recheck additionally constrains ventilation as described above; the current page does not invoke it. Small-boiler and resistance output are sized from the maximum design-day heating demand remaining after fan-heat credit. The large commercial boiler path selects a CBLE-4D rated output from the same fan-adjusted design demand.
 
 ## 12 One hour through the equipment model
+
+### Current airflow, reheat and backup dispatch
+
+`simulateEquipment` selects the physical airside branch for packaged cooling when airflow is variable or a reheat choice is present. New UI scenarios always supply reheat. The active equipment model version is `equipment-reheat-options-21.0`.
+
+Fans run through occupied hours and other heating/cooling/ventilation calls, with airflow and power established by the selected controller. Full-hour fan operation does not mean full reference fan power in variable mode. Each group's fixed nominal-tonnage zone share retains its own cooling duty, fan heat and stage records. Spare capacity is not transferred between assigned zones.
+
+Reheat choices are electric resistance (COP 1), natural gas at its dedicated entered efficiency (default 80%), or modulating hot-gas reheat (MHGRH). Electric reheat is the default for every primary heating type. Occupied ASHRAE design airside operation fixes reheat capacity; annual demand beyond this capacity becomes unmet reheat/residual overcooling. Heat-pump compressors do not simultaneously provide primary heating and dehumidification cooling; the airside dispatch accounts for needed heat through the selected reheat path.
+
+Heat-pump heating requires resistance or natural-gas backup and an explicit outdoor switchover temperature. At or below that temperature, backup replaces heat-pump heating. Backup capacity is based on design heating demand after fan heat, rather than unlimited auxiliary capacity. Natural-gas backup has its own efficiency input.
+
+MHGRH uses 2,340 points from catalog tables 74-86, pages 96-119, interpolating ambient DB, entering DB, entering WB and airflow. Recovery is limited by `1.08 * CFM * (maximum reheat leaving DB - maximum evaporator leaving DB)`, compressor runtime and estimated heat rejection. Recovery serves only the same group's reheat demand; compressors off means no recovery. There is no automatic electric or gas supplement. MHGRH adds no separate purchased reheat energy, while compressor input stays in cooling electricity.
+
+The MHGRH temperature-rise lookup is an approximate recovery limit rather than a coupled refrigerant-cycle model. Bounded mode flags estimates outside 60-70 F ambient, 51-59 F entering WB and 60-75 F entering DB; strict mode credits no out-of-range recovery. Airflow is never extrapolated. Valve bypass/duty modulation below minimum output and 25-ton proxies for larger assemblies remain assumptions.
+
+Reheat kWh/therms are included in heating energy and total purchased energy. Separate reheat fields are subsets, not additional energy to add to totals. Compressor stage/runtime excludes reheat. Inspect `Coil_leaving`/supply state fields, unmet latent demand, unmet reheat, source and operating SHR, and group JSON together. Raw curve capacity differs from cooling deliverable at the 45 F limit.
+
+### Legacy reference arithmetic
+
+The following fan-adjusted examples describe the retained fixed-rating worksheet and explain gross/net bookkeeping and staging. Current constant-airflow operation uses the physical airside branch above, so these examples do not substitute for its final-state cooling solution.
+
 
 `simulateEquipment` obtains a selection, its unit rating and installed fan quantities. It calculates each hour using `rows.map`, keeping the result aligned with the building row.
 
@@ -364,9 +414,9 @@ Heating coil duty is `14500 / 30000`. The program duty-scales the nonfan heating
 
 For gas at 80% entered heating efficiency, 14,500 BTU/hr of heater output uses 0.18125 therm for that hour, plus fan electricity. For resistance, element electricity plus the fan electricity equals the 15,500 BTU delivered divided by 3412.141633, approximately 4.543 kWh.
 
-For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the ASHRAE design heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and the selected fuel's manufacturer consumption/hour is multiplied by runtime fraction. Natural gas is reported in therms, propane in ft³, and No. 2 light oil in gal. Fuel input Btu converts those quantities to site MMBtu. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available. Utility cost and combustion emissions remain unavailable for propane and light oil.
+For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the ASHRAE design heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and the selected fuel's manufacturer consumption/hour is multiplied by runtime fraction. Natural gas is reported in therms, propane in ft³, and No. 2 light oil in gal. Fuel input Btu converts those quantities to site MMBtu. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available.
 
-Duty is limited to one. An overloaded unit records unmet heating or component cooling rather than receiving unlimited capacity. There is no hidden auxiliary heater or reheat correction. Review unmet hours alongside energy totals: a low-energy case that does not meet the load is not an equivalent service comparison.
+Duty is limited to one. An overloaded unit records unmet heating or component cooling rather than receiving unlimited capacity. The legacy worksheet has no automatic auxiliary or reheat correction. Current scenarios explicitly select backup and reheat as described above. Review unmet hours alongside energy totals: a low-energy case that does not meet the load is not an equivalent service comparison.
 
 ### Read the stage and cycling charts
 
@@ -376,7 +426,7 @@ Duty is limited to one. An overloaded unit records unmet heating or component co
 
 These charts report hourly time totals. They cannot determine whether 30 ON minutes occurred in one run or several starts. The model does not resolve thermostat cycle periods or actual zone diversity. Same-size units have identical assumed loads and profiles. Boiler firing uses its existing runtime fraction; resistance and the chiller placeholder do not have stage switching data and therefore do not receive invented stage or runtime distributions. Their bank-average capacity and power view remains available.
 
-Low bank demand is distributed across all assigned zones, so local compressor cycling may increase instead of concentrating the load in a few full-stage units. Sensible and latent cooling requirements are checked separately. Heating and ventilation airflow are diagnostics only; they do not set the bank size. `PackagedSelection.designLoading` records the maximum available design load/capacity ratios for heating, sensible cooling, latent cooling and ventilation. The UI displays these ratios; CSV metadata exports them as `Design_check_loading_JSON`. This helps distinguish a lightly loaded installed bank from a cycling individual unit.
+Low bank demand is distributed across all assigned zones, so local compressor cycling may increase instead of concentrating the load in a few full-stage units. Sensible and latent cooling requirements are checked separately. Heating remains diagnostic. Ventilation is also diagnostic in the legacy seed search, while the optional nonlinear sizing helper enforces it. The page currently uses the legacy worker selection. `PackagedSelection.designLoading` records the maximum available design load/capacity ratios for heating, sensible cooling, latent cooling and ventilation. The UI displays these ratios; CSV metadata exports them as `Design_check_loading_JSON`. This helps distinguish a lightly loaded installed bank from a cycling individual unit.
 
 ### Hourly stage on time and cycling derate columns
 
@@ -403,7 +453,7 @@ Minutes are per unit, not summed across the bank. Current zoned units share thei
 
 Below minimum stage, let `r` be the assigned unit load divided by minimum-stage capacity. The model uses `PLF = 1 - 0.15 * (1 - r)` and `ON minutes = 60 * r / PLF`. A factor of 0.8875 represents an 11.25% reduction in cycling efficiency, not an 11.25% reduction in catalog capacity. For example, at 12.5% full-capacity load with a 50% minimum stage, `r = 0.25`, PLF is 0.8875 and ON time is about 16.9 minutes. Between 50% and 100% stages at 75% load, each stage runs 30 minutes, total ON time is 60 minutes and PLF is 1.0000. These hourly totals do not establish individual run lengths or starts per hour.
 
-For a boiler, CSV stage 1 represents full firing at 100% rated output; stage-1 and ON minutes equal `60 * boilerRuntimeFraction`. The table labels this `Full firing` or `Off`, and PLF is 1.0000 because no extra cycling derate is applied. Resistance heating and the provisional chiller have no switching model, so their stage, ON-time and PLF cells remain unavailable. Chiller air-handler fans are excluded, so their supply-fan ON-time is 0. Packaged supply fans retain their full-hour rating estimate independently of compressor cycling, with no fan derate. Fan electricity and heat are counted once in the shared energy and load balance.
+For a boiler, CSV stage 1 represents full firing at 100% rated output; stage-1 and ON minutes equal `60 * boilerRuntimeFraction`. The table labels this `Full firing` or `Off`, and PLF is 1.0000 because no extra cycling derate is applied. Resistance heating and the provisional chiller have no switching model, so their stage, ON-time and PLF cells remain unavailable. Chiller air-handler fans are excluded, so their supply-fan ON-time is 0. Packaged supply fans run independently of compressor cycling. Current variable mode computes fan power from airflow; constant mode holds AHRI reference airflow subject to the motor ceiling. The legacy worksheet retains its full-hour rating estimate. Fan electricity and heat are counted once in the shared energy and load balance.
 
 CSV metadata `Cycling_derate_basis` explains the factor and `Stage_time_basis` explains the unit/hour basis. `Equipment_group_performance_JSON` retains unrounded group stage fractions for analysis. Boundary estimates evaluate performance at covered curve conditions; they do not apply an additional derate. Existing boundary flags and evaluated curve temperatures identify those estimates separately. The expandable explanation above the hourly table covers the same interpretation.
 
@@ -414,6 +464,10 @@ CSV metadata `Cycling_derate_basis` explains the factor and `Stage_time_basis` e
 Available-hour component subtotals are not necessarily annual totals, and different subtotals can cover different hours. The fan subtotal is already included in complete-hour total electricity. Adding it again would double count energy.
 
 `annualPerformance` converts complete equipment energy to site MMBtu, applies electricity billing, calculates monthly gas cost, and calls the emissions functions. A complete annual record can include explicitly recorded boundary estimates. Completeness of the record is different from validation of manufacturer performance at every actual condition.
+
+### Heating, cooling and supply-fan comparison
+
+`annualPerformance.endUses` provides separate heating, cooling and supply-fan purchased energy and emissions for `components/end-use-breakdown.tsx`. Component annual totals require complete hourly inputs but do not depend on utility prices. Fans are already included in total equipment electricity; do not add them again. Reheat energy is included in heating, and explicit backup energy is retained in heating totals. Compare unmet service alongside energy so undersupplied cases are not treated as equivalent.
 
 ### Electricity billing
 
@@ -473,7 +527,11 @@ Configure these values through the local runtime's supported server environment 
 
 The Python scripts are useful entry points because their mathematics will look familiar. Read the module description, input arguments and output paths first. Running a preparation script can replace data files; it is different from running an offline check.
 
-### Cooling fitting
+### Current airflow and reheat data preparation
+
+`scripts/build-airflow-cooling.py` reproduces all-airflow cooling data from the supplied PDF or a hash-matched extraction cache. It uses NumPy/SciPy, plus pypdf for PDF extraction. Its runtime JSON and matching public coefficient download must stay synchronized. `node scripts/build-mhgrh.mjs` rebuilds `lib/data/mhgrh.json` from `public/references/mhgrh-source.txt`. Inspect arguments and output locations before running preparation tools.
+
+### Maximum-airflow reference cooling fitting
 
 `scripts/fit-precedent-cooling.py` extracts the supplied PDF, selects the accepted maximum-airflow dataset, constructs the three-temperature design matrix, fits anchored capacity and the SHR numerator, evaluates holdout performance, and creates JSON/CSV/report outputs.
 
@@ -536,6 +594,10 @@ The development command requests port 5173. Dependency installation and server s
 | Command | What it checks |
 | --- | --- |
 | `node node_modules/typescript/bin/tsc --noEmit` | Types imports and compiler consistency |
+| `node scripts/check-variable-airflow.mjs` | All accepted airflow source samples, 46 size/family combinations, cubic fans, motor limits, balances, sizing, reheat and annual exports |
+| `node scripts/check-air-state-control.mjs` | Corrected leaving-air state, sensible/moisture targets, capacity limits and humid-weather regressions |
+| `node scripts/check-reheat-options.mjs` | MHGRH source knots, boundary rules, six airflow/reheat combinations, energy accounting and controls |
+| `node scripts/check-backup-heating.mjs` | Required backup inputs, switchover dispatch, capacity and energy accounting |
 | `node scripts/check-school-model.mjs` | Building balance psychrometrics schedule signs and missing data |
 | `node scripts/check-mixed-equipment.mjs` | Mixed integer objective against exhaustive counts, occupancy reductions, ignored checks, group energy, worker contract and exports |
 | `node scripts/check-design-sizing.mjs` | Published station conditions, daily profiles, design schedules, sizing independence, API and exports |
@@ -559,7 +621,7 @@ The scripts exercise actual source functions. They do not prove that external pr
 5. Run the type check and build, then inspect the actual screen when a preview is available.
 6. Review the file diff, including any generated data and matching reference downloads.
 
-For the annotations in this task, unchanged program behavior can also be checked by comparing compiler output without comments and by comparing parsed Python syntax trees. That catches accidental code changes hidden among explanatory comments.
+For comment-only changes, unchanged program behavior can also be checked by comparing compiler output without comments and by comparing parsed Python syntax trees. That catches accidental code changes hidden among explanatory comments.
 
 ## 19 Tracing a result that looks wrong
 
@@ -603,11 +665,11 @@ The present selection code expects the supplied packaged heat-pump schema. It is
 
 ### Change sizing objectives
 
-Edit `optimizePackagedBank` in `lib/packaged-optimizer.ts`. Adding annual cost or energy as an objective would require simulation and pricing assumptions for each candidate; changing a displayed label does not perform that optimization.
+For browser selection, start with `optimizePackagedBank` and the worker/page contract. For direct-call nonlinear sizing, inspect `optimizeVariablePackagedBank` in `lib/variable-sizing.ts` and its physical design checks. The linear optimizer is `optimizePackagedBank` in `lib/packaged-optimizer.ts`. Adding annual cost or energy as an objective would require simulation and pricing assumptions for each candidate; changing a displayed label does not perform that optimization.
 
 ### Change fan operation
 
-Read `fanRuns`, `fanAdjustedLoads` and the heating/cooling energy branches together. Fan schedule changes affect ventilation delivery, sensible cooling, heating credit, duty and electricity. The fan cannot be independently changed in only the display or in only one mode without checking the shared balance.
+Read `fanRuns`, `lib/variable-fan.ts`, `solveVariableAirside`, the sizing recheck and the heating/cooling energy branches together. `fanAdjustedLoads` describes the legacy reference balance. Fan schedule changes affect ventilation delivery, sensible cooling, heating credit, duty and electricity. The fan cannot be independently changed in only the display or in only one mode without checking the shared balance.
 
 ### Add an hourly output
 
@@ -621,6 +683,12 @@ Edit the relevant component and `app/globals.css`. Keep engineering calculations
 
 | File | Main symbol or responsibility |
 | --- | --- |
+| `lib/airflow-cooling.ts` | Current temperature/airflow-dependent capacity and source SHR |
+| `lib/variable-fan.ts` | Cubic fan power, AHRI reference and standard-motor limits |
+| `lib/variable-airside.ts` | Corrected coil state, airflow/duty selection, ventilation and reheat |
+| `lib/variable-sizing.ts` | Current nonlinear design-airside sizing recheck |
+| `lib/mhgrh.ts` | Hot-gas recovery interpolation and limits |
+| `lib/boiler-model.ts` | Small and rated commercial boiler output/fuel calculations |
 | `lib/school.ts` | `simulateSchool` thermal and moisture demand |
 | `lib/solar.ts` | `solarGains` solar contribution |
 | `lib/mixed-air.ts` | `airContext` and `mixAir` entering conditions |
@@ -650,6 +718,7 @@ Edit the relevant component and `app/globals.css`. Keep engineering calculations
 | `components/equipment-scenarios.tsx` | Heating/cooling choices and selection cards |
 | `components/location-energy.tsx` | Price/EPA selection application and result context |
 | `components/annual-scorecard.tsx` | Annual result presentation |
+| `components/end-use-breakdown.tsx` | Heating, cooling, fan and total energy/emissions comparison |
 | `components/performance-graphs.tsx` | Annual and monthly charts |
 | `components/load-summary.tsx` | Building demand summaries and plots |
 | `app/globals.css` | Application visual styling |
@@ -668,4 +737,4 @@ For a first code session, trace one hour through `simulateSchool`, `mixAir` and 
 
 ### Keeping the handbook current
 
-This Markdown file is the editable manuscript. `scripts/build-repository-guide.py` generates `docs/BEAST_Repository_Guide.docx` from it using python-docx. Document-generation dependencies are separate from the website's Node dependencies. Refresh both copies when calculation boundaries, commands or active imports change, and visually review the Word document after regenerating it.
+This guide does not update automatically when source code changes. This Markdown file is the editable manuscript. `scripts/build-repository-guide.py` generates `docs/BEAST_Repository_Guide.docx` from it using python-docx. Document-generation dependencies are separate from the website's Node dependencies. Refresh both copies when calculation boundaries, commands or active imports change, and visually review the Word document after regenerating it.
