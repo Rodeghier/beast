@@ -75,7 +75,7 @@ const fan=bankRatings([g]),mix=mixAir(airContext(base,school),model.fixed_cfm),b
 const row={...base,coolBalance:-fan.fanHeat+.01*bank.sensible};
 const selection={groups:[g],count:1,totalTons:3,supplyCfm:model.fixed_cfm,referenceHeatingBtuHr:g.heatingModel.reference_capacity_Btu_hr,referenceCoolingBtuHr:model.reference_capacity_Btu_hr,rangeMode:'bounded',designLoading:{}};
 const sizing={error:null,rows:[row],metadata:{}};
-const scenario=newScenario();
+const scenario={...newScenario(),airflowMode:"fixed",reheatOption:undefined,backupSwitchoverF:-100};
 const result=simulateEquipment([row],school,scenario,selection,sizing),hour=result.rows[0];
 assert.equal(result.error,null);near(hour.coolingElectricity,0);near(hour.deliveredCooling,0);near(hour.unmetCooling,.01*bank.sensible);
 near(hour.fanElectricity,fan.fanKw);near(hour.electricity,fan.fanKw);assert.equal(hour.coolingStage,'Off');assert.equal(hour.coolingOnMinutes,'0.0');
@@ -99,3 +99,47 @@ for(const value of [-1,101,NaN,Infinity])assert.ok(validateSchool({...school,min
 const html=renderToStaticMarkup(createElement(AnalysisAssumptions,{school,onSchool:()=>{}}));
 assert.match(html,/id="input-minimumCompressorLoadPercent"/);assert.match(html,/Minimum compressor load/);
 console.log('PASS: 5% heating/cooling cutoff, equality, disabled control, latent-only calls, hourly capacity, per-group dispatch, fans, unmet loads, stages, metadata and controls.');
+
+// Regression: real UI scenarios use the physical airside path, including fixed airflow.
+const { solveVariableAirside }=load('lib/variable-airside.ts');
+const physicalRow={...base,occupants:0,infiltrationCfm:0,outdoorAirCfm:0,coolBalance:0};
+const offOptions={airflowMode:'fixed',reheatOption:'electricity',minimumLoadFraction:0};
+const reference=solveVariableAirside([g],physicalRow,school,'bounded',true,offOptions);
+const light={...physicalRow,coolBalance:-reference.fanHeat+.01*reference.capacity*reference.sourceShr};
+for(const reheatOption of ['electricity','natural-gas','mhgrh']) {
+  const options={...offOptions,reheatOption,minimumLoadFraction:.05};
+  const on=solveVariableAirside([g],light,school,'bounded',true,{...options,minimumLoadFraction:0});
+  assert.ok(on.delivered>0&&on.delivered/on.capacity<.05);
+  const off=solveVariableAirside([g],light,school,'bounded',true,options);
+  near(off.delivered,0);near(off.electricity,0);near(off.reheatNeed,0);
+  assert.ok(off.unmet>0);near(off.fanKw,on.fanKw);
+  const d=off.details[0];assert.equal(d.minimumLoadLockout,true);
+  near(d.coilLeavingF,d.mixed.dryF);near(d.supplyHumidityRatio,d.mixed.humidityRatio);
+  near(d.recoveryCapacity,0);near(d.staging.powerEquivalentUnits,0);
+  const ui={...newScenario(),airflowMode:'fixed',reheatOption,backupSwitchoverF:-100};
+  const uiResult=simulateEquipment([light],school,ui,selection,sizing),h=uiResult.rows[0];
+  assert.equal(uiResult.error,null);near(h.coolingElectricity,0);near(h.deliveredCooling,0);
+  near(h.reheatDelivered,0);near(h.reheatElectricity,0);near(h.reheatGasTherms,0);
+  assert.ok(h.unmetCooling>0);assert.equal(h.coolingStage,'Off');
+  assert.match(h.status,/Cooling compressors held off/);
+  assert.equal(uiResult.summary.coolingCyclingSharePercent,null);
+  const disabledResult=simulateEquipment([light],{...school,minimumCompressorLoadPercent:0},ui,selection,sizing);
+  assert.ok(disabledResult.rows[0].coolingElectricity>0);
+  near(uiResult.reheatCapacityBtuHr,disabledResult.reheatCapacityBtuHr);
+}
+// Candidate selection cannot return a positive output below the configured cutoff.
+for(const airflowMode of ['fixed','variable']) {
+  for(const load of [10,100,500,1000,3000]) {
+    const p=solveVariableAirside([g,{...g,count:2}],{...physicalRow,coolBalance:load},school,'bounded',true,{airflowMode,minimumLoadFraction:.05});
+    assert.ok(p);
+    for(const d of p.details)assert.ok(d.delivered===0||d.delivered>=.05*d.capacity);
+  }
+}
+// Humidity-only demand stays unmet when the compressor is locked out.
+const humidSchool={...school,latentPerson:1};
+const humidityRow={...physicalRow,coolBalance:-reference.fanHeat-1000,occupants:50};
+const humidOn=solveVariableAirside([g],humidityRow,humidSchool,'bounded',true,offOptions);
+const humidOff=solveVariableAirside([g],humidityRow,humidSchool,'bounded',true,{...offOptions,minimumLoadFraction:.05});
+assert.ok(humidOn.delivered>0&&humidOn.delivered<.05*humidOn.capacity);
+near(humidOff.delivered,0);assert.ok(humidOff.unmetLatent>0);near(humidOff.reheatNeed,0);
+console.log('PASS: current fixed/variable airside cutoff, all reheat fuels, OFF air state, mixed groups, latent-only demand, annual status/energy and unchanged design reheat capacity.');
