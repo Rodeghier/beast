@@ -26,7 +26,32 @@ try {
   const { parseClimateCsv, parseCsv } = await moduleFrom("lib/csv.ts");
   const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} != ${expected}`);
   const row = (temperature, humidity = 50, rest = {}) => ({ year: 2025, month: 1, day: 7, hour: 12, minute: 0, temperature, humidity, dhi: 0, dni: 0, ghi: 0, ...rest });
-  const bare = { ...m.DEFAULT_SCHOOL, people: 0, infiltrationAch: 0, ventilationArea: 0, ventilationPerson: 0, lightingW: 0, equipmentW: 0, windowPercent: 0, solarAbsorptance: 0 };
+  const bare = { ...m.DEFAULT_SCHOOL, thermostatDeadbandF: 0, people: 0, infiltrationAch: 0, ventilationArea: 0, ventilationPerson: 0, lightingW: 0, equipmentW: 0, windowPercent: 0, solarAbsorptance: 0 };
+  // Independent heat balance at/beyond the default +/-2 F control edges.
+  const banded = { ...bare, thermostatDeadbandF: 2 };
+  assert.equal(m.DEFAULT_SCHOOL.thermostatDeadbandF, 2);
+  const bandRows = m.simulateSchool([67, 68, 69, 76, 77, 78].map(f => row(m.celsius(f), 0)), banded);
+  assert.deepEqual(bandRows.map(r => r.heatingSetpointF), [68, 68, 68, 68, 68, 68]);
+  assert.ok(bandRows.every(r => r.coolingSetpointF === 77));
+  close(bandRows[0].heating, m.envelopeUA(banded));
+  assert.ok(bandRows.slice(1).every(r => r.heating === 0));
+  assert.ok(bandRows.slice(0, 5).every(r => r.sensibleCooling === 0));
+  close(bandRows[5].sensibleCooling, -m.envelopeUA(banded));
+  // Signed balances retain the band when equipment adds supply-fan heat.
+  close(bandRows[3].coolBalance, -m.envelopeUA(banded));
+  const setback = m.simulateSchool([row(m.celsius(70), 0, { hour: 0 })], banded)[0];
+  assert.equal(setback.heatingSetpointF, 58); assert.equal(setback.coolingSetpointF, 87);
+  for (const mode of ['heating', 'cooling']) {
+    const weather = [row(m.celsius(mode === 'heating' ? 0 : 100), 50)];
+    assert.deepEqual(m.simulateSchool(weather, banded, null, mode), m.simulateSchool(weather, bare, null, mode));
+  }
+  const humid = m.simulateSchool([row(m.celsius(75), 0)], { ...banded, people: 10, sensiblePerson: 0 })[0];
+  assert.equal(humid.sensibleCooling, 0); assert.ok(humid.latentCooling < 0);
+  for (const thermostatDeadbandF of [-1, 6, NaN, Infinity, undefined]) assert.ok(m.validateSchool({ ...bare, thermostatDeadbandF }));
+  const bandCsv = parseCsv(m.schoolCsv(bandRows, banded, 'Test', 'UTC'));
+  const bandMetadata = Object.fromEntries(bandCsv[0].map((key, i) => [key, bandCsv[1][i]]));
+  assert.equal(bandMetadata.Thermostat_deadband_F, '2');
+  assert.match(bandMetadata.Thermostat_control, /does not resolve starts/);
   // Independent radiation geometry and hand-computed glazing/sol-air examples.
   const site = { latitude: 0, longitude: 0, utcOffset: 0 };
   const southSun = { east: 0, north: -0.6, up: 0.8 };
@@ -71,16 +96,21 @@ try {
   for(const invalid of [[null,50],[20,-1],[20,101],[20,null]]) assert.equal(m.simulateSchool([row(...invalid)],bare)[0].wetBulbF,null);
   assert.ok(Number.isFinite(m.simulateSchool([row(25,0)],bare)[0].wetBulbF));
   assert.equal(m.humidityRatio(25, 0), 0);
-  // With only envelope UA=15,000 BTU/hr°F, these are hand calculations.
+  // Independently derive the geometry-based envelope UA on this branch.
+  const footprint = bare.floorAreaFt2 / bare.stories;
+  const length = Math.sqrt(footprint * bare.aspectRatio);
+  const bareUa = bare.roofU * footprint + bare.wallU * 2 * (length + footprint / length) * bare.stories * bare.ceilingFt;
   const hot = m.simulateSchool([row(m.celsius(90), 0)], bare)[0];
-  close(hot.sensibleCooling, -225000); close(hot.totalCooling, -225000); assert.equal(hot.heating, 0);
+  close(hot.sensibleCooling, -15 * bareUa); close(hot.totalCooling, -15 * bareUa); assert.equal(hot.heating, 0);
   const cold = m.simulateSchool([row(m.celsius(20), 0)], bare)[0];
-  close(cold.heating, 750000); assert.equal(cold.sensibleCooling, 0);
+  close(cold.heating, 50 * bareUa); assert.equal(cold.sensibleCooling, 0);
   // Independent area/geometry examples. Total floor area includes every floor;
   // floor count changes the footprint and exterior walls, not the total volume.
   const small = { ...bare, floorAreaFt2: 10_000, ceilingFt: 10, stories: 1 };
-  close(m.simulateSchool([row(m.celsius(90), 0)], small)[0].sensibleCooling, -15000);
-  close(m.simulateSchool([row(m.celsius(20), 0)], small)[0].heating, 50000);
+  const smallLength = Math.sqrt(10000 * small.aspectRatio);
+  const smallUa = 10000 * small.roofU + 2 * (smallLength + 10000 / smallLength) * 10 * small.wallU;
+  close(m.simulateSchool([row(m.celsius(90), 0)], small)[0].sensibleCooling, -15 * smallUa);
+  close(m.simulateSchool([row(m.celsius(20), 0)], small)[0].heating, 50 * smallUa);
   const air = { ...small, people: 10, ventilationPerson: 10, ventilationArea: 0.1, infiltrationAch: 0.6 };
   const oneFloor = m.simulateSchool([row(20)], air)[0];
   const fourFloors = m.simulateSchool([row(20)], { ...air, stories: 4 })[0];
@@ -149,7 +179,7 @@ try {
     assert.equal(csv[2][2], "Air_temperature_F"); assert.equal(csv[2][5], "Latent_cooling_BTU_hr");
     assert.equal(csv[3][0], "2025-01-01"); assert.equal(csv.at(-1)[1], "23:00");
     assert.ok(Number(csv[3][7]) >= 0);
-    const changed = m.simulateSchool(raw.rows, { ...m.DEFAULT_SCHOOL, envelopeUa: 0.2 }, solar.solarLocation(raw.metadata));
+    const changed = m.simulateSchool(raw.rows, { ...m.DEFAULT_SCHOOL, roofU: 0.2, wallU: 0.2 }, solar.solarLocation(raw.metadata));
     assert.ok(m.summarizeLoads(changed).heating.value > summary.heating.value);
     console.log(JSON.stringify({ records: annual.length, peaks: { sensible: summary.sensible, total: summary.total, heating: summary.heating } }));
   }

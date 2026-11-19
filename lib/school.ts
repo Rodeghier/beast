@@ -19,6 +19,8 @@ export const DEFAULT_SCHOOL = {
   floorAreaFt2: 150_000,
   coolingDesignPercent: 1, heatingDesignPercent: 99,
   heatingF: 70, coolingF: 75, setbackHeatingF: 60, setbackCoolingF: 85, indoorRh: 50,
+  thermostatDeadbandF: 2,
+  minimumCompressorOnMinutes: 20,
   people: 1200, startHour: 7, endHour: 17, summerPercent: 10,
   ceilingFt: 14, infiltrationAch: 0.15,
   ventilationPerson: 10, ventilationArea: 0.12,
@@ -41,6 +43,8 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "rotationDeg", label: "Building rotation", unit: "degrees clockwise from north-facing façade", min: 0, max: 360, step: 5 },
   ] },
   { title: "Indoor conditions", fields: [
+    { key: "minimumCompressorOnMinutes", label: "Minimum compressor ON-time", unit: "minutes per hour; 0 disables cutoff", min: 0, max: 60, step: 1 },
+    { key: "thermostatDeadbandF", label: "Thermostat deadband (+/-)", unit: "°F", min: 0, max: 5, step: 0.5 },
     { key: "heatingF", label: "Occupied heating setpoint", unit: "°F", min: 40, max: 85, step: 1 },
     { key: "coolingF", label: "Occupied cooling setpoint", unit: "°F", min: 60, max: 100, step: 1 },
     { key: "setbackHeatingF", label: "Unoccupied heating setpoint", unit: "°F", min: 35, max: 85, step: 1 },
@@ -190,8 +194,11 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     const occupants = a.people * fraction;
     const ventilation = occupied ? occupants * a.ventilationPerson + area * a.ventilationArea : 0;
     const outdoorAirCfm = infiltration + ventilation;
-    const heatSetpoint = designDay === "heating" ? a.heatingF : occupied ? a.heatingF : a.setbackHeatingF;
-    const coolSetpoint = occupied ? a.coolingF : a.setbackCoolingF;
+    // Hourly steady-state allowance, not subhourly ON/OFF hysteresis. Preserve
+    // entered design temperatures so this control allowance cannot undersize units.
+    const band = designDay ? 0 : a.thermostatDeadbandF;
+    const heatSetpoint = (designDay === "heating" ? a.heatingF : occupied ? a.heatingF : a.setbackHeatingF) - band;
+    const coolSetpoint = (occupied ? a.coolingF : a.setbackCoolingF) + band;
     const tempF = row.temperature !== null && Number.isFinite(row.temperature) && row.temperature >= -100 && row.temperature <= 100 ? fahrenheit(row.temperature) : null;
     // heatTransfer is K = UA + 1.08 * outdoor-air CFM [BTU/hr/F].
     // Both infiltration and scheduled ventilation belong in this building balance.
@@ -259,6 +266,8 @@ export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: str
     Conditioned_volume_ft3: a.floorAreaFt2 * a.ceilingFt,
     Basis: "Illustrative single-zone hourly steady-state load estimate; cooling negative; heating positive; total cooling includes sensible cooling",
     Schedule: "Mon-Fri; June-Aug reduced occupancy; no holidays; fixed local standard time; no Feb 29",
+    Thermostat_deadband_F: a.thermostatDeadbandF,
+    Thermostat_control: "Annual sensible loads use heating setpoint minus deadband and cooling setpoint plus deadband, including setbacks; humidity control remains active; design sizing uses entered setpoints without this allowance. Hourly steady-state model does not resolve starts, minimum run/off times or temperature hysteresis.",
     Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and steady-state sol-air correction; no thermal lag or longwave sky correction",
     Solar_latitude: site?.latitude ?? "", Solar_longitude: site?.longitude ?? "", Solar_UTC_offset: site?.utcOffset ?? "",
     Envelope_UA_BTU_hr_F: envelopeUA(a),
