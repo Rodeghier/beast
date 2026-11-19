@@ -9,9 +9,19 @@
 import type { ClimateRow } from "./csv";
 import { solarGains, type SolarLocation } from "./solar";
 
-export const MODEL_VERSION = "building-solar-2.4";
+export const MODEL_VERSION = "building-solar-2.6";
 export const BTU_PER_WH = 3.412141633;
 const PRESSURE_PA = 101325;
+export const SLAB_F2_OPTIONS = [
+  { value: 0.73, label: "Uninsulated slab" },
+  { value: 0.54, label: "R-5, 2' depth" },
+  { value: 0.5, label: "R-5, 4' depth" },
+  { value: 0.52, label: "R-10, 2' depth" },
+  { value: 0.45, label: "R-10, 4' depth" },
+  { value: 0.4, label: "R-15, 2' depth" },
+  { value: 0.35, label: "R-15, 4' depth" },
+  { value: 0.32, label: "R-20, 4' depth" },
+] as const;
 
 // Editable building assumptions. Numbers are engineering inputs; SCHOOL_FIELDS below
 // adds labels, allowed ranges and units for the input form.
@@ -22,11 +32,11 @@ export const DEFAULT_SCHOOL = {
   thermostatDeadbandF: 2,
   minimumCompressorOnMinutes: 20,
   people: 1200, startHour: 7, endHour: 17, summerPercent: 10,
-  ceilingFt: 14, infiltrationAch: 0.15,
+  ceilingFt: 14, infiltrationAch: 0.15, slabF2: 0.73,
   ventilationPerson: 10, ventilationArea: 0.12,
   lightingW: 0.9, equipmentW: 0.6, sensiblePerson: 245, latentPerson: 155,
   stories: 2, aspectRatio: 2, rotationDeg: 0, windowPercent: 25, shgc: 0.35, shadeFactor: 1,
-  roofU: 0.04, wallU: 0.06, solarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
+  roofU: 0.04, wallU: 0.06, roofSolarAbsorptance: 0.6, wallSolarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
 };
 export type SchoolAssumptions = typeof DEFAULT_SCHOOL;
 export type SchoolField = { key: keyof SchoolAssumptions; label: string; unit: string; min: number; max: number; step: number; options?: { value: number; label: string }[] };
@@ -58,6 +68,9 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "summerPercent", label: "June–August occupancy", unit: "% of full", min: 0, max: 100, step: 1 },
   ] },
   { title: "Envelope and outdoor air", fields: [
+    { key: "slabF2", label: "Slab edge heat loss coefficient (F₂)", unit: "BTU/hr·ft·°F", min: 0.32, max: 0.73, step: 0.01, options: SLAB_F2_OPTIONS.map(option => ({ ...option })) },
+    { key: "roofU", label: "Roof U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
+    { key: "wallU", label: "Opaque wall U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
     { key: "infiltrationAch", label: "Infiltration (all hours)", unit: "air changes/hr", min: 0, max: 3, step: 0.01 },
     { key: "ventilationPerson", label: "Outdoor air per occupant", unit: "CFM/person", min: 0, max: 50, step: 0.5 },
     { key: "ventilationArea", label: "Outdoor air per floor area", unit: "CFM/ft²", min: 0, max: 1, step: 0.01 },
@@ -72,9 +85,8 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "windowPercent", label: "Window-to-wall area", unit: "% on each façade", min: 0, max: 95, step: 1 },
     { key: "shgc", label: "Glazing SHGC", unit: "fraction of incident solar gain", min: 0, max: 1, step: 0.01 },
     { key: "shadeFactor", label: "Window solar multiplier", unit: "0 = fully shaded; 1 = unshaded", min: 0, max: 1, step: 0.05 },
-    { key: "roofU", label: "Roof U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
-    { key: "wallU", label: "Opaque wall U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
-    { key: "solarAbsorptance", label: "Roof / wall solar absorptance", unit: "fraction", min: 0, max: 1, step: 0.05 },
+    { key: "roofSolarAbsorptance", label: "Roof solar absorptance", unit: "fraction", min: 0, max: 1, step: 0.05 },
+    { key: "wallSolarAbsorptance", label: "Wall solar absorptance", unit: "fraction", min: 0, max: 1, step: 0.05 },
     { key: "outdoorFilm", label: "Exterior surface film coefficient", unit: "BTU/hr·ft²·°F", min: 1, max: 10, step: 0.1 },
     { key: "groundReflectance", label: "Ground solar reflectance", unit: "fraction", min: 0, max: 1, step: 0.05 },
   ] },
@@ -104,6 +116,16 @@ export function envelopeUA(a: SchoolAssumptions): number {
   const roofArea = footprint;
   const opaqueWallArea = 2 * (length + width) * a.stories * a.ceilingFt * (1 - a.windowPercent / 100);
   return a.roofU * roofArea + a.wallU * opaqueWallArea;
+}
+
+export function slabPerimeterFt(a: SchoolAssumptions): number {
+  const footprint = a.floorAreaFt2 / a.stories;
+  const length = Math.sqrt(footprint * a.aspectRatio), width = footprint / length;
+  return 2 * (length + width);
+}
+
+export function slabUA(a: SchoolAssumptions): number {
+  return a.slabF2 * slabPerimeterFt(a);
 }
 
 // ASHRAE Fundamentals saturation pressure equations, SI coefficients as
@@ -179,7 +201,7 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
   // Calculate conductive envelope UA from the same roof and opaque-wall
   // U-values used by the solar model. Geometry matches solarGains: equal
   // floor plates, a rectangular footprint, and glazing spread over façades.
-  const ua = envelopeUA(a);
+  const ua = envelopeUA(a) + slabUA(a);
   return rows.map(row => {
     // Use the CSV's calendar directly. Date.UTC avoids shifting weekdays in
     // a visitor's browser time zone; the source excludes daylight saving time.
@@ -200,8 +222,9 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     const heatSetpoint = (designDay === "heating" ? a.heatingF : occupied ? a.heatingF : a.setbackHeatingF) - band;
     const coolSetpoint = (occupied ? a.coolingF : a.setbackCoolingF) + band;
     const tempF = row.temperature !== null && Number.isFinite(row.temperature) && row.temperature >= -100 && row.temperature <= 100 ? fahrenheit(row.temperature) : null;
-    // heatTransfer is K = UA + 1.08 * outdoor-air CFM [BTU/hr/F].
-    // Both infiltration and scheduled ventilation belong in this building balance.
+    // Slab edge conduction follows Q = F2 * exposed perimeter * (Tin - Tout).
+    // Therefore F2 * perimeter is added as a conductance alongside envelope UA.
+    // heatTransfer is K = envelope UA + slab UA + 1.08 * outdoor-air CFM.
     const heatTransfer = ua + 1.08 * outdoorAirCfm;
     const solar = solarGains(row, a, area, site);
     // Initialize dependent results as null. If temperature or solar data are missing,
@@ -270,8 +293,10 @@ export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: str
     Thermostat_control: "Annual sensible loads use heating setpoint minus deadband and cooling setpoint plus deadband, including setbacks; humidity control remains active; design sizing uses entered setpoints without this allowance. Hourly steady-state model does not resolve starts, minimum run/off times or temperature hysteresis.",
     Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and steady-state sol-air correction; no thermal lag or longwave sky correction",
     Solar_latitude: site?.latitude ?? "", Solar_longitude: site?.longitude ?? "", Solar_UTC_offset: site?.utcOffset ?? "",
-    Envelope_UA_BTU_hr_F: envelopeUA(a),
-    Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; envelope conduction UA is calculated from roof and opaque-wall U-values and modeled geometry; windows are excluded from conductive UA",
+    Envelope_UA_BTU_hr_F: envelopeUA(a), Slab_F2_BTU_hr_ft_F: a.slabF2,
+    Slab_perimeter_ft: slabPerimeterFt(a), Slab_UA_BTU_hr_F: slabUA(a),
+    Total_conductive_UA_BTU_hr_F: envelopeUA(a) + slabUA(a),
+    Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; above-grade envelope UA is calculated from roof and opaque-wall U-values and modeled geometry with windows excluded; slab edge conduction uses selected F2 times exposed ground-floor perimeter times indoor-to-outdoor temperature difference",
     Dew_point: "ASHRAE ice/water saturation convention; frost point below freezing; blank at RH=0 or missing input",
     Wet_bulb: "ASHRAE wet-bulb relations at 101325 Pa from dry bulb and RH; blank for missing or invalid input",
     ...Object.fromEntries(SCHOOL_FIELDS.flatMap(g => g.fields.map(f => [`${f.label} (${f.unit})`, a[f.key]]))),

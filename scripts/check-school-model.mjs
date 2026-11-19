@@ -26,7 +26,7 @@ try {
   const { parseClimateCsv, parseCsv } = await moduleFrom("lib/csv.ts");
   const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} != ${expected}`);
   const row = (temperature, humidity = 50, rest = {}) => ({ year: 2025, month: 1, day: 7, hour: 12, minute: 0, temperature, humidity, dhi: 0, dni: 0, ghi: 0, ...rest });
-  const bare = { ...m.DEFAULT_SCHOOL, thermostatDeadbandF: 0, people: 0, infiltrationAch: 0, ventilationArea: 0, ventilationPerson: 0, lightingW: 0, equipmentW: 0, windowPercent: 0, solarAbsorptance: 0 };
+  const bare = { ...m.DEFAULT_SCHOOL, thermostatDeadbandF: 0, people: 0, infiltrationAch: 0, ventilationArea: 0, ventilationPerson: 0, lightingW: 0, equipmentW: 0, windowPercent: 0, roofSolarAbsorptance: 0, wallSolarAbsorptance: 0 };
   // Independent heat balance at/beyond the default +/-2 F control edges.
   const banded = { ...bare, thermostatDeadbandF: 2 };
   assert.equal(m.DEFAULT_SCHOOL.thermostatDeadbandF, 2);
@@ -68,7 +68,7 @@ try {
   close(glazing.windows, 4 * 100 * 10 * 0.2 * 0.5 * 50 * 0.316998331);
   close(glazing.total, glazing.windows);
   close(solar.solarGains(diffuse, { ...geometry, shadeFactor: 0.4 }, 10000, site).total, glazing.total * 0.4);
-  const roof = solar.solarGains(diffuse, { ...geometry, windowPercent: 0, roofU: 0.04, solarAbsorptance: 0.6, outdoorFilm: 3 }, 10000, site);
+  const roof = solar.solarGains(diffuse, { ...geometry, windowPercent: 0, roofU: 0.04, roofSolarAbsorptance: 0.6, wallSolarAbsorptance: 0, outdoorFilm: 3 }, 10000, site);
   close(roof.opaque, 10000 * 0.04 * 0.6 / 3 * 100 * 0.316998331);
   close(solar.solarGains(diffuse, { ...geometry, rotationDeg: 90 }, 10000, site).total, glazing.total);
   assert.equal(solar.solarGains(row(20), geometry, 10000).total, 0);
@@ -124,7 +124,7 @@ try {
   close(m.simulateSchool([row(m.celsius(75), 0)], { ...gainInputs, floorAreaFt2: 20000 })[0].sensibleCooling, -60000 * m.BTU_PER_WH);
   const glazingFloors = m.simulateSchool([diffuse], { ...small, ...geometry, floorAreaFt2: 10000, stories: 4 }, site)[0];
   close(glazingFloors.windowSolarGain, glazing.windows * 2);
-  const roofInputs = { ...small, windowPercent: 0, wallU: 0, roofU: 0.04, solarAbsorptance: 0.6, outdoorFilm: 3 };
+  const roofInputs = { ...small, windowPercent: 0, wallU: 0, roofU: 0.04, roofSolarAbsorptance: 0.6, wallSolarAbsorptance: 0, outdoorFilm: 3 };
   close(m.simulateSchool([diffuse], roofInputs, site)[0].opaqueSolarGain, roof.opaque);
   close(m.simulateSchool([diffuse], { ...roofInputs, stories: 4 }, site)[0].opaqueSolarGain, roof.opaque / 4);
   const exportInputs = { ...small, floorAreaFt2: 12345, stories: 3 };
