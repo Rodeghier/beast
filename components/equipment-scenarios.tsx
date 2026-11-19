@@ -39,7 +39,7 @@ function EquipmentEditor({value,onChange}:{value:EquipmentScenario;onChange:(v:E
  </>;
 }
 export function EquipmentScenarios({choices,onChange,results=[],active,onActive,onAdd,onRemove,onDownload}:{choices:EquipmentScenario[];onChange:(i:number,v:EquipmentScenario)=>void;results?:EquipmentResult[];active:number;onActive:(i:number)=>void;onAdd?:()=>void;onRemove?:(i:number)=>void;onDownload?:()=>void;}) {
- return <section className="equipment-scenarios" aria-label="Equipment scenarios"><h3>Equipment comparison</h3>
+ return <section className="equipment-scenarios" aria-label="Equipment scenarios"><h3>Equipment comparison</h3><p>Configure one combination to run an analysis. Add alternatives when you want to compare more setups.</p>
  {onAdd&&<button type="button" className="button secondary add-curve" disabled={choices.length>=3} onClick={onAdd}>Add equipment combination ({choices.length}/3)</button>}
  <div className="scenario-grid">{choices.map((choice,i)=>{const result=results[i],s=result?.selection,rating=s?bankRatings(s.groups):null;return <div className="scenario-card equipment-editor" key={i}><div className="scenario-title"><h4>{scenarioName(choice)}</h4>{onRemove&&choices.length>1&&<button type="button" className="button text-button" onClick={()=>onRemove(i)}>Remove</button>}</div>
  <EquipmentEditor value={choice} onChange={v=>onChange(i,v)}/>

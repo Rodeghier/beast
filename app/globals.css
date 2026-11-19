@@ -330,6 +330,27 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 @media(max-width: 760px) { .scenario-grid { grid-template-columns: 1fr; } .comparison-heading { flex-direction: column; } .equipment-scenarios { padding: 22px 20px; } .scenario-card { padding: 18px; } }
 
 .location-energy { margin: 26px 0; padding: 28px 30px; border: 1px solid #d9e3ea; border-radius: 9px; background: white; color: #34516b; }
+.comstock-inputs { margin: 26px 30px; padding: 24px; border: 1px solid #d9e3ea; border-radius: 9px; background: white; color: #34516b; }
+.comstock-inputs h3 { margin: 6px 0; font-size: 1.2rem; font-weight: 650; }
+.comstock-inputs p { color: #5f7286; font-size: .875rem; line-height: 1.65; }
+.comstock-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 16px 24px; margin: 16px 0; }
+.comstock-controls label { display: grid; gap: 6px; min-width: min(100%, 320px); font-size: .875rem; font-weight: 550; }
+.comstock-controls select { width: 100%; padding: 10px 12px; border: 1px solid #b8cbd9; border-radius: 5px; background: white; color: #264f67; }
+.comstock-controls > span { padding-bottom: 10px; font-size: .85rem; color: #5f7286; }
+.comstock-input-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin: 18px 0; padding: 15px; background: #f7faf9; border: 1px solid #dce8e2; border-radius: 7px; }
+.comstock-input-choice strong { color: #34516b; font-size: .9rem; }
+.comstock-input-choice label { display: inline-flex; align-items: center; gap: 7px; font-size: .85rem; color: #34516b; }
+.comstock-input-choice input { accent-color: #38685f; }
+.comstock-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 16px 0; }
+.comstock-values > div { padding: 12px 14px; border: 1px solid #e1e9ed; border-radius: 6px; background: #fbfcfd; }
+.comstock-values dt { color: #607289; font-size: .78rem; }
+.comstock-values dd { margin: 5px 0 0; color: #264f67; font-size: .95rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.comstock-status { display: flex; align-items: center; gap: 8px; }
+.comstock-error { color: #a43a35 !important; }
+.comstock-source-note { padding: 12px 14px; border-radius: 6px; background: #f1f7f6; }
+.assumption-source-summary { margin: 26px 30px; padding: 22px 24px; border: 1px solid #dce8e2; border-radius: 9px; background: #f7faf9; color: #34516b; }
+.assumption-source-summary h3 { margin: 0 0 8px; font-size: 1.1rem; }
+.assumption-source-summary p { margin: 0; color: #5f7286; font-size: .9rem; line-height: 1.65; }
 .location-energy h3 { font-size: 1.35rem; font-weight: 650; margin: 7px 0; }
 .location-energy h4 { font-size: 1.05rem; font-weight: 650; margin: 0 0 12px; }
 .location-energy h5 { font-size: .9rem; font-weight: 650; margin: 18px 0 9px; }
