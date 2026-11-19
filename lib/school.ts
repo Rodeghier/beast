@@ -20,7 +20,7 @@ export const DEFAULT_SCHOOL = {
   coolingDesignPercent: 1, heatingDesignPercent: 99,
   heatingF: 70, coolingF: 75, setbackHeatingF: 60, setbackCoolingF: 85, indoorRh: 50,
   thermostatDeadbandF: 2,
-  minimumCompressorLoadPercent: 5,
+  minimumCompressorOnMinutes: 20,
   people: 1200, startHour: 7, endHour: 17, summerPercent: 10,
   ceilingFt: 14, infiltrationAch: 0.15,
   ventilationPerson: 10, ventilationArea: 0.12,
@@ -43,7 +43,7 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "rotationDeg", label: "Building rotation", unit: "degrees clockwise from north-facing façade", min: 0, max: 360, step: 5 },
   ] },
   { title: "Indoor conditions", fields: [
-    { key: "minimumCompressorLoadPercent", label: "Minimum compressor load", unit: "% of hourly available capacity; 0 disables cutoff", min: 0, max: 100, step: 1 },
+    { key: "minimumCompressorOnMinutes", label: "Minimum compressor ON-time", unit: "minutes per hour; 0 disables cutoff", min: 0, max: 60, step: 1 },
     { key: "thermostatDeadbandF", label: "Thermostat deadband (+/-)", unit: "°F", min: 0, max: 5, step: 0.5 },
     { key: "heatingF", label: "Occupied heating setpoint", unit: "°F", min: 40, max: 85, step: 1 },
     { key: "coolingF", label: "Occupied cooling setpoint", unit: "°F", min: 60, max: 100, step: 1 },

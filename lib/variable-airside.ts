@@ -11,7 +11,7 @@ import { airflowCoolingPoint, coolingAirflowRange } from "./airflow-cooling";
 import { variableFanModel, MINIMUM_FAN_FLOW_FRACTION } from "./variable-fan";
 import { unitRatingFor } from "./unit-ratings";
 import { compressorStages } from "./precedent-stages";
-import { zonedSystemOperation } from "./equipment-staging";
+import { zonedSystemOperation, belowMinimumOnTime, compressorOnMinutes } from "./equipment-staging";
 
 const BTU_PER_KWH=3412.141633,SENSIBLE=1.08,LATENT=.68*7000;
 export const MINIMUM_COIL_LEAVING_F=45;
@@ -65,7 +65,7 @@ export function coolingForAirState(dryF:number,w:number,cfm:number,capacity:numb
   return {required:meets(full)?delivered:null,linearRequired:required,delivered,leaving,deliverableCapacity,availableSensible:full.sensible,availableLatent:full.latent};
 }
 
-export type AirsideOptions={airflowMode?:"variable"|"fixed";reheatOption?:ReheatOption;reheatGasEfficiencyPercent?:number|null;minimumLoadFraction?:number};
+export type AirsideOptions={airflowMode?:"variable"|"fixed";reheatOption?:ReheatOption;reheatGasEfficiencyPercent?:number|null;minimumOnMinutes?:number};
 function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,share:number,mode:CurveRangeMode,runs:boolean,options:AirsideOptions){
   const fan=variableFanModel(group.model),range=coolingAirflowRange(group.model),rating=unitRatingFor(group.model),context=airContext(row,school);
   if(!fan||!range||!rating||!context||!finite(row.coolBalance)||!finite(row.latentCooling)||!finite(row.heating))return null;
@@ -97,8 +97,9 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     // Apply the annual cutoff to the feasible output AFTER the physical-state
     // solve, for each airflow candidate. Recompute every dependent quantity from
     // the OFF state; otherwise latent removal and reheat could survive lockout.
-    const minimumLoadLockout=requestedCoolingBtuHr>0&&requestedCoolingBtuHr<(options.minimumLoadFraction??0)*capacity;
-    const delivered=minimumLoadLockout?0:requestedCoolingBtuHr;
+    const requestedOperation=zonedSystemOperation(requestedCoolingBtuHr,point?.capacityBtuHr??0,count,stages);
+    const minimumRuntimeLockout=belowMinimumOnTime(requestedOperation,options.minimumOnMinutes??0),requestedOnMinutesPerUnit=compressorOnMinutes(requestedOperation);
+    const delivered=minimumRuntimeLockout?0:requestedCoolingBtuHr;
     const leaving=leavingAirState(mixed.dryF,mixed.humidityRatio,cfm,delivered,shr);
     const dehumidifying=leaving.latent>1e-6;
     const operation=zonedSystemOperation(delivered,point?.capacityBtuHr??0,count,stages);
@@ -121,7 +122,7 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     return {model:group.model.id,count,share,cfm,returnCfm:Math.max(0,cfm-vent),outdoorCfm:admitted,
       fanKw,fanHeat,fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed,
       cooling:point,capacity,shr,deliverableCapacity,availableSensible,availableLatent,sensibleNeed,latentNeed,required,linearRequired,delivered,deliveredSensible:leaving.sensible,deliveredLatent:leaving.latent,
-      electricity,staging:operation,called,minimumLoadLockout,requestedCoolingBtuHr,recovery,recoveryCapacity,coilLeavingF:leaving.dryF,supplyHumidityRatio:leaving.humidityRatio,
+      electricity,staging:operation,called,minimumRuntimeLockout,requestedOnMinutesPerUnit,requestedCoolingBtuHr,recovery,recoveryCapacity,coilLeavingF:leaving.dryF,supplyHumidityRatio:leaving.humidityRatio,
       desiredSupplyF,beforeReheatF,dehumidifying,primaryHeatNeed,reheatNeed,requiredPostCoilHeat,
       unmet,unmetSensible,unmetLatent,unmetVentilationCfm:missingOutdoor,score};
   };
@@ -130,7 +131,7 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     return {model:group.model.id,count,share,cfm:0,returnCfm:0,outdoorCfm:0,fanKw:0,fanHeat:0,
       fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed:null,cooling:null,capacity:0,shr:1,deliverableCapacity:0,availableSensible:0,availableLatent:0,
       sensibleNeed:0,latentNeed:0,required:0,linearRequired:0,delivered:0,deliveredSensible:0,deliveredLatent:0,electricity:0,recovery:null,recoveryCapacity:0,
-      staging:zonedSystemOperation(0,1,count,stages),called:false,minimumLoadLockout:false,requestedCoolingBtuHr:0,coilLeavingF:zone,supplyHumidityRatio:context.returnW,
+      staging:zonedSystemOperation(0,1,count,stages),called:false,minimumRuntimeLockout:false,requestedOnMinutesPerUnit:0,requestedCoolingBtuHr:0,coilLeavingF:zone,supplyHumidityRatio:context.returnW,
       desiredSupplyF:zone,beforeReheatF:zone,dehumidifying:false,primaryHeatNeed:0,reheatNeed:0,requiredPostCoilHeat:0,
       unmet:0,unmetSensible:0,unmetLatent:0,unmetVentilationCfm:0,score:0};
   }

@@ -45,6 +45,16 @@ export type StageOperation={
   partialUnitLoadFraction:number;partialUnitStageTimes:number[];partialUnitRuntimeFraction:number;
   powerEquivalentUnits:number;belowMinimumStage:boolean;
 };
+/** Current zoned dispatch gives identical per-unit profiles within each group.
+ * ON-time includes cycling PLF; it is total time in the hour, not cycle length. */
+export function compressorOnMinutes(operation:StageOperation):number {
+  return operation.fullUnits===operation.unitCount&&operation.unitCount>0?60:
+    (operation.partialUnits??0)>0?60*operation.partialUnitRuntimeFraction:0;
+}
+export function belowMinimumOnTime(operation:StageOperation,minimumOnMinutes:number):boolean {
+  const minutes=compressorOnMinutes(operation);
+  return minutes>0&&minutes+1e-8<minimumOnMinutes;
+}
 /** All identical units serve assigned zones rather than a shared lead/lag load.
  * Each receives load/unitCount, so every unit can stage/cycle locally. This
  * does not force compressors ON when their zone has no demand. */

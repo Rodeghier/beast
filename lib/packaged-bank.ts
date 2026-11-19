@@ -8,7 +8,7 @@ import type { CurveRangeMode } from "./equipment";
 import { unitRatingFor } from "./unit-ratings";
 import { operatingCoolingPoint, operatingHeatingPoint } from "./curve-evaluation";
 import { compressorStages } from "./precedent-stages";
-import { zonedSystemOperation } from "./equipment-staging";
+import { zonedSystemOperation, belowMinimumOnTime, compressorOnMinutes } from "./equipment-staging";
 
 export type PackagedGroup={model:CoolingModel;heatingModel:HeatingModel;count:number};
 export type DesignLoading={heating:number|null;sensibleCooling:number|null;latentCooling:number|null;ventilation:number|null};
@@ -45,33 +45,37 @@ export function bankHeating(groups:PackagedGroup[],outdoor:number,dry:number,mod
  * represented by its nominal tons / total installed tons. A unit's spare output
  * is not transferred to another zone. All units stage/cycle on their own loads;
  * fans retain full-hour operation across the bank on scheduled calls. */
-export function dispatchHeating(bank:NonNullable<ReturnType<typeof bankHeating>>,need:number,minimumLoadFraction=0) {
+export function dispatchHeating(bank:NonNullable<ReturnType<typeof bankHeating>>,need:number,minimumOnMinutes=0) {
   let electricity=0,delivered=0,belowMinimumStage=false;
   const totalTons=bank.evaluated.reduce((s,{g})=>s+g.count*g.model.nominal_tons,0);
   const details=bank.evaluated.map(({g,rating,point})=>{
     const zoneShare=g.count*g.model.nominal_tons/totalTons,assignedLoad=Math.max(0,need)*zoneShare;
     const capacity=Math.max(0,point.capacityBtuHr-rating.inferred_supply_fan_heat_Btu_hr);
-    const minimumLoadLockout=assignedLoad>0&&assignedLoad<minimumLoadFraction*g.count*capacity;
-    const served=minimumLoadLockout?0:Math.min(assignedLoad,g.count*capacity),op=zonedSystemOperation(served,capacity,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
+    const stages=compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons);
+    const requestedOperation=zonedSystemOperation(Math.min(assignedLoad,g.count*capacity),capacity,g.count,stages);
+    const minimumRuntimeLockout=belowMinimumOnTime(requestedOperation,minimumOnMinutes),requestedOnMinutesPerUnit=compressorOnMinutes(requestedOperation);
+    const served=minimumRuntimeLockout?0:Math.min(assignedLoad,g.count*capacity),op=minimumRuntimeLockout?zonedSystemOperation(0,capacity,g.count,stages):requestedOperation;
     delivered+=served;electricity+=(point.powerKw-rating.inferred_supply_fan_power_kW)*op.powerEquivalentUnits;belowMinimumStage ||=op.belowMinimumStage;
-    return {model:g.model.id,count:g.count,zoneShare,minimumLoadLockout,assignedHeatingBtuHr:assignedLoad,unmetHeatingBtuHr:assignedLoad-served,heating:point,heatingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
+    return {model:g.model.id,count:g.count,zoneShare,minimumRuntimeLockout,requestedOnMinutesPerUnit,assignedHeatingBtuHr:assignedLoad,unmetHeatingBtuHr:assignedLoad-served,heating:point,heatingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
   });
   return {delivered,electricity:bank.evaluated.some(v=>v.point.powerKw<v.rating.inferred_supply_fan_power_kW)?null:electricity,belowMinimumStage,details};
 }
-export function dispatchCooling(bank:NonNullable<ReturnType<typeof bankCooling>>,sensible:number,latent:number,minimumLoadFraction=0) {
+export function dispatchCooling(bank:NonNullable<ReturnType<typeof bankCooling>>,sensible:number,latent:number,minimumOnMinutes=0) {
   let unmet=0,electricity=0,delivered=0,belowMinimumStage=false;
   const totalTons=bank.evaluated.reduce((s,{g})=>s+g.count*g.model.nominal_tons,0);
   const details=bank.evaluated.map(({g,rating,point})=>{
     const zoneShare=g.count*g.model.nominal_tons/totalTons,s=Math.max(0,sensible)*zoneShare,l=Math.max(0,latent)*zoneShare;
     // Required gross output must satisfy both component loads. Latent-only calls
-    // use the same cutoff; no rated/nominal-tonnage or runtime proxy is used.
+    // use the same runtime cutoff after stage times and cycling PLF are calculated.
     const need=Math.max(s>0?s/point.shr:0,l>0?l/(1-point.shr):0);
-    const minimumLoadLockout=need>0&&need<minimumLoadFraction*g.count*point.capacityBtuHr;
-    const served=minimumLoadLockout?0:Math.min(need,g.count*point.capacityBtuHr);
-    const op=zonedSystemOperation(served,point.capacityBtuHr,g.count,compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons));
+    const stages=compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons);
+    const requestedOperation=zonedSystemOperation(Math.min(need,g.count*point.capacityBtuHr),point.capacityBtuHr,g.count,stages);
+    const minimumRuntimeLockout=belowMinimumOnTime(requestedOperation,minimumOnMinutes),requestedOnMinutesPerUnit=compressorOnMinutes(requestedOperation);
+    const served=minimumRuntimeLockout?0:Math.min(need,g.count*point.capacityBtuHr);
+    const op=minimumRuntimeLockout?zonedSystemOperation(0,point.capacityBtuHr,g.count,stages):requestedOperation;
     const zoneUnmet=Math.max(0,s-served*point.shr)+Math.max(0,l-served*(1-point.shr));unmet+=zoneUnmet;
     electricity+=rating.cooling_non_supply_fan_power_kW*op.powerEquivalentUnits;delivered+=served;belowMinimumStage ||=op.belowMinimumStage;
-    return {model:g.model.id,count:g.count,zoneShare,minimumLoadLockout,assignedSensibleBtuHr:s,assignedLatentBtuHr:l,unmetCoolingBtuHr:zoneUnmet,cooling:point,coolingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
+    return {model:g.model.id,count:g.count,zoneShare,minimumRuntimeLockout,requestedOnMinutesPerUnit,assignedSensibleBtuHr:s,assignedLatentBtuHr:l,unmetCoolingBtuHr:zoneUnmet,cooling:point,coolingPowerEquivalentUnits:op.powerEquivalentUnits,staging:op};
   });
   return {delivered,electricity,unmet,belowMinimumStage,details};
 }
