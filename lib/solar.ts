@@ -9,7 +9,7 @@
 import type { ClimateRow } from "./csv";
 
 export type SolarLocation = { latitude: number; longitude: number; utcOffset: number };
-export type SolarInputs = { stories: number; aspectRatio: number; rotationDeg: number; ceilingFt: number; windowPercent: number; shgc: number; shadeFactor: number; roofU: number; wallU: number; solarAbsorptance: number; outdoorFilm: number; groundReflectance: number };
+export type SolarInputs = { stories: number; aspectRatio: number; rotationDeg: number; ceilingFt: number; windowPercent: number; shgc: number; shadeFactor: number; roofU: number; wallU: number; roofSolarAbsorptance: number; wallSolarAbsorptance: number; outdoorFilm: number; groundReflectance: number };
 const RAD = Math.PI / 180;
 const W_M2_TO_BTU_H_FT2 = 0.316998331;
 
@@ -61,10 +61,10 @@ export function solarGains(row: ClimateRow, a: SolarInputs, area: number, site?:
     const incident = wallIrradiance(row.dhi!, row.dni!, row.ghi!, a.groundReflectance, azimuth + a.rotationDeg, sun) * W_M2_TO_BTU_H_FT2;
     const faceArea = faceWidth * height;
     windows += faceArea * glass * a.shgc * a.shadeFactor * incident;
-    walls += faceArea * (1 - glass) * a.wallU * a.solarAbsorptance * incident / a.outdoorFilm;
+    walls += faceArea * (1 - glass) * a.wallU * a.wallSolarAbsorptance * incident / a.outdoorFilm;
   }
   // Opaque sol-air gains use absorptance * irradiance / exterior film coefficient.
   // This added solar term is separate from the ordinary envelope-UA conduction term.
-  const opaque = walls + roof * a.roofU * a.solarAbsorptance * row.ghi! * W_M2_TO_BTU_H_FT2 / a.outdoorFilm;
+  const opaque = walls + roof * a.roofU * a.roofSolarAbsorptance * row.ghi! * W_M2_TO_BTU_H_FT2 / a.outdoorFilm;
   return { total: windows + opaque, windows, opaque, status: "Sup3rCC solar; steady-state glazing and sol-air correction" };
 }

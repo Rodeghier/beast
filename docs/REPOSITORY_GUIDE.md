@@ -219,8 +219,12 @@ The following is a readable equivalent of the key coefficient calculation, using
 infiltration_cfm = ach * floor_area * height / 60
 ventilation_cfm = people * cfm_per_person + floor_area * cfm_per_ft2
 outdoor_cfm = infiltration_cfm + ventilation_cfm
-K = envelope_ua_per_ft2 * floor_area + 1.08 * outdoor_cfm
+envelope_ua = roof_u * roof_area + wall_u * opaque_wall_area
+slab_ua = slab_f2 * exposed_slab_perimeter
+K = envelope_ua + slab_ua + 1.08 * outdoor_cfm
 ```
+
+The slab term implements the perimeter method: `Q_loss = F2 × perimeter × (T_indoor − T_outdoor)`. The modeled slab perimeter is the rectangular ground-floor footprint perimeter; the selected F2 is in BTU/hr·ft·°F. Its conductance is included in `K`, so it contributes to the hourly heating and sensible-cooling balances.
 
 Scheduled ventilation is off outside occupied hours; infiltration remains in all hours. The code also applies fractional summer occupancy, so do not copy the example as an unconditional all-hour ventilation instruction.
 
@@ -238,9 +242,9 @@ For latent demand, outdoor and indoor humidity ratios are converted to grains/lb
 
 `lib/solar.ts` reads the weather grid coordinates and UTC offset with `solarLocation`. These may differ from the searched city-center coordinates. It estimates solar position at the hourly midpoint, then resolves irradiance onto four rotated vertical faces and a horizontal roof.
 
-The rectangular footprint comes from floor area divided by stories and the entered plan aspect ratio. Window gains use glazing area, SHGC and the solar multiplier. Opaque gains use the sol-air temperature effect from absorptance, irradiance and the exterior film coefficient.
+The rectangular footprint comes from floor area divided by stories and the entered plan aspect ratio. Window gains use glazing area, SHGC and the solar multiplier. Opaque wall gains use wall absorptance; roof gains use roof absorptance. Each uses its corresponding U-value, irradiance, opaque area and exterior film coefficient in the sol-air correction.
 
-The roof and wall U-values are shared with `school.ts`. The school model calculates conductive envelope UA from roof area and opaque wall area (gross façade area less the entered window fraction), using the rectangular geometry, floor area, stories and ceiling height. Those same U-values also affect the added opaque solar term.
+The roof and wall U-values are shared with `school.ts`. The school model calculates conductive envelope UA from roof area and opaque wall area (gross façade area less the entered window fraction), using the rectangular geometry, floor area, stories and ceiling height. Those same U-values also affect the added opaque solar term. Slab edge UA is F2 multiplied by the ground-floor footprint perimeter and is added to envelope UA for the hourly heat balance.
 
 `school.ts` also contains saturation-pressure, dew-point and humidity-ratio functions. They use Celsius internally. `mixed-air.ts` uses those relations and an enthalpy equation to obtain entering wet bulb. These functions return null for invalid or unsupported physical states rather than guessing a replacement.
 
@@ -651,7 +655,7 @@ Edit `DEFAULT_SCHOOL` in `lib/school.ts`. If the allowed range or field label ch
 
 ### Change floor area
 
-Edit total conditioned floor area and number of floors in the Building size and geometry input group after selecting Modify values. `floorAreaFt2` drives envelope UA, area-based ventilation, infiltration volume, lighting, equipment gains and solar geometry. `stories` divides total area into equal floor plates and sets total exterior height; it does not multiply total area or occupancy. People remain an independently entered building total. For a different default, edit `DEFAULT_SCHOOL.floorAreaFt2` and `DEFAULT_SCHOOL.stories`. Exports include total area, floors, footprint and conditioned volume.
+Edit total conditioned floor area and number of floors in the Building size and geometry input group after selecting Modify values. `floorAreaFt2` drives above-grade envelope UA, slab perimeter, area-based ventilation, infiltration volume, lighting, equipment gains and solar geometry. `stories` divides total area into equal floor plates and sets total exterior height; it does not multiply total area or occupancy. People remain an independently entered building total. For a different default, edit `DEFAULT_SCHOOL.floorAreaFt2` and `DEFAULT_SCHOOL.stories`. Exports include total area, floors, footprint and conditioned volume.
 
 ### Change a heat or moisture equation
 
