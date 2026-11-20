@@ -351,6 +351,10 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .assumption-source-summary { margin: 26px 30px; padding: 22px 24px; border: 1px solid #dce8e2; border-radius: 9px; background: #f7faf9; color: #34516b; }
 .assumption-source-summary h3 { margin: 0 0 8px; font-size: 1.1rem; }
 .assumption-source-summary p { margin: 0; color: #5f7286; font-size: .9rem; line-height: 1.65; }
+.location-resolution { margin: 22px 30px; padding: 17px 20px; border: 1px solid #dce5eb; border-radius: 9px; background: #f8fafb; color: #34516b; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.location-resolution h3 { margin: 0; color: #203b56; font-size: 1.05rem; }
+.location-resolution p { flex-basis: 100%; margin: 0; color: #5f7286; font-size: .9rem; line-height: 1.55; }
+.location-resolution .match-select { min-width: min(100%, 320px); }
 .location-energy h3 { font-size: 1.35rem; font-weight: 650; margin: 7px 0; }
 .location-energy h4 { font-size: 1.05rem; font-weight: 650; margin: 0 0 12px; }
 .location-energy h5 { font-size: .9rem; font-weight: 650; margin: 18px 0 9px; }
