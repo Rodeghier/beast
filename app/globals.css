@@ -355,6 +355,8 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .location-resolution h3 { margin: 0; color: #203b56; font-size: 1.05rem; }
 .location-resolution p { flex-basis: 100%; margin: 0; color: #5f7286; font-size: .9rem; line-height: 1.55; }
 .location-resolution .match-select { min-width: min(100%, 320px); }
+.location-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.location-actions .model-error { flex: 1 1 100%; margin: 0; }
 .location-energy h3 { font-size: 1.35rem; font-weight: 650; margin: 7px 0; }
 .location-energy h4 { font-size: 1.05rem; font-weight: 650; margin: 0 0 12px; }
 .location-energy h5 { font-size: .9rem; font-weight: 650; margin: 18px 0 9px; }
