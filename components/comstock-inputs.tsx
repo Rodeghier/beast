@@ -9,14 +9,15 @@ type Catalog = { county: string; countyFips: string; buildingTypes: string[] };
 type Characteristics = { assumptions: Partial<SchoolAssumptions>; county: string; countyFips: string; buildingType: string; error?: string };
 const FIELD_DETAILS = new Map(SCHOOL_FIELDS.flatMap(group => group.fields.map(field => [field.key, field] as const)));
 
-export function ComstockInputs({ place, usingComstock, onUsingComstock, onAssumptions }: {
+export function ComstockInputs({ place, selectedType, onSelectedType, usingComstock, onUsingComstock, onAssumptions }: {
   place: Place;
+  selectedType: string;
+  onSelectedType: (value: string) => void;
   usingComstock: boolean;
   onUsingComstock: (value: boolean) => void;
   onAssumptions: (value: Partial<SchoolAssumptions> | null) => void;
 }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [selectedType, setSelectedType] = useState("");
   const [characteristics, setCharacteristics] = useState<Partial<SchoolAssumptions> | null>(null);
   const [busy, setBusy] = useState(true);
   const [characteristicBusy, setCharacteristicBusy] = useState(false);
@@ -53,7 +54,7 @@ export function ComstockInputs({ place, usingComstock, onUsingComstock, onAssump
     {error && <p className="comstock-status comstock-error" role="alert">{error}</p>}
     {catalog && <div className="comstock-controls">
       <label htmlFor="comstock-building-type">Building type<select id="comstock-building-type" value={selectedType} disabled={characteristicBusy} onChange={event => {
-        const value = event.target.value; setSelectedType(value); setCharacteristics(null); onAssumptions(null); onUsingComstock(false); setError("");
+        const value = event.target.value; onSelectedType(value); setCharacteristics(null); onAssumptions(null); onUsingComstock(false); setError("");
       }}><option value="">Select a type available in {catalog.county}</option>{catalog.buildingTypes.map(type => <option key={type} value={type}>{type}</option>)}</select></label>
       <span>{catalog.county}, {place.stateCode} · OEDI {catalog.countyFips}</span>
     </div>}
