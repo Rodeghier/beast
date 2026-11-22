@@ -105,7 +105,7 @@ for(const scenario of scenarios){
     assert.ok(hour.reheatDelivered<=result.reheatCapacityBtuHr+1e-6);
     if(hour.reheatDelivered>1){
       reheatHours++;
-      if(scenario.heating==='gas'){near(hour.reheatGasTherms,hour.reheatDelivered/80000);near(hour.reheatElectricity,0);}
+      if(scenario.heating==='gas'){near(hour.reheatGasTherms,hour.reheatDelivered/90000);near(hour.reheatElectricity,0);}
       else{near(hour.reheatElectricity,hour.reheatDelivered/BTU_PER_KWH);near(hour.reheatGasTherms,0);}
       assert.ok(hour.supplyDryF>hour.coilLeavingDryF);
     }

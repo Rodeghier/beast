@@ -418,7 +418,7 @@ Heating coil duty is `14500 / 30000`. The program duty-scales the nonfan heating
 
 For gas at 80% entered heating efficiency, 14,500 BTU/hr of heater output uses 0.18125 therm for that hour, plus fan electricity. For resistance, element electricity plus the fan electricity equals the 15,500 BTU delivered divided by 3412.141633, approximately 4.543 kWh.
 
-For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the ASHRAE design heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and the selected fuel's manufacturer consumption/hour is multiplied by runtime fraction. Natural gas is reported in therms, propane in ft³, and No. 2 light oil in gal. Fuel input Btu converts those quantities to site MMBtu. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available.
+For a large commercial boiler, the program selects the smallest CBLE-4D table output that meets the ASHRAE design heating demand after fan-heat credit. On each hour, delivered output is capped at the selected rating, runtime fraction is delivered output divided by rated output, and gas input is delivered boiler output divided by the entered thermal efficiency, which defaults to 90%. Legacy scenarios without that field use manufacturer therms per hour multiplied by runtime fraction. If peak demand exceeds the largest 800 HP output, the largest rating is used and excess demand is recorded as unmet. The building load rows are unchanged. Only on/off firing is modeled; modulating is disabled because firing-rate performance data are not available.
 
 Duty is limited to one. An overloaded unit records unmet heating or component cooling rather than receiving unlimited capacity. The legacy worksheet has no automatic auxiliary or reheat correction. Current scenarios explicitly select backup and reheat as described above. Review unmet hours alongside energy totals: a low-energy case that does not meet the load is not an equivalent service comparison.
 
@@ -499,7 +499,7 @@ The `stage` value controls the search/loading screen: idle, locating, choosing, 
 
 Below the component's `return`, JSX describes headings, forms, tables and result components. An expression inside braces inserts a calculated value. A component such as `<EquipmentScenarios ... />` is a function-like visual building block supplied with arguments called props.
 
-Building characteristics and assumptions is the single collapsible default/custom input panel. Its `onSchool` callback replaces the parent's assumptions object. Equipment, year, location, utility and ZIP inputs are directly editable. Input components collect choices; the physical calculations remain in `lib`.
+Building characteristics and assumptions is an editable, collapsible input panel. Its onSchool callback replaces the parent assumptions object. A ComStock import merges the matched fields into the same object. Find Location only submits the city and state, and Continue to Results submits the analysis form.
 
 `components/location-energy.tsx` fetches location pricing/EPA context. It waits for the user to apply selections with Load results before producing the annual performance objects. `annual-scorecard.tsx` and `performance-graphs.tsx` format those objects. Changing a chart label there should not change a capacity or energy equation.
 
@@ -651,7 +651,7 @@ A CSV contains metadata lines before its hourly header. If opening it in Python,
 
 ### Change building defaults
 
-Edit `DEFAULT_SCHOOL` in `lib/school.ts`. If the allowed range or field label changes, edit `SCHOOL_FIELDS` as well. Confirm relationships between occupied and setback setpoints. Run the building checks and inspect the default/custom editor.
+Edit `DEFAULT_SCHOOL` in `lib/school.ts`. If the allowed range or field label changes, edit `SCHOOL_FIELDS` as well. Confirm relationships between occupied and setback setpoints. Run the building checks and inspect the building assumptions editor.
 
 ### Change floor area
 

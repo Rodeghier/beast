@@ -1,38 +1,32 @@
 "use client";
 
 /**
- * BUILDING INPUT EDITOR. The only collapsible default/custom input panel.
+ * BUILDING INPUT EDITOR. This panel starts with the BEAST defaults and displays
+ * the current editable assumptions, including any ComStock values applied.
  * school is the current input object. onSchool sends a replacement object to
- * app/page.tsx. Default mode resets the whole input set; custom mode enables
- * editing. The actual load equations remain in lib/school.ts.
+ * app/page.tsx. The actual load equations remain in lib/school.ts.
  */
 
 
-import { useId, useState } from "react";
-import { DEFAULT_SCHOOL, SCHOOL_FIELDS, type SchoolAssumptions } from "@/lib/school";
+import type { Ref } from "react";
+import { SCHOOL_FIELDS, type SchoolAssumptions } from "@/lib/school";
 
-export function AnalysisAssumptions({ school, onSchool }: {
+export function AnalysisAssumptions({ school, onSchool, ref }: {
   school: SchoolAssumptions; onSchool: (value: SchoolAssumptions) => void;
+  ref?: Ref<HTMLDetailsElement>;
 }) {
-  const id = useId();
-  // State remembers whether the form is editable. Returning to defaults sends a
-  // fresh copy of DEFAULT_SCHOOL to the parent, resetting all building groups together.
-  const [custom, setCustom] = useState(() => SCHOOL_FIELDS.some(group => group.fields.some(({key}) => school[key] !== DEFAULT_SCHOOL[key])));
-  return <details className="analysis-assumptions" onInvalidCapture={event => { event.currentTarget.open = true; }}>
-    <summary><span>Building characteristics and assumptions</span><small>{custom ? "Custom values" : "Default values"}</small></summary>
+  // ComStock averages can have fractional precision between the form's original increments.
+  return <details ref={ref} className="analysis-assumptions" onInvalidCapture={event => { event.currentTarget.open = true; }}>
+    <summary><span>Building characteristics and assumptions</span></summary>
     <div className="assumptions-body">
-      <div className="assumptions-mode" role="radiogroup" aria-label="Building input values">
-        <label><input type="radio" name={id} checked={!custom} onChange={() => { setCustom(false); onSchool({ ...DEFAULT_SCHOOL }); }}/>Use defaults</label>
-        <label><input type="radio" name={id} checked={custom} onChange={() => setCustom(true)}/>Modify values</label>
-      </div>
       <p className="assumption-intro">Total floor area includes all conditioned floors. Floors have equal areas; conditioned height is per floor.</p>
       <p className="assumption-intro">The thermostat deadband allows heating below its setpoint minus the band and cooling above its setpoint plus the band. Humidity control stays active. Design sizing uses the entered setpoints. Hourly results do not resolve individual compressor starts or minimum off-times.</p>
       <p className="assumption-intro">Packaged compressors stay off when their calculated total ON-time is below the minimum minutes per hour, including humidity-only cooling calls. Fans retain their ventilation schedule. Unserved loads are reported as unmet.</p>
-      <fieldset className="assumptions-values" disabled={!custom}><legend className="sr-only">Building input values</legend>
+      <fieldset className="assumptions-values"><legend className="sr-only">Building input values</legend>
         {SCHOOL_FIELDS.map(group => <fieldset className="assumption-group" key={group.title}>
           <legend>{group.title}</legend><div className="assumption-grid">{group.fields.map(field => <div className="form-field" key={field.key}>
             <label htmlFor={`input-${field.key}`}>{field.label}<span className="input-unit">{field.unit}</span></label>
-            {field.options ? <select form="analysis-inputs" id={`input-${field.key}`} required value={school[field.key]} onChange={e => onSchool({ ...school, [field.key]: Number(e.target.value) })}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <input form="analysis-inputs" id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step={field.step} value={Number.isFinite(school[field.key]) ? school[field.key] : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>}
+            {field.options ? <select id={`input-${field.key}`} required value={school[field.key]} onChange={e => onSchool({ ...school, [field.key]: Number(e.target.value) })}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <input id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step="any" value={Number.isFinite(school[field.key]) ? school[field.key] : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>}
           </div>)}</div>
         </fieldset>)}
       </fieldset>

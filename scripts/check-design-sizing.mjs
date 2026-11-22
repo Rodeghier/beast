@@ -86,6 +86,16 @@ assert.equal(coolingHp.selection.count,baseHp.selection.count);assert.equal(cool
 const largeScenario={...newScenario('gas'),boilerSizeClass:'large',cooling:'air-cooled-chiller'};
 const largeBase=simulateEquipment(annual,school,largeScenario,undefined,smallSizing),largeSpike=simulateEquipment([extreme],school,largeScenario,undefined,smallSizing);
 assert.equal(largeSpike.heatingCapacityBtuHr,largeBase.heatingCapacityBtuHr);assert.ok(largeSpike.rows[0].unmetHeating>1e7);
+const {cble4dRatingForPeakLoad}=load('lib/boiler-model.ts');
+const largeRating=cble4dRatingForPeakLoad(largeBase.heatingCapacityBtuHr);
+assert.equal(largeScenario.gasEfficiencyPercent,90);
+assert.equal(largeScenario.largeBoilerEfficiencyPercent,90);
+assert.ok(largeBase.rows[0].deliveredHeating>0);
+near(largeBase.rows[0].gasTherms,largeBase.rows[0].deliveredHeating/90000);
+const legacyLarge=simulateEquipment(annual,school,{...largeScenario,largeBoilerEfficiencyPercent:undefined},undefined,smallSizing);
+near(legacyLarge.rows[0].gasTherms,largeRating.naturalGasThermsPerHr*legacyLarge.rows[0].boilerRuntimeFraction);
+const largeCsv=parseCsv(equipmentResultsCsv(annual,school,largeBase,'Madison','CST',site));
+assert.equal(largeCsv[1][largeCsv[0].indexOf('Boiler_thermal_efficiency_percent')],'90');
 const noChillerDesign=simulateEquipment(annual,school,chillerScenario);
 assert.equal(noChillerDesign.coolingCapacityTons,null);assert.equal(noChillerDesign.rows[0].coolingElectricity,null);
 // Regression: selection minimizes unit count before installed nominal tonnage.
@@ -103,6 +113,7 @@ assert.match(html,/ASHRAE 2017/);assert.match(html,/Cooling 1%/);assert.match(ht
 const {AnalysisAssumptions}=load('components/analysis-assumptions.tsx');
 const inputHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:DEFAULT_SCHOOL,onSchool:()=>{}}));
 assert.equal((inputHtml.match(/<details/g)||[]).length,1);assert.match(inputHtml,/<select[^>]*id="input-coolingDesignPercent"/);assert.match(inputHtml,/<option value="1" selected="">1%/);
+assert.doesNotMatch(inputHtml,/<fieldset[^>]*disabled|type="radio"/);
 const {GET}=load('app/api/design-conditions/route.ts');
 assert.equal((await GET(new Request('http://localhost/api/design-conditions'))).status,400);
 assert.equal((await GET(new Request('http://localhost/api/design-conditions?latitude=43.14&longitude=-89.35'))).status,200);
