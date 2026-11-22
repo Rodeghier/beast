@@ -77,7 +77,7 @@ export function buildDesignSizing(station:DesignStationChoice|undefined,school:S
       Cooling_WB_design_WB_F:fahrenheit(cooling.wetBulb.humidityC),Cooling_WB_design_MCDB_F:fahrenheit(cooling.wetBulb.dryC),
       Cooling_DP_design_DP_F:fahrenheit(cooling.dewPoint.humidityC),Cooling_DP_design_MCDB_F:fahrenheit(cooling.dewPoint.dryC),
       Design_heating_load_BTU_hr:peak("heating"),Design_sensible_cooling_load_BTU_hr:peak("sensibleCooling"),Design_latent_cooling_load_BTU_hr:peak("latentCooling"),Design_total_cooling_load_BTU_hr:peak("totalCooling"),
-      Design_schedule:"Occupied design hours only; existing June-August occupancy reduction applies to people, ventilation and scheduled gains; winter uses occupied heating setpoint and no internal/solar gain credit; annual schedules are unchanged",
+      Design_schedule:"Includes hours occupied under either the weekday or weekend schedule; applies the June-August occupancy factor; winter uses occupied heating setpoint and gives no credit for internal or solar gains",
       Design_weather_basis:"24-hour default ASHRAE/EnergyPlus DB profile; constant humidity ratio capped at saturation; DB/MCWB, WB/MCDB and DP/MCDB cooling days; ASHRAETau2017 clear-sky solar; existing standard-pressure psychrometrics",
       Design_annual_relationship:"Installed sizes are fixed from design days. Annual weather determines energy, capacity utilization and unmet loads; annual extreme hours do not resize equipment."}};
   }catch(cause){return unavailable(cause instanceof Error?cause.message:"ASHRAE design loads could not be calculated.");}

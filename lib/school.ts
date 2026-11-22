@@ -9,7 +9,7 @@
 import type { ClimateRow } from "./csv";
 import { solarGains, type SolarLocation } from "./solar";
 
-export const MODEL_VERSION = "building-solar-2.6";
+export const MODEL_VERSION = "building-solar-2.7";
 export const BTU_PER_WH = 3.412141633;
 const PRESSURE_PA = 101325;
 export const SLAB_F2_OPTIONS = [
@@ -31,15 +31,21 @@ export const DEFAULT_SCHOOL = {
   heatingF: 70, coolingF: 75, setbackHeatingF: 60, setbackCoolingF: 85, indoorRh: 50,
   thermostatDeadbandF: 2,
   minimumCompressorOnMinutes: 20,
-  people: 1200, startHour: 7, endHour: 17, summerPercent: 10,
+  people: 1200, startHour: 7, endHour: 17, weekendStartHour: 0, weekendEndHour: 0, summerPercent: 10,
   ceilingFt: 14, infiltrationAch: 0.15, slabF2: 0.73,
   ventilationPerson: 10, ventilationArea: 0.12,
   lightingW: 0.9, equipmentW: 0.6, sensiblePerson: 245, latentPerson: 155,
   stories: 2, aspectRatio: 2, rotationDeg: 0, windowPercent: 25, shgc: 0.35, shadeFactor: 1,
-  roofU: 0.04, wallU: 0.06, roofSolarAbsorptance: 0.6, wallSolarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
+  roofU: 0.04, wallU: 0.06, windowU: 0.50, roofSolarAbsorptance: 0.6, wallSolarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
 };
-export type SchoolAssumptions = typeof DEFAULT_SCHOOL;
+type AddedSchoolField = "weekendStartHour" | "weekendEndHour" | "windowU";
+export type SchoolAssumptions = Omit<typeof DEFAULT_SCHOOL, AddedSchoolField> & Partial<Pick<typeof DEFAULT_SCHOOL, AddedSchoolField>>;
 export type SchoolField = { key: keyof SchoolAssumptions; label: string; unit: string; min: number; max: number; step: number; options?: { value: number; label: string }[] };
+
+export function comstockUsesSchoolSummerSchedule(buildingType: string): boolean {
+  return buildingType === "PrimarySchool" || buildingType === "SecondarySchool";
+}
+
 export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
   { title: "ASHRAE design sizing", fields: [
     { key: "coolingDesignPercent", label: "Cooling design condition", unit: "% annual exceedance", min: 0.4, max: 2, step: 0.1, options: [{value:0.4,label:"0.4%"},{value:1,label:"1%"},{value:2,label:"2%"}] },
@@ -61,16 +67,19 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "setbackCoolingF", label: "Unoccupied cooling setpoint", unit: "°F", min: 60, max: 110, step: 1 },
     { key: "indoorRh", label: "Maximum indoor RH", unit: "%", min: 20, max: 70, step: 1 },
   ] },
-  { title: "Occupancy schedule · Monday–Friday", fields: [
+  { title: "Occupancy schedule", fields: [
     { key: "people", label: "Total people at full occupancy", unit: "people · all floors combined", min: 0, max: 10000, step: 1 },
-    { key: "startHour", label: "Occupied hours start", unit: "hour · 0–23", min: 0, max: 23, step: 1 },
-    { key: "endHour", label: "Occupied hours end (exclusive)", unit: "hour · 1–24", min: 1, max: 24, step: 1 },
+    { key: "startHour", label: "Weekday occupied start", unit: "hour · 0–23", min: 0, max: 23, step: 1 },
+    { key: "endHour", label: "Weekday occupied end (exclusive)", unit: "hour · 0–24", min: 0, max: 24, step: 1 },
+    { key: "weekendStartHour", label: "Weekend occupied start", unit: "hour · 0–23", min: 0, max: 23, step: 1 },
+    { key: "weekendEndHour", label: "Weekend occupied end (exclusive)", unit: "hour · 0–24", min: 0, max: 24, step: 1 },
     { key: "summerPercent", label: "June–August occupancy", unit: "% of full", min: 0, max: 100, step: 1 },
   ] },
   { title: "Envelope and outdoor air", fields: [
     { key: "slabF2", label: "Slab edge heat loss coefficient (F₂)", unit: "BTU/hr·ft·°F", min: 0.32, max: 0.73, step: 0.01, options: SLAB_F2_OPTIONS.map(option => ({ ...option })) },
     { key: "roofU", label: "Roof U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
     { key: "wallU", label: "Opaque wall U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
+    { key: "windowU", label: "Window U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 2, step: 0.01 },
     { key: "infiltrationAch", label: "Infiltration (all hours)", unit: "air changes/hr", min: 0, max: 3, step: 0.01 },
     { key: "ventilationPerson", label: "Outdoor air per occupant", unit: "CFM/person", min: 0, max: 50, step: 0.5 },
     { key: "ventilationArea", label: "Outdoor air per floor area", unit: "CFM/ft²", min: 0, max: 1, step: 0.01 },
@@ -96,14 +105,15 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
 // This is an input check, not a calculation of equipment performance.
 export function validateSchool(a: SchoolAssumptions): string | null {
   for (const field of SCHOOL_FIELDS.flatMap(g => g.fields)) {
-    const value = a[field.key];
-    if (!Number.isFinite(value) || value < field.min || value > field.max) return `${field.label} must be between ${field.min} and ${field.max}.`;
+    const optional = field.key === "weekendStartHour" || field.key === "weekendEndHour" || field.key === "windowU";
+    const value = optional ? a[field.key] ?? DEFAULT_SCHOOL[field.key] : a[field.key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < field.min || value > field.max) return `${field.label} must be between ${field.min} and ${field.max}.`;
     if (field.options && !field.options.some(option => option.value === value)) return `Select a listed ${field.label.toLowerCase()}.`;
-    if (["people", "startHour", "endHour", "stories"].includes(field.key) && !Number.isInteger(value)) return `${field.label} must be a whole number.`;
+    if (["people", "startHour", "endHour", "weekendStartHour", "weekendEndHour", "stories"].includes(field.key) && !Number.isInteger(value)) return `${field.label} must be a whole number.`;
   }
   if (a.heatingF >= a.coolingF || a.setbackHeatingF >= a.setbackCoolingF) return "Each heating setpoint must be lower than its cooling setpoint.";
   if (a.setbackHeatingF > a.heatingF || a.setbackCoolingF < a.coolingF) return "Unoccupied heating must be at or below occupied heating, and unoccupied cooling at or above occupied cooling.";
-  if (a.startHour >= a.endHour) return "The occupied start hour must be earlier than the end hour.";
+  if (a.startHour === a.endHour && (a.weekendStartHour ?? DEFAULT_SCHOOL.weekendStartHour) === (a.weekendEndHour ?? DEFAULT_SCHOOL.weekendEndHour)) return "Enter occupied hours for weekdays or weekends.";
   return null;
 }
 
@@ -111,11 +121,10 @@ export const fahrenheit = (c: number) => c * 9 / 5 + 32;
 export const celsius = (f: number) => (f - 32) * 5 / 9;
 
 export function envelopeUA(a: SchoolAssumptions): number {
-  const footprint = a.floorAreaFt2 / a.stories;
-  const length = Math.sqrt(footprint * a.aspectRatio), width = footprint / length;
-  const roofArea = footprint;
-  const opaqueWallArea = 2 * (length + width) * a.stories * a.ceilingFt * (1 - a.windowPercent / 100);
-  return a.roofU * roofArea + a.wallU * opaqueWallArea;
+  const roofArea = a.floorAreaFt2 / a.stories;
+  const wallArea = slabPerimeterFt(a) * a.stories * a.ceilingFt;
+  const windowArea = wallArea * a.windowPercent / 100;
+  return a.roofU * roofArea + a.wallU * (wallArea - windowArea) + (a.windowU ?? DEFAULT_SCHOOL.windowU) * windowArea;
 }
 
 export function slabPerimeterFt(a: SchoolAssumptions): number {
@@ -126,6 +135,12 @@ export function slabPerimeterFt(a: SchoolAssumptions): number {
 
 export function slabUA(a: SchoolAssumptions): number {
   return a.slabF2 * slabPerimeterFt(a);
+}
+
+function occupiedHour(hour: number, [start, end]: readonly [number, number], [previousStart, previousEnd]: readonly [number, number]): boolean {
+  const withinToday = hour >= start && (end < start || hour < end);
+  const afterMidnight = previousEnd < previousStart && hour < previousEnd;
+  return withinToday || afterMidnight;
 }
 
 // ASHRAE Fundamentals saturation pressure equations, SI coefficients as
@@ -198,20 +213,23 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
   // total conditioned volume; multiplying by stories again would double count.
   const area = a.floorAreaFt2;
   const infiltration = a.infiltrationAch * area * a.ceilingFt / 60;
-  // Calculate conductive envelope UA from the same roof and opaque-wall
-  // U-values used by the solar model. Geometry matches solarGains: equal
-  // floor plates, a rectangular footprint, and glazing spread over façades.
+  // Conductive UA covers the roof, opaque walls, windows and slab edge.
+  // Geometry matches solarGains: equal floors and a rectangular footprint.
   const ua = envelopeUA(a) + slabUA(a);
+  const weekdayHours = [a.startHour, a.endHour] as const;
+  const weekendHours = [a.weekendStartHour ?? DEFAULT_SCHOOL.weekendStartHour, a.weekendEndHour ?? DEFAULT_SCHOOL.weekendEndHour] as const;
+  const week = [weekendHours, weekdayHours, weekdayHours, weekdayHours, weekdayHours, weekdayHours, weekendHours];
   return rows.map(row => {
     // Use the CSV's calendar directly. Date.UTC avoids shifting weekdays in
     // a visitor's browser time zone; the source excludes daylight saving time.
-    const weekday = new Date(Date.UTC(row.year, row.month - 1, row.day)).getUTCDay();
-    const schoolHour = (Boolean(designDay) || weekday > 0 && weekday < 6) && row.hour >= a.startHour && row.hour < a.endHour;
+    const day = new Date(Date.UTC(row.year, row.month - 1, row.day)).getUTCDay();
+    // Design sizing checks all occupied hours across weekday and weekend periods.
+    const scheduled = designDay
+      ? occupiedHour(row.hour, weekdayHours, weekdayHours) || occupiedHour(row.hour, weekendHours, weekendHours)
+      : occupiedHour(row.hour, week[day], week[(day + 6) % 7]);
     // fraction is the occupancy fraction, not a compressor duty fraction.
     // It drives people, ventilation and internal-gain schedules for this hour.
-    // Design days represent a scheduled working day and use the same seasonal
-    // occupancy reduction as annual operation. Sizing later excludes empty hours.
-    const fraction = schoolHour ? (row.month >= 6 && row.month <= 8 ? a.summerPercent / 100 : 1) : 0;
+    const fraction = scheduled ? (row.month >= 6 && row.month <= 8 ? a.summerPercent / 100 : 1) : 0;
     const occupied = fraction > 0;
     const occupants = a.people * fraction;
     const ventilation = occupied ? occupants * a.ventilationPerson + area * a.ventilationArea : 0;
@@ -288,18 +306,20 @@ export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: str
     Number_of_floors: a.stories, Building_footprint_ft2: a.floorAreaFt2 / a.stories,
     Conditioned_volume_ft3: a.floorAreaFt2 * a.ceilingFt,
     Basis: "Illustrative single-zone hourly steady-state load estimate; cooling negative; heating positive; total cooling includes sensible cooling",
-    Schedule: "Mon-Fri; June-Aug reduced occupancy; no holidays; fixed local standard time; no Feb 29",
+    Schedule: "Weekday and weekend occupied periods; June-August occupancy factor; no holidays; fixed local standard time; no Feb 29",
     Thermostat_deadband_F: a.thermostatDeadbandF,
     Thermostat_control: "Annual sensible loads use heating setpoint minus deadband and cooling setpoint plus deadband, including setbacks; humidity control remains active; design sizing uses entered setpoints without this allowance. Hourly steady-state model does not resolve starts, minimum run/off times or temperature hysteresis.",
     Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and steady-state sol-air correction; no thermal lag or longwave sky correction",
     Solar_latitude: site?.latitude ?? "", Solar_longitude: site?.longitude ?? "", Solar_UTC_offset: site?.utcOffset ?? "",
     Envelope_UA_BTU_hr_F: envelopeUA(a), Slab_F2_BTU_hr_ft_F: a.slabF2,
+    Window_area_ft2: slabPerimeterFt(a) * a.stories * a.ceilingFt * a.windowPercent / 100,
+    Window_U_BTU_hr_ft2_F: a.windowU ?? DEFAULT_SCHOOL.windowU,
     Slab_perimeter_ft: slabPerimeterFt(a), Slab_UA_BTU_hr_F: slabUA(a),
     Total_conductive_UA_BTU_hr_F: envelopeUA(a) + slabUA(a),
-    Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; above-grade envelope UA is calculated from roof and opaque-wall U-values and modeled geometry with windows excluded; slab edge conduction uses selected F2 times exposed ground-floor perimeter times indoor-to-outdoor temperature difference",
+    Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; envelope UA sums roof, opaque wall and window U-values times their respective areas; sky longwave exchange is not modeled separately; slab edge conduction uses F2 times exposed perimeter times indoor-to-outdoor temperature difference",
     Dew_point: "ASHRAE ice/water saturation convention; frost point below freezing; blank at RH=0 or missing input",
     Wet_bulb: "ASHRAE wet-bulb relations at 101325 Pa from dry bulb and RH; blank for missing or invalid input",
-    ...Object.fromEntries(SCHOOL_FIELDS.flatMap(g => g.fields.map(f => [`${f.label} (${f.unit})`, a[f.key]]))),
+    ...Object.fromEntries(SCHOOL_FIELDS.flatMap(g => g.fields.map(f => [`${f.label} (${f.unit})`, a[f.key] ?? DEFAULT_SCHOOL[f.key]]))),
   };
   const escape = (v: unknown) => v === null || v === undefined ? "" : `"${String(v).replace(/"/g, '""')}"`;
   const line = (values: unknown[]) => values.map(escape).join(",");

@@ -90,7 +90,7 @@ The 1,724 complete U.S. station records come from the [EnergyPlus team's public 
 
 ## Building, annual energy and interpretation
 
-The building is an hourly steady-state single zone with editable total conditioned floor area and number of floors (defaults: 150,000 ft² across two equal floors) with weekday occupancy, reduced summer use, setback temperatures, internal gains and Sup3rCC solar gains. Infiltration plus scheduled ventilation affect building loads. Roofs use GHI; walls use projected DNI plus sky/ground components at the dataset grid location and fixed local time. There is no thermal storage, detailed zoning, economizer or controls simulation. Sup3rCC is modeled climate, not observed weather. Lighting and plug electricity are excluded from these equipment totals.
+The building is an hourly steady-state single zone with editable total conditioned floor area and number of floors (defaults: 150,000 ft² across two equal floors) with weekday and weekend occupancy periods, a June–August reduction for schools, setback temperatures, internal gains and Sup3rCC solar gains. Infiltration plus scheduled ventilation affect building loads. Envelope UA sums roof, opaque-wall and window U-values times their respective areas, with slab-edge heat transfer added separately. Window solar gain uses SHGC. Roofs use GHI and walls use projected DNI plus sky and ground components at the dataset grid location and fixed local time. There is no thermal storage, detailed zoning, economizer or controls simulation. Sup3rCC is modeled climate, not observed weather. Lighting and plug electricity are excluded from these equipment totals.
 
 Annual site energy = electricity kWh × 3412.141633 / 1e6 + gas therms × 0.1 MMBtu/therm. Electricity cost uses supported OpenEI tariff terms or an entered rate; gas cost uses an EIA monthly state commercial benchmark. EPA eGRID and gas-combustion factors give CO₂e. Fan electricity is part of equipment electricity, including for gas heating. Missing tariffs/prices/factors block only dependent metrics.
 
@@ -124,7 +124,7 @@ References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psyc
 
 ## Input controls
 
-Building characteristics and assumptions uses a single collapsible panel with editable BEAST defaults. Selecting a ComStock building type fills the matching fields in that panel. Find Location uses the city and state, and Continue to Results validates the analysis inputs. Total area includes all floors, conditioned volume is total area times height per floor, and occupancy is an independently entered building total.
+Building characteristics and assumptions uses a single collapsible panel with editable BEAST defaults. Selecting a ComStock building type fills available weekday and weekend occupied periods and matching fields, including window U-value when available. ComStock floor area rounds to the nearest 100 ft², other imported values to two significant figures, and operating periods to whole hours. School types start at 10% June–August occupancy. Other types use 100% during scheduled hours. The editable window U-value starts at 0.50 BTU/(hr·ft²·°F). Find Location uses the city and state, and Continue to Results validates the analysis inputs. Total area includes all floors, conditioned volume is total area times height per floor, and occupancy is an independently entered building total.
 
 ## Stage and cycling histograms
 

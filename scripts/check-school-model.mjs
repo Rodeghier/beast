@@ -33,12 +33,13 @@ try {
   const bandRows = m.simulateSchool([67, 68, 69, 76, 77, 78].map(f => row(m.celsius(f), 0)), banded);
   assert.deepEqual(bandRows.map(r => r.heatingSetpointF), [68, 68, 68, 68, 68, 68]);
   assert.ok(bandRows.every(r => r.coolingSetpointF === 77));
-  close(bandRows[0].heating, m.envelopeUA(banded));
+  const bandUa = m.envelopeUA(banded) + m.slabUA(banded);
+  close(bandRows[0].heating, bandUa);
   assert.ok(bandRows.slice(1).every(r => r.heating === 0));
   assert.ok(bandRows.slice(0, 5).every(r => r.sensibleCooling === 0));
-  close(bandRows[5].sensibleCooling, -m.envelopeUA(banded));
+  close(bandRows[5].sensibleCooling, -bandUa);
   // Signed balances retain the band when equipment adds supply-fan heat.
-  close(bandRows[3].coolBalance, -m.envelopeUA(banded));
+  close(bandRows[3].coolBalance, -bandUa);
   const setback = m.simulateSchool([row(m.celsius(70), 0, { hour: 0 })], banded)[0];
   assert.equal(setback.heatingSetpointF, 58); assert.equal(setback.coolingSetpointF, 87);
   for (const mode of ['heating', 'cooling']) {
@@ -99,7 +100,8 @@ try {
   // Independently derive the geometry-based envelope UA on this branch.
   const footprint = bare.floorAreaFt2 / bare.stories;
   const length = Math.sqrt(footprint * bare.aspectRatio);
-  const bareUa = bare.roofU * footprint + bare.wallU * 2 * (length + footprint / length) * bare.stories * bare.ceilingFt;
+  const barePerimeter = 2 * (length + footprint / length);
+  const bareUa = bare.roofU * footprint + bare.wallU * barePerimeter * bare.stories * bare.ceilingFt + bare.slabF2 * barePerimeter;
   const hot = m.simulateSchool([row(m.celsius(90), 0)], bare)[0];
   close(hot.sensibleCooling, -15 * bareUa); close(hot.totalCooling, -15 * bareUa); assert.equal(hot.heating, 0);
   const cold = m.simulateSchool([row(m.celsius(20), 0)], bare)[0];
@@ -108,9 +110,19 @@ try {
   // floor count changes the footprint and exterior walls, not the total volume.
   const small = { ...bare, floorAreaFt2: 10_000, ceilingFt: 10, stories: 1 };
   const smallLength = Math.sqrt(10000 * small.aspectRatio);
-  const smallUa = 10000 * small.roofU + 2 * (smallLength + 10000 / smallLength) * 10 * small.wallU;
+  const smallPerimeter = 2 * (smallLength + 10000 / smallLength);
+  const smallUa = 10000 * small.roofU + smallPerimeter * (10 * small.wallU + small.slabF2);
   close(m.simulateSchool([row(m.celsius(90), 0)], small)[0].sensibleCooling, -15 * smallUa);
   close(m.simulateSchool([row(m.celsius(20), 0)], small)[0].heating, 50 * smallUa);
+  const windows = { ...small, windowPercent: 25, windowU: 0.4 };
+  const windowArea = smallPerimeter * 10 * 0.25;
+  const windowedUa = 10000 * small.roofU + smallPerimeter * 10 * 0.75 * small.wallU + windowArea * 0.4 + small.slabF2 * smallPerimeter;
+  close(m.simulateSchool([row(m.celsius(20), 0)], windows)[0].heating, 50 * windowedUa);
+  close(m.simulateSchool([row(m.celsius(90), 0)], windows)[0].sensibleCooling, -15 * windowedUa);
+  close(m.simulateSchool([row(m.celsius(90), 0)], { ...windows, windowU: undefined })[0].heatTransfer, windowedUa + 0.1 * windowArea);
+  const windowCsv = parseCsv(m.schoolCsv([], windows, "Test", "UTC"));
+  close(Number(windowCsv[1][windowCsv[0].indexOf("Window_area_ft2")]), windowArea);
+  close(Number(windowCsv[1][windowCsv[0].indexOf("Window_U_BTU_hr_ft2_F")]), 0.4);
   const air = { ...small, people: 10, ventilationPerson: 10, ventilationArea: 0.1, infiltrationAch: 0.6 };
   const oneFloor = m.simulateSchool([row(20)], air)[0];
   const fourFloors = m.simulateSchool([row(20)], { ...air, stories: 4 })[0];
@@ -150,8 +162,15 @@ try {
   ], m.DEFAULT_SCHOOL);
   assert.deepEqual(schedules.map(r => r.occupants), [0, 1200, 0, 0, 120]);
   close(schedules[1].outdoorAirCfm, 35250); close(schedules[0].outdoorAirCfm, 5250);
+  const office = { ...m.DEFAULT_SCHOOL, startHour: 8, endHour: 18, weekendStartHour: 10, weekendEndHour: 14, summerPercent: 100 };
+  const summerRows = [{ day: 11, hour: 8 }, { day: 12, hour: 8 }, { day: 12, hour: 10 }, { day: 12, hour: 14 }].map(r => row(20, 50, { month: 7, ...r }));
+  assert.deepEqual(m.simulateSchool(summerRows, office).map(r => r.occupants), [1200, 0, 1200, 0]);
+  const overnight = { ...office, startHour: 20, endHour: 4, weekendStartHour: 0, weekendEndHour: 0 };
+  assert.deepEqual(m.simulateSchool(summerRows.map((r, i) => ({ ...r, day: i ? 12 : 11, hour: [20, 0, 3, 4][i] })), overnight).map(r => r.occupied), [true, true, true, false]);
+  assert.equal(m.simulateSchool([row(20, 50, { hour: 2 })], { ...office, weekendStartHour: 0, weekendEndHour: 24 }, null, "cooling")[0].occupied, true);
   assert.equal(m.validateSchool({ ...bare, heatingF: 80 }), "Each heating setpoint must be lower than its cooling setpoint.");
-  assert.ok(m.validateSchool({ ...bare, startHour: 20, endHour: 10 }));
+  assert.ok(m.validateSchool({ ...bare, startHour: 20, endHour: 20 }));
+  assert.ok(m.validateSchool({ ...office, weekendEndHour: 14.5 }));
   assert.ok(m.validateSchool({ ...bare, ceilingFt: NaN }));
   assert.ok(m.validateSchool({ ...bare, people: 0.5 }));
   // Verify UTC-derived weekdays don't depend on the host timezone.

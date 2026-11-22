@@ -204,7 +204,7 @@ The total conditioned floor area is `floorAreaFt2` in `DEFAULT_SCHOOL`, initiall
 
 ### One hour through simulateSchool
 
-1. Determine weekday and whether the hour is occupied. The model uses the weather calendar, weekday occupied hours and reduced June–August occupancy.
+1. Determine weekday and whether the hour is occupied. The model uses the weather calendar, weekday and weekend occupied periods, and a June–August factor for school types. An overnight period can extend into the next day.
 2. Calculate occupants, scheduled ventilation, infiltration and active thermostat setpoints.
 3. Convert outdoor temperature to Fahrenheit and calculate the overall heat-transfer coefficient.
 4. Calculate solar gain, lighting gain, equipment gain and occupant sensible gain.
@@ -219,7 +219,7 @@ The following is a readable equivalent of the key coefficient calculation, using
 infiltration_cfm = ach * floor_area * height / 60
 ventilation_cfm = people * cfm_per_person + floor_area * cfm_per_ft2
 outdoor_cfm = infiltration_cfm + ventilation_cfm
-envelope_ua = roof_u * roof_area + wall_u * opaque_wall_area
+envelope_ua = roof_u * roof_area + wall_u * opaque_wall_area + window_u * window_area
 slab_ua = slab_f2 * exposed_slab_perimeter
 K = envelope_ua + slab_ua + 1.08 * outdoor_cfm
 ```
@@ -244,7 +244,7 @@ For latent demand, outdoor and indoor humidity ratios are converted to grains/lb
 
 The rectangular footprint comes from floor area divided by stories and the entered plan aspect ratio. Window gains use glazing area, SHGC and the solar multiplier. Opaque wall gains use wall absorptance; roof gains use roof absorptance. Each uses its corresponding U-value, irradiance, opaque area and exterior film coefficient in the sol-air correction.
 
-The roof and wall U-values are shared with `school.ts`. The school model calculates conductive envelope UA from roof area and opaque wall area (gross façade area less the entered window fraction), using the rectangular geometry, floor area, stories and ceiling height. Those same U-values also affect the added opaque solar term. Slab edge UA is F2 multiplied by the ground-floor footprint perimeter and is added to envelope UA for the hourly heat balance.
+The roof and wall U-values are shared with `school.ts`. The school model calculates conductive envelope UA from roof, opaque-wall and window area using the rectangular geometry, floor area, stories and ceiling height. The window U-value applies to the glazed fraction of gross façade area. Window solar gains are calculated with SHGC. Those same U-values also affect the added opaque solar term. Slab edge UA is F2 multiplied by the ground-floor footprint perimeter and is added to envelope UA for the hourly heat balance.
 
 `school.ts` also contains saturation-pressure, dew-point and humidity-ratio functions. They use Celsius internally. `mixed-air.ts` uses those relations and an enthalpy equation to obtain entering wet bulb. These functions return null for invalid or unsupported physical states rather than guessing a replacement.
 
@@ -499,7 +499,7 @@ The `stage` value controls the search/loading screen: idle, locating, choosing, 
 
 Below the component's `return`, JSX describes headings, forms, tables and result components. An expression inside braces inserts a calculated value. A component such as `<EquipmentScenarios ... />` is a function-like visual building block supplied with arguments called props.
 
-Building characteristics and assumptions is an editable, collapsible input panel. Its onSchool callback replaces the parent assumptions object. A ComStock import merges the matched fields into the same object. Find Location only submits the city and state, and Continue to Results submits the analysis form.
+Building characteristics and assumptions is an editable, collapsible input panel. Its onSchool callback replaces the parent assumptions object. A ComStock import merges the matched fields into the same object. The county-weighted floor-area mean rounds to the nearest 100 ft². Other mapped numeric values are limited to two significant figures, and occupied periods are set in whole hours. Primary and secondary school types default to 10% June–August occupancy. Other building types use full occupancy within their scheduled hours. Find Location only submits the city and state, and Continue to Results submits the analysis form.
 
 `components/location-energy.tsx` fetches location pricing/EPA context. It waits for the user to apply selections with Load results before producing the annual performance objects. `annual-scorecard.tsx` and `performance-graphs.tsx` format those objects. Changing a chart label there should not change a capacity or energy equation.
 
@@ -655,7 +655,7 @@ Edit `DEFAULT_SCHOOL` in `lib/school.ts`. If the allowed range or field label ch
 
 ### Change floor area
 
-Edit total conditioned floor area and number of floors in the Building size and geometry input group after selecting Modify values. `floorAreaFt2` drives above-grade envelope UA, slab perimeter, area-based ventilation, infiltration volume, lighting, equipment gains and solar geometry. `stories` divides total area into equal floor plates and sets total exterior height; it does not multiply total area or occupancy. People remain an independently entered building total. For a different default, edit `DEFAULT_SCHOOL.floorAreaFt2` and `DEFAULT_SCHOOL.stories`. Exports include total area, floors, footprint and conditioned volume.
+Edit total conditioned floor area and number of floors in the Building size and geometry input group. `floorAreaFt2` drives above-grade envelope UA, slab perimeter, area-based ventilation, infiltration volume, lighting, equipment gains and solar geometry. `stories` divides total area into equal floor plates and sets total exterior height; it does not multiply total area or occupancy. People remain an independently entered building total. For a different default, edit `DEFAULT_SCHOOL.floorAreaFt2` and `DEFAULT_SCHOOL.stories`. Exports include total area, floors, footprint and conditioned volume.
 
 ### Change a heat or moisture equation
 

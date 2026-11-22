@@ -9,11 +9,12 @@
 
 
 import type { Ref } from "react";
-import { SCHOOL_FIELDS, type SchoolAssumptions } from "@/lib/school";
+import { DEFAULT_SCHOOL, SCHOOL_FIELDS, type SchoolAssumptions } from "@/lib/school";
 
-export function AnalysisAssumptions({ school, onSchool, ref }: {
+export function AnalysisAssumptions({ school, onSchool, ref, summerOccupancyEditable = true }: {
   school: SchoolAssumptions; onSchool: (value: SchoolAssumptions) => void;
   ref?: Ref<HTMLDetailsElement>;
+  summerOccupancyEditable?: boolean;
 }) {
   // ComStock averages can have fractional precision between the form's original increments.
   return <details ref={ref} className="analysis-assumptions" onInvalidCapture={event => { event.currentTarget.open = true; }}>
@@ -24,10 +25,15 @@ export function AnalysisAssumptions({ school, onSchool, ref }: {
       <p className="assumption-intro">Packaged compressors stay off when their calculated total ON-time is below the minimum minutes per hour, including humidity-only cooling calls. Fans retain their ventilation schedule. Unserved loads are reported as unmet.</p>
       <fieldset className="assumptions-values"><legend className="sr-only">Building input values</legend>
         {SCHOOL_FIELDS.map(group => <fieldset className="assumption-group" key={group.title}>
-          <legend>{group.title}</legend><div className="assumption-grid">{group.fields.map(field => <div className="form-field" key={field.key}>
-            <label htmlFor={`input-${field.key}`}>{field.label}<span className="input-unit">{field.unit}</span></label>
-            {field.options ? <select id={`input-${field.key}`} required value={school[field.key]} onChange={e => onSchool({ ...school, [field.key]: Number(e.target.value) })}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <input id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step="any" value={Number.isFinite(school[field.key]) ? school[field.key] : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>}
-          </div>)}</div>
+          <legend>{group.title}</legend>
+          {group.title === "Occupancy schedule" && <p className="assumption-intro">Matching start and end hours mark a closed period. An end before the start continues into the next day. June–August occupancy can be reduced for schools.</p>}
+          <div className="assumption-grid">{group.fields.map(field => {
+            const value = school[field.key] ?? DEFAULT_SCHOOL[field.key];
+            return <div className="form-field" key={field.key}>
+              <label htmlFor={`input-${field.key}`}>{field.label}<span className="input-unit">{field.unit}</span></label>
+              {field.options ? <select id={`input-${field.key}`} required value={value} onChange={e => onSchool({ ...school, [field.key]: Number(e.target.value) })}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <input id={`input-${field.key}`} type="number" required min={field.min} max={field.max} step="any" disabled={field.key === "summerPercent" && !summerOccupancyEditable} value={Number.isFinite(value) ? value : ""} onChange={e => onSchool({ ...school, [field.key]: e.target.valueAsNumber })}/>}
+            </div>;
+          })}</div>
         </fieldset>)}
       </fieldset>
     </div>

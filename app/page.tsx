@@ -18,7 +18,7 @@ import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/p
 import { STATES, MIN_YEAR, MAX_YEAR, supportsClimate, type Place } from "@/lib/climate";
 import { parseClimateCsv, type ClimateData } from "@/lib/csv";
 import { solarLocation } from "@/lib/solar";
-import { DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
+import { comstockUsesSchoolSummerSchedule, DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
 import { simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv } from "@/lib/equipment-model";
 import { coolingFor, curveRangeMode, scenarioName, newScenario, type EquipmentScenario, type CurveRangeMode } from "@/lib/equipment";
 import { EquipmentScenarios } from "@/components/equipment-scenarios";
@@ -71,11 +71,15 @@ export default function Home() {
   // mutation can leave the screen and the calculated results out of sync.
   const [school, setSchool] = useState<SchoolAssumptions>({ ...DEFAULT_SCHOOL });
   const [comstockType, setComstockType] = useState("");
+  const [summerOccupancyEditable, setSummerOccupancyEditable] = useState(true);
   const assumptionsPanel = useRef<HTMLDetailsElement>(null);
   function applyComstock(buildingType: string, assumptions: Partial<SchoolAssumptions>) {
     setComstockType(buildingType);
     if (!Object.keys(assumptions).length) return;
-    setSchool(current => ({ ...current, ...assumptions }));
+    const isSchool = comstockUsesSchoolSummerSchedule(buildingType);
+    setSummerOccupancyEditable(isSchool);
+    const summerPercent = isSchool ? assumptions.summerPercent ?? DEFAULT_SCHOOL.summerPercent : 100;
+    setSchool(current => ({ ...current, ...assumptions, summerPercent }));
     if (assumptionsPanel.current) assumptionsPanel.current.open = true;
   }
   // Engineering pipeline step 1: weather + assumptions -> hourly building loads.
@@ -287,7 +291,7 @@ export default function Home() {
         {place && (stage === "located" || stage === "ready" || stage === "error") && <section className="location-resolution" role="status"><strong>Location resolved</strong><span>{place.name}, {place.state}{place.county ? ` · ${place.county}` : ""}</span><span>{coordinate(place.latitude, true)} · {coordinate(place.longitude)}</span></section>}
         {place && (stage === "located" || stage === "ready" || stage === "error") && <ComstockInputs key={`comstock-${place.id}-${place.stateCode}`} place={place} selectedType={comstockType} onSelect={applyComstock}/>}
         <form onSubmit={e => { e.preventDefault(); void continueToResults(); }}>
-          <AnalysisAssumptions ref={assumptionsPanel} school={school} onSchool={setSchool}/>
+          <AnalysisAssumptions ref={assumptionsPanel} school={school} onSchool={setSchool} summerOccupancyEditable={summerOccupancyEditable}/>
           <EquipmentScenarios choices={systems} onChange={updateSystem} results={[]} active={activeSystem} onActive={setActiveSystem} onAdd={() => setSystems(current => current.length < 3 ? [...current, newScenario()] : current)} onRemove={index => { setSystems(current => current.length > 1 ? current.filter((_, i) => i !== index) : current); setActiveSystem(0); }}/>
           <div className="continue-actions">{error && place && <p className="model-error" role="alert">{error}</p>}{place && (stage === "located" || stage === "ready" || stage === "error") && <button className="button primary" type="submit" disabled={busy}>Continue to Results<ArrowRight size={18}/></button>}</div>
         </form></TabsContent>
