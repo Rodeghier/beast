@@ -124,6 +124,8 @@ References: PsychroLib https://psychrometrics.github.io/psychrolib/_modules/psyc
 
 ## Input controls
 
+ComStock imports include the most common wall and window construction categories by represented building weight where the county metadata supplies them. Roof construction uses ComStock 2025 Release 3 Table 57, with the PNNL supermarket prototype as the grocery fallback. Ground floors use the ComStock slab-on-grade assumption. The construction panel and results CSV show representative mass layers, their material properties and nominal areal heat capacity. Glazing mass is based on 6 mm of glass per pane where the pane count is known. The hourly and design calculations use the editable assembly U-values and slab F₂ for steady-state heat transfer. The representative heat capacities are available for future transient calculations.
+
 Building characteristics and assumptions uses a single collapsible panel with editable BEAST defaults. Selecting a ComStock building type fills available weekday and weekend occupied periods and matching fields, including window U-value when available. ComStock floor area rounds to the nearest 100 ft², other imported values to two significant figures, and operating periods to whole hours. School types start at 10% June–August occupancy. Other types use 100% during scheduled hours. The editable window U-value starts at 0.50 BTU/(hr·ft²·°F). Find Location uses the city and state, and Continue to Results validates the analysis inputs. Total area includes all floors, conditioned volume is total area times height per floor, and occupancy is an independently entered building total.
 
 ## Stage and cycling histograms

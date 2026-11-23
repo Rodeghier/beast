@@ -15,13 +15,15 @@ import ts from "typescript";
 // Exercise the actual TypeScript implementation without another dependency.
 const temp = mkdtempSync(join(tmpdir(), "school-model-"));
 async function moduleFrom(file) {
-  const output = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8").replace('from "./solar"', 'from "./solar.mjs"'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
+  const source = readFileSync(new URL(`../${file}`, import.meta.url), "utf8").replace(/from "(\.\/[^"]+)"/g, 'from "$1.mjs"');
+  const output = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
   const target = join(temp, file.split("/").pop().replace(/\.ts$/, ".mjs"));
   const { writeFileSync } = await import("node:fs"); writeFileSync(target, output);
   return import(pathToFileURL(target).href);
 }
 try {
   const solar = await moduleFrom("lib/solar.ts");
+  await moduleFrom("lib/envelope-construction.ts");
   const m = await moduleFrom("lib/school.ts");
   const { parseClimateCsv, parseCsv } = await moduleFrom("lib/csv.ts");
   const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} != ${expected}`);

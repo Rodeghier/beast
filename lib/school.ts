@@ -7,6 +7,7 @@
  */
 
 import type { ClimateRow } from "./csv";
+import { COMSTOCK_CONSTRUCTION_SOURCE, FLOAT_GLASS_SOURCE, MATERIAL_PROPERTY_SOURCE, SUPERMARKET_ROOF_SOURCE, WOOD_FRAMING_SOURCE, type EnvelopeConstruction } from "./envelope-construction";
 import { solarGains, type SolarLocation } from "./solar";
 
 export const MODEL_VERSION = "building-solar-2.7";
@@ -39,8 +40,8 @@ export const DEFAULT_SCHOOL = {
   roofU: 0.04, wallU: 0.06, windowU: 0.50, roofSolarAbsorptance: 0.6, wallSolarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
 };
 type AddedSchoolField = "weekendStartHour" | "weekendEndHour" | "windowU";
-export type SchoolAssumptions = Omit<typeof DEFAULT_SCHOOL, AddedSchoolField> & Partial<Pick<typeof DEFAULT_SCHOOL, AddedSchoolField>>;
-export type SchoolField = { key: keyof SchoolAssumptions; label: string; unit: string; min: number; max: number; step: number; options?: { value: number; label: string }[] };
+export type SchoolAssumptions = Omit<typeof DEFAULT_SCHOOL, AddedSchoolField> & Partial<Pick<typeof DEFAULT_SCHOOL, AddedSchoolField>> & { construction?: EnvelopeConstruction };
+export type SchoolField = { key: keyof typeof DEFAULT_SCHOOL; label: string; unit: string; min: number; max: number; step: number; options?: { value: number; label: string }[] };
 
 export function comstockUsesSchoolSummerSchedule(buildingType: string): boolean {
   return buildingType === "PrimarySchool" || buildingType === "SecondarySchool";
@@ -301,6 +302,11 @@ export function summarizeLoads(rows: SchoolRow[]) {
 // Write assumptions/metadata first, then the hourly table. Formatting to four
 // decimal places happens only in the export, not in the load calculations.
 export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: string, zone: string, site?: SolarLocation | null): string {
+  const wallArea = slabPerimeterFt(a) * a.stories * a.ceilingFt;
+  const windowArea = wallArea * a.windowPercent / 100;
+  const opaqueWallArea = wallArea - windowArea;
+  const windowU = a.windowU ?? DEFAULT_SCHOOL.windowU;
+  const construction = a.construction;
   const metadata: Record<string, string | number> = {
     Model: MODEL_VERSION, Location: location, Time: zone, Floor_area_ft2: a.floorAreaFt2,
     Number_of_floors: a.stories, Building_footprint_ft2: a.floorAreaFt2 / a.stories,
@@ -312,14 +318,45 @@ export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: str
     Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and steady-state sol-air correction; no thermal lag or longwave sky correction",
     Solar_latitude: site?.latitude ?? "", Solar_longitude: site?.longitude ?? "", Solar_UTC_offset: site?.utcOffset ?? "",
     Envelope_UA_BTU_hr_F: envelopeUA(a), Slab_F2_BTU_hr_ft_F: a.slabF2,
-    Window_area_ft2: slabPerimeterFt(a) * a.stories * a.ceilingFt * a.windowPercent / 100,
-    Window_U_BTU_hr_ft2_F: a.windowU ?? DEFAULT_SCHOOL.windowU,
+    Opaque_wall_area_ft2: opaqueWallArea,
+    Wall_U_BTU_hr_ft2_F: a.wallU, Roof_U_BTU_hr_ft2_F: a.roofU,
+    Window_area_ft2: windowArea,
+    Window_U_BTU_hr_ft2_F: windowU,
+    Wall_UA_BTU_hr_F: a.wallU * opaqueWallArea,
+    Roof_UA_BTU_hr_F: a.roofU * a.floorAreaFt2 / a.stories,
+    Window_UA_BTU_hr_F: windowU * windowArea,
     Slab_perimeter_ft: slabPerimeterFt(a), Slab_UA_BTU_hr_F: slabUA(a),
     Total_conductive_UA_BTU_hr_F: envelopeUA(a) + slabUA(a),
     Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; envelope UA sums roof, opaque wall and window U-values times their respective areas; sky longwave exchange is not modeled separately; slab edge conduction uses F2 times exposed perimeter times indoor-to-outdoor temperature difference",
     Dew_point: "ASHRAE ice/water saturation convention; frost point below freezing; blank at RH=0 or missing input",
     Wet_bulb: "ASHRAE wet-bulb relations at 101325 Pa from dry bulb and RH; blank for missing or invalid input",
     ...Object.fromEntries(SCHOOL_FIELDS.flatMap(g => g.fields.map(f => [`${f.label} (${f.unit})`, a[f.key] ?? DEFAULT_SCHOOL[f.key]]))),
+    ...(construction && {
+      ComStock_construction_type: construction.buildingType,
+      ComStock_construction_county: construction.county,
+      ComStock_construction_state: construction.state,
+      Wall_construction: construction.wall?.label ?? "",
+      Wall_construction_basis: construction.wall?.source ?? "",
+      Wall_construction_share: construction.wall?.share ?? "",
+      Wall_nominal_heat_capacity_kJ_m2_K: construction.wall?.arealHeatCapacityKjM2K ?? "",
+      Wall_representative_mass_layers: construction.wall ? JSON.stringify(construction.wall.layers) : "",
+      Roof_construction: construction.roof?.label ?? "",
+      Roof_construction_basis: construction.roof?.source ?? "",
+      Roof_construction_share: construction.roof?.share ?? "",
+      Roof_nominal_heat_capacity_kJ_m2_K: construction.roof?.arealHeatCapacityKjM2K ?? "",
+      Roof_representative_mass_layers: construction.roof ? JSON.stringify(construction.roof.layers) : "",
+      Window_construction: construction.window?.label ?? "",
+      Window_construction_share: construction.window?.share ?? "",
+      Window_nominal_heat_capacity_kJ_m2_K: construction.window?.arealHeatCapacityKjM2K ?? "",
+      Window_representative_mass_layers: construction.window ? JSON.stringify(construction.window.layers) : "",
+      Slab_construction: construction.slab.label,
+      Slab_nominal_heat_capacity_kJ_m2_K: construction.slab.arealHeatCapacityKjM2K ?? "",
+      Slab_representative_mass_layers: JSON.stringify(construction.slab.layers),
+      Construction_reference: COMSTOCK_CONSTRUCTION_SOURCE,
+      Construction_grocery_roof_reference: construction.buildingType === "Grocery" ? SUPERMARKET_ROOF_SOURCE : "",
+      Construction_material_references: `${MATERIAL_PROPERTY_SOURCE} | ${WOOD_FRAMING_SOURCE} | ${FLOAT_GLASS_SOURCE}`,
+      Construction_heat_capacity_basis: "Sum of representative layer density times specific heat times thickness times area fraction. Nominal only. The hourly model uses assembly U-values without heat storage.",
+    }),
   };
   const escape = (v: unknown) => v === null || v === undefined ? "" : `"${String(v).replace(/"/g, '""')}"`;
   const line = (values: unknown[]) => values.map(escape).join(",");

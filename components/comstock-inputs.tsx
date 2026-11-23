@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import type { Place } from "@/lib/climate";
+import type { EnvelopeConstruction } from "@/lib/envelope-construction";
 import type { SchoolAssumptions } from "@/lib/school";
 
 type Catalog = { county: string; countyFips: string; buildingTypes: string[]; error?: string };
-type Characteristics = { assumptions: Partial<SchoolAssumptions>; error?: string };
+type Characteristics = { assumptions: Partial<SchoolAssumptions>; construction?: EnvelopeConstruction; error?: string };
 
 export function ComstockInputs({ place, selectedType, onSelect }: {
   place: Place;
@@ -48,11 +49,13 @@ export function ComstockInputs({ place, selectedType, onSelect }: {
     params.set("buildingType", buildingType);
     params.set("characteristics", "true");
     try {
-      const response = await fetch(`/api/comstock?${params}`, { signal: controller.signal });
+      const response = await fetch(`/api/comstock?${params}`, { signal: controller.signal, cache: "no-cache" });
       const payload = await response.json() as Characteristics;
       if (!response.ok) throw new Error(payload.error || "ComStock building characteristics could not be loaded.");
       if (controller.signal.aborted) return;
-      onSelect(buildingType, payload.assumptions);
+      // Replace the material profile on every import so a missing category
+      // cannot carry over from a previously selected building.
+      onSelect(buildingType, { ...payload.assumptions, construction: payload.construction });
       setImportedCount(Object.keys(payload.assumptions).length);
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "ComStock building characteristics could not be loaded.");

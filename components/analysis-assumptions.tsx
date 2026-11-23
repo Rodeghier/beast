@@ -9,7 +9,58 @@
 
 
 import type { Ref } from "react";
+import { COMSTOCK_CONSTRUCTION_SOURCE, FLOAT_GLASS_SOURCE, MATERIAL_PROPERTY_SOURCE, SUPERMARKET_ROOF_SOURCE, WOOD_FRAMING_SOURCE } from "@/lib/envelope-construction";
 import { DEFAULT_SCHOOL, SCHOOL_FIELDS, type SchoolAssumptions } from "@/lib/school";
+
+const materialNumber = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 2 });
+const stockShare = new Intl.NumberFormat(undefined, { style: "percent", maximumSignificantDigits: 2 });
+
+function ConstructionDetails({ school }: { school: SchoolAssumptions }) {
+  const construction = school.construction;
+  if (!construction) return null;
+  const windowU = school.windowU ?? DEFAULT_SCHOOL.windowU;
+  const surfaces = [
+    { name: "Opaque wall", profile: construction.wall, coefficient: school.wallU, unit: "BTU/(hr·ft²·°F)" },
+    { name: "Roof", profile: construction.roof, coefficient: school.roofU, unit: "BTU/(hr·ft²·°F)" },
+    { name: "Windows", profile: construction.window, coefficient: windowU, unit: "BTU/(hr·ft²·°F)" },
+    { name: "Slab", profile: construction.slab, coefficient: school.slabF2, unit: "BTU/(hr·ft·°F)" },
+  ];
+  return <fieldset className="assumption-group">
+    <legend>Envelope construction · {construction.buildingType}</legend>
+    <p className="assumption-intro">Source area {construction.county}, {construction.state}. The representative layers estimate heat storage. Annual loads and design sizing use the editable assembly U-values and slab edge F₂ above.</p>
+    <div className="rate-scroll">
+      <table>
+        <thead><tr><th scope="col">Surface</th><th scope="col">Construction basis</th><th scope="col">Model U-value or slab F₂</th><th scope="col">Nominal heat capacity<br/>kJ/(m²·K)</th></tr></thead>
+        <tbody>
+          {surfaces.map(({ name, profile, coefficient, unit }) => <tr key={name}>
+            <th scope="row">{name}</th>
+            <td>{profile ? <>{profile.label}<br/>{profile.source}{profile.share !== undefined && ` · ${stockShare.format(profile.share)} of represented stock`}</> : "Construction unavailable"}</td>
+            <td>{Number.isFinite(coefficient) ? `${coefficient} ${unit}` : "—"}</td>
+            <td>{profile?.arealHeatCapacityKjM2K != null ? materialNumber.format(profile.arealHeatCapacityKjM2K) : "—"}</td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    {surfaces.some(({ profile }) => profile?.layers.length) && <details>
+      <summary>Representative material properties</summary>
+      <div className="rate-scroll">
+        <table>
+          <thead><tr><th scope="col">Surface</th><th scope="col">Material</th><th scope="col">Thickness (mm)</th><th scope="col">Area share</th><th scope="col">Conductivity (W/m·K)</th><th scope="col">Density (kg/m³)</th><th scope="col">Specific heat (J/kg·K)</th></tr></thead>
+          <tbody>{surfaces.flatMap(({ name, profile }) => (profile?.layers ?? []).map(layer => <tr key={`${name}-${layer.material}`}>
+            <td>{name}</td><th scope="row">{layer.material}</th>
+            <td>{materialNumber.format(layer.thicknessM * 1000)}</td>
+            <td>{stockShare.format(layer.areaFraction ?? 1)}</td>
+            <td>{materialNumber.format(layer.conductivityWmK)}</td>
+            <td>{materialNumber.format(layer.densityKgM3)}</td>
+            <td>{materialNumber.format(layer.specificHeatJKgK)}</td>
+          </tr>))}</tbody>
+        </table>
+      </div>
+      <p className="assumption-intro">Heat capacity sums density × specific heat × thickness × area share. Glazing assumes 6 mm of glass per pane. <a href={MATERIAL_PROPERTY_SOURCE} target="_blank" rel="noreferrer">LBNL material data</a> · <a href={WOOD_FRAMING_SOURCE} target="_blank" rel="noreferrer">Wood framing reference</a> · <a href={FLOAT_GLASS_SOURCE} target="_blank" rel="noreferrer">Float glass properties</a></p>
+    </details>}
+    <p className="assumption-intro"><a href={COMSTOCK_CONSTRUCTION_SOURCE} target="_blank" rel="noreferrer">ComStock construction methods</a>{construction.buildingType === "Grocery" && <> · <a href={SUPERMARKET_ROOF_SOURCE} target="_blank" rel="noreferrer">PNNL supermarket roof template</a></>}</p>
+  </fieldset>;
+}
 
 export function AnalysisAssumptions({ school, onSchool, ref, summerOccupancyEditable = true }: {
   school: SchoolAssumptions; onSchool: (value: SchoolAssumptions) => void;
@@ -35,6 +86,7 @@ export function AnalysisAssumptions({ school, onSchool, ref, summerOccupancyEdit
             </div>;
           })}</div>
         </fieldset>)}
+        <ConstructionDetails school={school}/>
       </fieldset>
     </div>
   </details>;
