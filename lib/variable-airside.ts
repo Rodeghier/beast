@@ -4,7 +4,7 @@
  * Fan heat is downstream of cooling. Reheat is solved separately from primary heat. */
 import type { PackagedGroup } from "./packaged-bank";
 import { mhgrhPoint } from "./mhgrh";
-import type { ReheatOption, CurveRangeMode } from "./equipment";
+import { DEFAULT_GAS_EFFICIENCY_PERCENT, type ReheatOption, type CurveRangeMode } from "./equipment";
 import { celsius, humidityRatio, type SchoolAssumptions, type SchoolRow } from "./school";
 import { airContext, mixAir } from "./mixed-air";
 import { airflowCoolingPoint, coolingAirflowRange } from "./airflow-cooling";
@@ -118,7 +118,7 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     const recoveryCapacity=recovery?Math.min(recovery.maxBtuHr*(operation.fullUnits+(operation.partialUnits??0)*operation.partialUnitRuntimeFraction),delivered+electricity*BTU_PER_KWH):0;
     const reheatShortfall=options.reheatOption==="mhgrh"?Math.max(0,reheatNeed-recoveryCapacity):0;
     const penalty=unmet+missingOutdoor*1000+reheatShortfall;
-    const score=penalty*1000+electricity+fanKw+(options.reheatOption==="mhgrh"?0:reheatNeed/(BTU_PER_KWH*(options.reheatOption==="natural-gas"?(options.reheatGasEfficiencyPercent??80)/100:1)));
+    const score=penalty*1000+electricity+fanKw+(options.reheatOption==="mhgrh"?0:reheatNeed/(BTU_PER_KWH*(options.reheatOption==="natural-gas"?(options.reheatGasEfficiencyPercent??DEFAULT_GAS_EFFICIENCY_PERCENT)/100:1)));
     return {model:group.model.id,count,share,cfm,returnCfm:Math.max(0,cfm-vent),outdoorCfm:admitted,
       fanKw,fanHeat,fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed,
       cooling:point,capacity,shr,deliverableCapacity,availableSensible,availableLatent,sensibleNeed,latentNeed,required,linearRequired,delivered,deliveredSensible:leaving.sensible,deliveredLatent:leaving.latent,

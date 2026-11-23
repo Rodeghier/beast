@@ -18,7 +18,7 @@ import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/p
 import { STATES, MIN_YEAR, MAX_YEAR, supportsClimate, type Place } from "@/lib/climate";
 import { parseClimateCsv, type ClimateData } from "@/lib/csv";
 import { solarLocation } from "@/lib/solar";
-import { DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
+import { comstockUsesSchoolSummerSchedule, DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
 import { simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv } from "@/lib/equipment-model";
 import { coolingFor, curveRangeMode, scenarioName, newScenario, type EquipmentScenario, type CurveRangeMode } from "@/lib/equipment";
 import { EquipmentScenarios } from "@/components/equipment-scenarios";
@@ -35,6 +35,7 @@ import { ComstockInputs } from "@/components/comstock-inputs";
 
 const DOCS = "https://developer.nlr.gov/docs/climate/sup3rcc/sup3rcc-conus-ecearth3cc-ssp245-r1i1p1f1-v0-2-2-download/";
 type Result = { place: Place; year: number; data: ClimateData; csv: string; design:DesignConditionResponse };
+type LocationQuery = { city: string; state: string };
 type Stage = "idle" | "locating" | "choosing" | "located" | "loading" | "ready" | "error" | "unsupported";
 const pad = (n: number) => String(n).padStart(2, "0");
 const coordinate = (v: number, lat = false) => `${Math.abs(v).toFixed(4)}° ${lat ? (v < 0 ? "S" : "N") : (v < 0 ? "W" : "E")}`;
@@ -62,7 +63,6 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [candidates, setCandidates] = useState<Place[]>([]);
   const [candidate, setCandidate] = useState("");
-  const [pending, setPending] = useState<{ city: string; state: string; year: number } | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState("25");
@@ -70,19 +70,27 @@ export default function Home() {
   // React state is the input worksheet. Call its setter to replace values; direct
   // mutation can leave the screen and the calculated results out of sync.
   const [school, setSchool] = useState<SchoolAssumptions>({ ...DEFAULT_SCHOOL });
-  const [comstockAssumptions, setComstockAssumptions] = useState<Partial<SchoolAssumptions> | null>(null);
   const [comstockType, setComstockType] = useState("");
-  const [usingComstock, setUsingComstock] = useState(false);
-  const analysisSchool = useMemo(() => usingComstock && comstockAssumptions ? { ...school, ...comstockAssumptions } : school, [school, comstockAssumptions, usingComstock]);
+  const [summerOccupancyEditable, setSummerOccupancyEditable] = useState(true);
+  const assumptionsPanel = useRef<HTMLDetailsElement>(null);
+  function applyComstock(buildingType: string, assumptions: Partial<SchoolAssumptions>) {
+    setComstockType(buildingType);
+    if (!Object.keys(assumptions).length) return;
+    const isSchool = comstockUsesSchoolSummerSchedule(buildingType);
+    setSummerOccupancyEditable(isSchool);
+    const summerPercent = isSchool ? assumptions.summerPercent ?? DEFAULT_SCHOOL.summerPercent : 100;
+    setSchool(current => ({ ...current, ...assumptions, summerPercent }));
+    if (assumptionsPanel.current) assumptionsPanel.current.open = true;
+  }
   // Engineering pipeline step 1: weather + assumptions -> hourly building loads.
   // useMemo recomputes when the listed input objects change; it is a performance cache.
-  const schoolRows = useMemo(() => result && !validateSchool(analysisSchool) ? simulateSchool(result.data.rows, analysisSchool, solarLocation(result.data.metadata)) : [], [result, analysisSchool]);
+  const schoolRows = useMemo(() => result && !validateSchool(school) ? simulateSchool(result.data.rows, school, solarLocation(result.data.metadata)) : [], [result, school]);
   const [designStationChoice,setDesignStationChoice]=useState<{placeKey:string;stationId:string}|null>(null);
   const designPlaceKey=result?`${result.place.id}:${result.place.latitude}:${result.place.longitude}`:"";
   const designStation=result?.design.stations.find(station=>designStationChoice?.placeKey===designPlaceKey&&station.id===designStationChoice.stationId)??result?.design.stations[0];
   // Equipment is selected from published design days. The downloaded year is
   // used only after selection, to simulate the fixed installation hour by hour.
-  const designSizing=useMemo(()=>result&&!validateSchool(analysisSchool)?buildDesignSizing(designStation,analysisSchool,result.design.source,result.place):undefined,[result,analysisSchool,designStation]);
+  const designSizing=useMemo(()=>result&&!validateSchool(school)?buildDesignSizing(designStation,school,result.design.source,result.place):undefined,[result,school,designStation]);
   const [systems, setSystems] = useState<EquipmentScenario[]>(() => [newScenario("heat-pump")]);
   const [activeSystem, setActiveSystem] = useState(0);
   // Steps 2 and 3: size each distinct equipment request once, then simulate each
@@ -94,16 +102,16 @@ export default function Home() {
     // Vite's worker factory emits a browser URL directly. A file-scope
     // import.meta.url can be rewritten to a file URL by the site framework.
     const worker=new EquipmentSizingWorker();
-    worker.onmessage=({data}:{data:SizingResponse})=>setSizingWork({source:designSizing,school:analysisSchool,requests:sizingRequests,response:data});
-    worker.onerror=()=>setSizingWork({source:designSizing,school:analysisSchool,requests:sizingRequests,response:{selections:[],error:"Equipment selection could not be completed. Please try again."}});
-    worker.postMessage({rows:designSizing.rows,school:analysisSchool,requests:sizingRequests});
+    worker.onmessage=({data}:{data:SizingResponse})=>setSizingWork({source:designSizing,school,requests:sizingRequests,response:data});
+    worker.onerror=()=>setSizingWork({source:designSizing,school,requests:sizingRequests,response:{selections:[],error:"Equipment selection could not be completed. Please try again."}});
+    worker.postMessage({rows:designSizing.rows,school,requests:sizingRequests});
     return ()=>worker.terminate();
-  },[designSizing,analysisSchool,sizingRequests]);
-  const sizingReady=sizingWork?.source===designSizing&&sizingWork?.school===analysisSchool&&sizingWork?.requests===sizingRequests;
+  },[designSizing,school,sizingRequests]);
+  const sizingReady=sizingWork?.source===designSizing&&sizingWork?.school===school&&sizingWork?.requests===sizingRequests;
   const sizingBusy=!!designSizing&&!designSizing.error&&!sizingReady;
   const sizingFailure=sizingReady?sizingWork?.response.error:null;
   const packagedSelections:(PackagedSelection|null)[]=sizingReady?sizingWork!.response.selections:[];
-  const comparisonResults = useMemo(() => schoolRows.length&&!sizingBusy&&!sizingFailure ? systems.map((system,i) => simulateEquipment(schoolRows, analysisSchool, system,packagedSelections[i]??null,designSizing)) : [], [schoolRows, analysisSchool, systems,packagedSelections,designSizing,sizingBusy,sizingFailure]);
+  const comparisonResults = useMemo(() => schoolRows.length&&!sizingBusy&&!sizingFailure ? systems.map((system,i) => simulateEquipment(schoolRows, school, system,packagedSelections[i]??null,designSizing)) : [], [schoolRows, school, systems,packagedSelections,designSizing,sizingBusy,sizingFailure]);
   const curveResult = comparisonResults[activeSystem] ?? null;
   function updateSystem(index: number, choice: EquipmentScenario) {
     setSystems(current => current.map((s, i) => i === index ? choice : s));
@@ -149,35 +157,35 @@ export default function Home() {
     return { city: selected.name, state: selected.state, year: requestedYear, rows: data.rows.length, latitude: selected.latitude, longitude: selected.longitude };
   }, []);
 
-  const continueToResults = useCallback(async (selected = place, query = pending) => {
-    if (!selected || !query) return { status: "error", error: "Resolve a location before loading results." };
-    const issue = !systems.some(s=>coolingFor(s))?"Configure cooling equipment for at least one equipment combination before continuing.":validateSchool(analysisSchool);
+  const continueToResults = useCallback(async (selected = place, requestedYear = Number(year)) => {
+    if (!selected) return { status: "error", error: "Resolve a location before loading results." };
+    const issue = !systems.some(s=>coolingFor(s))?"Configure cooling equipment for at least one equipment combination before continuing.":validateSchool(school);
     if (issue) { setError(issue); return { status: "error", error: issue }; }
-    if (result && stage === "ready" && result.place.id === selected.id && result.year === query.year) {
+    if (result && stage === "ready" && result.place.id === selected.id && result.year === requestedYear) {
       setError(""); setTab("data");
       return { status: "loaded", city: result.place.name, state: result.place.state, year: result.year, rows: result.data.rows.length };
     }
     operation.current?.abort();
     const controller = new AbortController(); operation.current = controller;
     setError(""); setTab("data"); setStage("loading");
-    try { return await fetchClimate(selected, query.year, controller); }
+    try { return await fetchClimate(selected, requestedYear, controller); }
     catch (cause) {
       if (controller.signal.aborted) return;
       const message = cause instanceof Error ? cause.message : "Something went wrong. Please try again.";
       setError(message); setStage("error"); return { status: "error", error: message };
     }
-  }, [place, pending, systems, analysisSchool, result, stage, fetchClimate]);
+  }, [place, year, systems, school, result, stage, fetchClimate]);
 
   // Resolve the city before climate loading so county-specific ComStock options
   // are available on Analysis Inputs. Climate data loads only on explicit continue.
-  const resolveLocation = useCallback(async (query: { city: string; state: string; year: number }, loadImmediately = false) => {
+  const resolveLocation = useCallback(async (query: LocationQuery, requestedYear?: number) => {
     if (!query.city.trim() || !Object.hasOwn(STATES, query.state)) {
       setError("Enter a city or town and select a state.");
       return { status: "error", error: "A city and state are required." };
     }
     operation.current?.abort();
     const controller = new AbortController(); operation.current = controller;
-    setError(""); setResult(null); setComstockAssumptions(null); setComstockType(""); setUsingComstock(false); setCandidates([]); setCandidate(""); setPlace(null); setPending(query); setTab("query"); setStage("locating");
+    setError(""); setResult(null); setComstockType(""); setCandidates([]); setCandidate(""); setPlace(null); setTab("query"); setStage("locating");
     try {
       const params = new URLSearchParams({ city: query.city.trim(), state: query.state });
       const response = await request(`/api/locations?${params}`, controller.signal);
@@ -189,7 +197,7 @@ export default function Home() {
         return { status: places.length ? "choose_location" : "no_location", places };
       }
       setPlace(places[0]); setStage("located"); setCandidate(String(places[0].id)); operation.current = null;
-      if (loadImmediately) return await continueToResults(places[0], query);
+      if (requestedYear !== undefined) return await continueToResults(places[0], requestedYear);
       return { status: "location_resolved", city: places[0].name, state: places[0].state, county: places[0].county, latitude: places[0].latitude, longitude: places[0].longitude };
     } catch (cause) {
       if (controller.signal.aborted) return;
@@ -214,7 +222,7 @@ export default function Home() {
           const q = input as { city: string; state: string; year: number };
           if (!q || typeof q.city !== "string" || q.city.trim().length < 1 || q.city.length > 100 || !Object.hasOwn(STATES, q.state) || !Number.isInteger(q.year) || q.year < MIN_YEAR || q.year > MAX_YEAR) throw new Error("Enter a city, a US state code, and a year from 2015 to 2059.");
           setCity(q.city); setState(q.state); setYear(String(q.year));
-          const response = await resolveLocation(q, true);
+          const response = await resolveLocation(q, q.year);
           await new Promise(resolve => setTimeout(resolve, 0)); return response;
         },
       }, { signal: lifecycle.signal })).catch(() => {});
@@ -223,30 +231,30 @@ export default function Home() {
   }, [resolveLocation]);
 
   function clearResolvedLocation() {
-    if (!place && !pending && !result && stage === "idle") return;
+    if (!place && !result && stage === "idle") return;
     operation.current?.abort(); operation.current = null;
-    setPlace(null); setPending(null); setResult(null); setCandidates([]); setCandidate("");
-    setComstockAssumptions(null); setComstockType(""); setUsingComstock(false);
+    setPlace(null); setResult(null); setCandidates([]); setCandidate("");
+    setComstockType("");
     setStage("idle"); setError(""); setTab("query");
   }
   function cancel() { clearResolvedLocation(); }
   function changeWeatherYear(value: string) {
     setYear(value);
-    if (place && pending) {
+    if (place) {
       operation.current?.abort(); operation.current = null;
-      setPending({ ...pending, year: Number(value) }); setResult(null); setError(""); setStage("located"); setTab("query");
-    } else clearResolvedLocation();
+      setResult(null); setError(""); setStage("located"); setTab("query");
+    }
   }
   function confirmPlace() {
     const selected = candidates.find(p => String(p.id) === candidate);
-    if (!selected || !pending) return;
+    if (!selected) return;
     setPlace(selected); setStage("located"); setCandidate(String(selected.id)); setError("");
   }
   // Exports use calculated result objects. A Blob is an in-memory file; the
   // temporary object URL lets the browser download it without a database write.
   function download(source = false) {
     if (!result) return;
-    const csv = source || !curveResult ? result.csv : equipmentResultsCsv(schoolRows, analysisSchool, curveResult, `${result.place.name}, ${result.place.state}`, `${timezone}; local standard time`, solarLocation(result.data.metadata));
+    const csv = source || !curveResult ? result.csv : equipmentResultsCsv(schoolRows, school, curveResult, `${result.place.name}, ${result.place.state}`, `${timezone}; local standard time`, solarLocation(result.data.metadata));
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url;
     link.download = `${source ? "sup3rcc-source" : `equipment-results-${curveResult?scenarioName(curveResult.scenario).toLowerCase().replace(/[^a-z0-9]+/g,"-"):"equipment"}`}-${result.place.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${result.place.stateCode.toLowerCase()}-${result.year}.csv`;
@@ -266,10 +274,10 @@ export default function Home() {
     <main>
       <div className="page-intro"><h1>Building Energy Analysis Selection Tool <span>(BEAST)</span></h1><p>Choose your location, review building assumptions, and compare rooftop heat pumps, natural gas, and electric resistance.</p></div>
       <Tabs value={tab} onValueChange={setTab} className="workspace">
-        <div className="tabs-bar"><TabsList aria-label="BEAST workspace" variant="line" className="workspace-tabs"><TabsTrigger value="query"><SlidersHorizontal size={17}/>Analysis inputs</TabsTrigger><TabsTrigger value="data" disabled={!(result || stage === "loading" || stage === "ready" || stage === "unsupported" || (stage === "error" && !!place)) || !!validateSchool(analysisSchool)}><Table2 size={17}/>Results{result && <span className="tab-count">{total.toLocaleString()}</span>}</TabsTrigger></TabsList><span className="coverage"><Globe2 size={15}/>US cities & towns</span></div>
+        <div className="tabs-bar"><TabsList aria-label="BEAST workspace" variant="line" className="workspace-tabs"><TabsTrigger value="query"><SlidersHorizontal size={17}/>Analysis inputs</TabsTrigger><TabsTrigger value="data" disabled={!(result || stage === "loading" || stage === "ready" || stage === "unsupported" || (stage === "error" && !!place)) || !!validateSchool(school)}><Table2 size={17}/>Results{result && <span className="tab-count">{total.toLocaleString()}</span>}</TabsTrigger></TabsList><span className="coverage"><Globe2 size={15}/>US cities & towns</span></div>
         <TabsContent value="query" className="query-panel"><div className="query-grid">
           <section className="form-section"><div className="section-heading"><span className="section-icon"><MapPin size={22}/></span><div><h2>Location and year</h2></div></div>
-            <form id="analysis-inputs" onSubmit={e => { e.preventDefault(); void resolveLocation({ city, state, year: Number(year) }); }}>
+            <form onSubmit={e => { e.preventDefault(); void resolveLocation({ city, state }); }}>
               <div className="form-location-row"><div className="form-field"><label htmlFor="city">City or town</label><input id="city" name="city" value={city} onChange={e => { clearResolvedLocation(); setCity(e.target.value); }} placeholder="Enter city or town" required minLength={1} maxLength={100} autoComplete="address-level2" disabled={busy}/></div><div className="form-field"><label htmlFor="state">State</label><Choice id="state" label="State" value={state} onChange={value => { clearResolvedLocation(); setState(value); }} disabled={busy}>{Object.entries(STATES).map(([code, name]) => <SelectItem key={code} value={code}>{name}</SelectItem>)}</Choice></div></div>
               <div className="form-field year-field"><label htmlFor="year">Weather year</label><Choice id="year" label="Year" value={year} onChange={changeWeatherYear} disabled={busy}>{Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, i) => MIN_YEAR + i).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</Choice><p className="field-hint">Available years: 2015–2059</p></div>
               {state && !supportsClimate(state) && <div className="coverage-note" role="status"><Info size={17}/><span>We can locate cities in {STATES[state]}, but this Sup3rCC dataset has no climate data there.</span></div>}
@@ -279,14 +287,16 @@ export default function Home() {
           </section><aside className="dataset-section"><div className="eyebrow">WEATHER DATA</div><h3>Hourly climate projections</h3><p className="dataset-description">2-meter temperature, relative humidity, and hourly DHI / DNI / GHI.</p><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Air temperature</strong><span>Degrees Fahrenheit · °F</span></div></div><div className="variable"><span className="variable-icon humidity"><Droplets size={20}/></span><div><strong>Outdoor wet bulb</strong><span>Derived from temperature + RH · °F</span></div></div><div className="variable"><span className="variable-icon temperature"><Thermometer size={20}/></span><div><strong>Solar irradiance</strong><span>DHI · DNI · GHI in W/m²</span></div></div><dl className="dataset-meta"><div><dt>Climate model</dt><dd>EC-Earth3-CC</dd></div><div><dt>Scenario</dt><dd>SSP2-4.5</dd></div></dl></aside>
         </div>
         {stage === "locating" && <section className="location-resolution" role="status"><LoaderCircle className="spin" size={18}/>Finding your city and county…</section>}
-        {stage === "choosing" && <section className="location-resolution"><h3>Confirm your location</h3>{candidates.length ? <><p>Choose the matching place in {STATES[pending?.state || ""]}.</p><div className="match-select"><Choice id="location-match" label="Matching location" value={candidate} onChange={setCandidate}>{candidates.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}{p.county ? ` · ${p.county}` : ""} · {p.latitude.toFixed(3)}, {p.longitude.toFixed(3)}</SelectItem>)}</Choice></div><button className="button primary" type="button" onClick={confirmPlace} disabled={!candidate}>Confirm location</button></> : <p role="status">No matching places were found. Check the city and state, then search again.</p>}</section>}
+        {stage === "choosing" && <section className="location-resolution"><h3>Confirm your location</h3>{candidates.length ? <><p>Choose the matching place in {STATES[state]}.</p><div className="match-select"><Choice id="location-match" label="Matching location" value={candidate} onChange={setCandidate}>{candidates.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}{p.county ? ` · ${p.county}` : ""} · {p.latitude.toFixed(3)}, {p.longitude.toFixed(3)}</SelectItem>)}</Choice></div><button className="button primary" type="button" onClick={confirmPlace} disabled={!candidate}>Confirm location</button></> : <p role="status">No matching places were found. Check the city and state, then search again.</p>}</section>}
         {place && (stage === "located" || stage === "ready" || stage === "error") && <section className="location-resolution" role="status"><strong>Location resolved</strong><span>{place.name}, {place.state}{place.county ? ` · ${place.county}` : ""}</span><span>{coordinate(place.latitude, true)} · {coordinate(place.longitude)}</span></section>}
-        {place && (stage === "located" || stage === "ready" || stage === "error") && <ComstockInputs key={`comstock-${place.id}-${place.stateCode}`} place={place} selectedType={comstockType} onSelectedType={setComstockType} usingComstock={usingComstock} onUsingComstock={setUsingComstock} onAssumptions={setComstockAssumptions}/>}
-        {usingComstock && comstockAssumptions ? <section className="assumption-source-summary"><h3>Building assumptions</h3><p>Using the available ComStock characteristics for {place?.county || place?.name}. All other fields retain their editable values.</p></section> : <AnalysisAssumptions school={school} onSchool={setSchool}/>}
-        <EquipmentScenarios choices={systems} onChange={updateSystem} results={[]} active={activeSystem} onActive={setActiveSystem} onAdd={() => setSystems(current => current.length < 3 ? [...current, newScenario()] : current)} onRemove={index => { setSystems(current => current.length > 1 ? current.filter((_, i) => i !== index) : current); setActiveSystem(0); }}/>
-        <div className="continue-actions">{error && place && <p className="model-error" role="alert">{error}</p>}{place && pending && (stage === "located" || stage === "ready" || stage === "error") && <button className="button primary" type="button" disabled={busy} onClick={() => void continueToResults()}>Continue to Results<ArrowRight size={18}/></button>}</div></TabsContent>
+        {place && (stage === "located" || stage === "ready" || stage === "error") && <ComstockInputs key={`comstock-${place.id}-${place.stateCode}`} place={place} selectedType={comstockType} onSelect={applyComstock}/>}
+        <form onSubmit={e => { e.preventDefault(); void continueToResults(); }}>
+          <AnalysisAssumptions ref={assumptionsPanel} school={school} onSchool={setSchool} summerOccupancyEditable={summerOccupancyEditable}/>
+          <EquipmentScenarios choices={systems} onChange={updateSystem} results={[]} active={activeSystem} onActive={setActiveSystem} onAdd={() => setSystems(current => current.length < 3 ? [...current, newScenario()] : current)} onRemove={index => { setSystems(current => current.length > 1 ? current.filter((_, i) => i !== index) : current); setActiveSystem(0); }}/>
+          <div className="continue-actions">{error && place && <p className="model-error" role="alert">{error}</p>}{place && (stage === "located" || stage === "ready" || stage === "error") && <button className="button primary" type="submit" disabled={busy}>Continue to Results<ArrowRight size={18}/></button>}</div>
+        </form></TabsContent>
         <TabsContent value="data" className="data-panel">
-          {busy && <section className="status-panel" aria-live="polite"><span className="loading-icon"><LoaderCircle className="spin" size={28}/></span><h2>{stage === "locating" ? "Finding your location" : "Loading your climate data"}</h2><p>{place ? `${place.name}, ${place.state} · ${pending?.year}` : `${pending?.city}, ${STATES[pending?.state || ""]} · ${pending?.year}`}</p><div className="load-steps"><span className={stage === "loading" ? "complete" : "current"}>{stage === "loading" ? <Check size={16}/> : <MapPin size={16}/>}Resolve location</span><span className={stage === "loading" ? "current" : ""}><Table2 size={16}/>Read hourly data</span></div><p className="status-hint">{elapsed > 25 ? "NLR is still preparing this year of data. This can take a couple of minutes." : "Fetching data directly from the source. This may take a moment."}</p><button className="button text-button" onClick={cancel}><X size={16}/>Cancel</button></section>}
+          {busy && <section className="status-panel" aria-live="polite"><span className="loading-icon"><LoaderCircle className="spin" size={28}/></span><h2>{stage === "locating" ? "Finding your location" : "Loading your climate data"}</h2><p>{place ? `${place.name}, ${place.state} · ${year}` : `${city}, ${STATES[state]} · ${year}`}</p><div className="load-steps"><span className={stage === "loading" ? "complete" : "current"}>{stage === "loading" ? <Check size={16}/> : <MapPin size={16}/>}Resolve location</span><span className={stage === "loading" ? "current" : ""}><Table2 size={16}/>Read hourly data</span></div><p className="status-hint">{elapsed > 25 ? "NLR is still preparing this year of data. This can take a couple of minutes." : "Fetching data directly from the source. This may take a moment."}</p><button className="button text-button" onClick={cancel}><X size={16}/>Cancel</button></section>}
           {stage === "unsupported" && place && <section className="status-panel"><span className="loading-icon"><MapPin size={28}/></span><h2>Location found, outside climate coverage</h2><p><strong>{place.name}, {place.state}</strong><br/>{coordinate(place.latitude, true)} · {coordinate(place.longitude)}</p><p>The supplied Sup3rCC dataset covers the contiguous 48 states and Washington, DC. It does not provide climate CSVs for Alaska or Hawaii.</p><div className="center-actions"><button className="button primary" onClick={cancel}>Choose another location</button><a className="button secondary" href={DOCS} target="_blank" rel="noreferrer">Dataset coverage<ExternalLink size={15}/></a></div></section>}
           {stage === "error" && place && <section className="status-panel error-panel" role="alert"><span className="loading-icon"><Info size={28}/></span><h2>We couldn’t load the results</h2><p>{error}</p><div className="center-actions"><button className="button secondary" onClick={() => setTab("query")}>Edit inputs</button><button className="button primary" onClick={() => void continueToResults()}>Try again</button></div></section>}
           {stage === "error" && !place && <section className="status-panel error-panel" role="alert"><span className="loading-icon"><Info size={28}/></span><h2>We couldn’t resolve that location</h2><p>{error}</p><button className="button primary" onClick={cancel}>Edit location</button></section>}
@@ -294,7 +304,7 @@ export default function Home() {
             <LocationEnergy key={`${result.place.id}-${result.place.stateCode}`} place={result.place} year={result.year} results={comparisonResults} rows={schoolRows}/><div className="edit-inputs"><button type="button" className="button secondary" onClick={() => setTab("query")}>Edit analysis inputs</button></div>
             <div className="results-heading"><div><div className="eyebrow">WEATHER & BUILDING LOADS</div><h2>{result.place.name}, {result.place.state}<span className="result-year">{result.year}</span></h2><p><MapPin size={14}/>{coordinate(result.place.latitude, true)}<span>·</span>{coordinate(result.place.longitude)}<span>·</span>{timezone}</p></div><div className="download-actions"><button className="button primary" disabled={sizingBusy||!!sizingFailure||!curveResult} onClick={() => download()}><Download size={17}/>Download results CSV</button><button className="button text-button" onClick={() => download(true)}>Original weather CSV</button></div></div>
             <div className="results-meta"><span><Table2 size={16}/><strong>{total.toLocaleString()}</strong> hourly records</span><span><CalendarDays size={16}/>{result.data.rows[0]?.year}-{pad(result.data.rows[0]?.month)}-{pad(result.data.rows[0]?.day)} to {result.data.rows.at(-1)?.year}-{pad(result.data.rows.at(-1)!.month)}-{pad(result.data.rows.at(-1)!.day)}</span><span>EC-Earth3-CC <span className="meta-separator">/</span> SSP2-4.5</span></div>
-            <p role="status" aria-live="polite">{sizingBusy?"Selecting equipment sizes and quantities...":sizingFailure??""}</p><DesignSizingSummary design={result.design} station={designStation} sizing={designSizing} school={analysisSchool} onStation={stationId=>setDesignStationChoice({placeKey:designPlaceKey,stationId})}/><EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/><EquipmentDistributions results={comparisonResults} active={activeSystem} onActive={setActiveSystem}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
+            <p role="status" aria-live="polite">{sizingBusy?"Selecting equipment sizes and quantities...":sizingFailure??""}</p><DesignSizingSummary design={result.design} station={designStation} sizing={designSizing} school={school} onStation={stationId=>setDesignStationChoice({placeKey:designPlaceKey,stationId})}/><EquipmentScenarios choices={systems} onChange={updateSystem} results={comparisonResults} active={activeSystem} onActive={setActiveSystem} onDownload={downloadComparison}/><LoadSummary rows={schoolRows}/><EquipmentDistributions results={comparisonResults} active={activeSystem} onActive={setActiveSystem}/>{schoolRows.some(r => r.solarGain === null) && <p className="model-error">Some hours lack valid solar radiation or grid location metadata. Their dependent loads and energy are blank; totals are incomplete.</p>}
             <div className="hourly-heading"><h3>Hourly results · {scenarioName(systems[activeSystem])}</h3><span>Cooling − · Heating + · Electricity in kWh per hour</span></div>
             <details className="distribution-note"><summary>How fan electricity, stage, on-time, and derate are calculated</summary><p>Packaged supply airflow varies with ventilation, sensible load and moisture demand. Supply CFM = outdoor CFM + return CFM; infiltration remains in building loads. Fan kW uses the rating-derived reference at AHRI airflow, the cubic fan law, and standard-motor HP/CFM limits. All fan power is counted once and its heat is added after cooling. Capacity and SHR use recovered 300–480 CFM/ton data. Sensible and latent loads determine cooling; supply temperature is calculated for analysis, with no fixed temperature target or dew-point trigger. Reheat restores the final supply temperature and is included in heating energy: natural gas for primary NG heating, electric resistance for primary heat pumps or resistance heating. Coil and reheat capacities are limited; unmet requirements are exported. Stage times exclude reheat and represent hourly totals, not individual cycles. Chiller air-handler fans and airflow controls remain unavailable. Curve boundary estimates are flagged separately.</p></details>
             <div className="table-scroll" tabIndex={0} aria-label="Hourly weather, building loads and equipment performance"><Table className="school-table"><TableHeader><TableRow>

@@ -1,5 +1,6 @@
 import { STATES } from "@/lib/climate";
 import { parseCsv } from "@/lib/csv";
+import { comstockUsesSchoolSummerSchedule, DEFAULT_SCHOOL } from "@/lib/school";
 
 const DATASET_ROOT = "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2025/comstock_amy2018_release_3/timeseries_aggregates/by_county";
 const S3_BASE = "https://oedi-data-lake.s3.amazonaws.com/";
@@ -17,14 +18,26 @@ type GeocoderResponse = { result?: { geographies?: { Counties?: CountyGeography[
 const META_FIELDS = {
   type: "in.comstock_building_type", weight: "weight", area: "in.sqft..ft2",
   weekdayStart: "in.weekday_opening_time..hr", weekdayHours: "in.weekday_operating_hours..hr",
+  weekendStart: "in.weekend_opening_time..hr", weekendHours: "in.weekend_operating_hours..hr",
   heatingSetpoint: "in.tstat_htg_sp_f..f", heatingDelta: "in.tstat_htg_delta_f..delta_f",
   coolingSetpoint: "in.tstat_clg_sp_f..f", coolingDelta: "in.tstat_clg_delta_f..delta_f",
   stories: "in.number_of_stories", aspect: "in.aspect_ratio", rotation: "in.rotation..degrees",
   windowRatio: "out.params.window_to_wall_ratio", shgc: "out.params.average_window_shgc",
   roofU: "out.params.average_roof_u_value..btu_per_ft2_f_hr", wallU: "out.params.average_wall_u_value..btu_per_ft2_f_hr",
+  windowU: "out.params.average_window_u_value..btu_per_ft2_f_hr",
   roofAbsorptance: "out.params.average_roof_absorptance",
   peopleDensity: "out.params.occupant_density_ppl_per_m_2..people_per_m2",
 } as const;
+
+function occupiedPeriod(opening: number | undefined, duration: number | undefined): [number, number] | undefined {
+  if (duration === undefined || duration < 0 || duration > 24) return;
+  const hours = Math.round(duration);
+  if (hours === 0 || hours === 24) return [0, hours];
+  if (opening === undefined || opening < 0 || opening > 24) return;
+  const start = Math.round(opening) % 24;
+  const end = start + hours;
+  return [start, end > 24 ? end - 24 : end];
+}
 
 async function readWeightedCharacteristics(state: string, countyFips: string) {
   const cached = CHARACTERISTICS_CACHE.get(countyFips);
@@ -61,7 +74,10 @@ async function readWeightedCharacteristics(state: string, countyFips: string) {
       indexes = Object.fromEntries((Object.keys(META_FIELDS) as (keyof typeof META_FIELDS)[]).map(name => [name, header!.indexOf(META_FIELDS[name])]));
       return;
     }
-    const value = (name: keyof typeof META_FIELDS) => Number(cells[indexes[name] ?? -1]);
+    const value = (name: keyof typeof META_FIELDS) => {
+      const cell = cells[indexes[name] ?? -1]?.trim();
+      return cell ? Number(cell) : NaN;
+    };
     const type = cells[indexes.type ?? -1];
     const weight = value("weight");
     if (!type || !Number.isFinite(weight) || weight <= 0 || !Number.isFinite(value("area")) || value("area") <= 0) return;
@@ -72,6 +88,8 @@ async function readWeightedCharacteristics(state: string, countyFips: string) {
       if (["type", "weight", "peopleDensity", "rotation"].includes(field)) continue;
       const number = value(field);
       if (!Number.isFinite(number) || number === 999) continue;
+      if ((field === "weekdayStart" && value("weekdayHours") === 0)
+        || (field === "weekendStart" && value("weekendHours") === 0)) continue;
       const sum = group.sums.get(field) ?? { sum: 0, weight: 0 };
       sum.sum += number * weight; sum.weight += weight; group.sums.set(field, sum);
     }
@@ -96,11 +114,7 @@ async function readWeightedCharacteristics(state: string, countyFips: string) {
   for (const [type, group] of results) {
     const assumptions: Record<string, number> = {};
     const set = (target: string, field: keyof typeof META_FIELDS, transform: (v: number) => number = v => v) => { const mean = toMean(group, field); if (mean !== undefined && Number.isFinite(transform(mean))) assumptions[target] = transform(mean); };
-    set("floorAreaFt2", "area", Math.round);
-    const weekdayStart = toMean(group, "weekdayStart"), weekdayHours = toMean(group, "weekdayHours");
-    if (weekdayStart !== undefined && weekdayHours !== undefined) {
-      assumptions.startHour = Math.round(weekdayStart); assumptions.endHour = Math.round(weekdayStart + weekdayHours);
-    }
+    set("floorAreaFt2", "area");
     if (group.peopleWeight) assumptions.people = Math.round(group.peopleSum / group.peopleWeight);
     if (Math.hypot(group.rotationSin, group.rotationCos) > 0) assumptions.rotationDeg = (Math.atan2(group.rotationSin, group.rotationCos) * 180 / Math.PI + 360) % 360;
     const heatingSetpoint = toMean(group, "heatingSetpoint"), heatingDelta = toMean(group, "heatingDelta");
@@ -110,21 +124,29 @@ async function readWeightedCharacteristics(state: string, countyFips: string) {
     if (coolingSetpoint !== undefined) assumptions.coolingF = coolingSetpoint;
     if (coolingSetpoint !== undefined && coolingDelta !== undefined) assumptions.setbackCoolingF = coolingSetpoint + coolingDelta;
     set("stories", "stories", Math.round); set("aspectRatio", "aspect", v => 1 / v); set("windowPercent", "windowRatio", v => v * 100); set("shgc", "shgc");
-    set("roofU", "roofU"); set("wallU", "wallU"); set("roofSolarAbsorptance", "roofAbsorptance");
+    set("roofU", "roofU"); set("wallU", "wallU"); set("windowU", "windowU"); set("roofSolarAbsorptance", "roofAbsorptance");
     // Only send fields that exist in SchoolAssumptions and pass its input bounds.
     for (const key of Object.keys(assumptions)) {
       const value = assumptions[key];
       const bounds: Record<string, [number, number]> = {
-        floorAreaFt2: [1, 10_000_000], startHour: [0, 23], endHour: [1, 24], people: [0, 10_000], rotationDeg: [0, 360],
+        floorAreaFt2: [1, 10_000_000], people: [0, 10_000], rotationDeg: [0, 360],
         heatingF: [40, 85], setbackHeatingF: [35, 85], coolingF: [60, 100], setbackCoolingF: [60, 110],
-        stories: [1, 30], aspectRatio: [0.2, 5], windowPercent: [0, 95], shgc: [0, 1], roofU: [0, 1], wallU: [0, 1], roofSolarAbsorptance: [0, 1],
+        stories: [1, 30], aspectRatio: [0.2, 5], windowPercent: [0, 95], shgc: [0, 1], roofU: [0, 1], wallU: [0, 1], windowU: [0, 2], roofSolarAbsorptance: [0, 1],
       };
       const range = bounds[key];
-      if (!range || !Number.isFinite(value) || value < range[0] || value > range[1]) delete assumptions[key];
+      if (!range || !Number.isFinite(value) || value < range[0] || value > range[1]) {
+        delete assumptions[key];
+        continue;
+      }
+      const rounded = key === "floorAreaFt2" ? Math.round(value / 100) * 100 : Number(value.toPrecision(2));
+      if (rounded < range[0] || rounded > range[1]) delete assumptions[key];
+      else assumptions[key] = rounded;
     }
-    if (assumptions.startHour === undefined || assumptions.endHour === undefined || assumptions.startHour >= assumptions.endHour) {
-      delete assumptions.startHour; delete assumptions.endHour;
-    }
+    const weekday = occupiedPeriod(toMean(group, "weekdayStart"), toMean(group, "weekdayHours"));
+    const weekend = occupiedPeriod(toMean(group, "weekendStart"), toMean(group, "weekendHours"));
+    if (weekday) [assumptions.startHour, assumptions.endHour] = weekday;
+    if (weekend) [assumptions.weekendStartHour, assumptions.weekendEndHour] = weekend;
+    assumptions.summerPercent = comstockUsesSchoolSummerSchedule(type) ? DEFAULT_SCHOOL.summerPercent : 100;
     if (assumptions.heatingF !== undefined && assumptions.coolingF !== undefined && assumptions.heatingF >= assumptions.coolingF) {
       delete assumptions.heatingF; delete assumptions.coolingF; delete assumptions.setbackHeatingF; delete assumptions.setbackCoolingF;
     }

@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import ts from 'typescript';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -52,6 +53,10 @@ assert.ok(sizing.rows.every(r=>r.heating!==null&&r.totalCooling!==null));
 const winter=sizing.rows.filter(r=>r.heating>0),summer=sizing.rows.filter(r=>r.heating===0);
 assert.ok(winter.every(r=>r.heatingSetpointF===70&&r.totalCooling===0));
 assert.ok(summer.every(r=>r.heating===0));assert.ok(summer.filter(r=>r.hour>=7&&r.hour<17).every(r=>r.occupants===120));
+const weekendSizing=buildDesignSizing(station,{...DEFAULT_SCHOOL,weekendStartHour:18,weekendEndHour:21},response.source,site);
+assert.equal(weekendSizing.rows.length,52);assert.ok(weekendSizing.rows.some(r=>r.hour===20));
+const windowSizing=buildDesignSizing(station,{...DEFAULT_SCHOOL,windowU:0},response.source,site);
+assert.ok(windowSizing.metadata.Design_heating_load_BTU_hr<sizing.metadata.Design_heating_load_BTU_hr);
 // Winter capacity takes no credit for people, lighting or plug heat.
 const winterWithGains=buildDesignSizing(station,{...DEFAULT_SCHOOL,lightingW:5,equipmentW:10,sensiblePerson:1000},response.source,site);
 assert.deepEqual(winterWithGains.rows.filter(r=>r.heating>0).map(r=>r.heating),winter.map(r=>r.heating));
@@ -86,6 +91,16 @@ assert.equal(coolingHp.selection.count,baseHp.selection.count);assert.equal(cool
 const largeScenario={...newScenario('gas'),boilerSizeClass:'large',cooling:'air-cooled-chiller'};
 const largeBase=simulateEquipment(annual,school,largeScenario,undefined,smallSizing),largeSpike=simulateEquipment([extreme],school,largeScenario,undefined,smallSizing);
 assert.equal(largeSpike.heatingCapacityBtuHr,largeBase.heatingCapacityBtuHr);assert.ok(largeSpike.rows[0].unmetHeating>1e7);
+const {cble4dRatingForPeakLoad}=load('lib/boiler-model.ts');
+const largeRating=cble4dRatingForPeakLoad(largeBase.heatingCapacityBtuHr);
+assert.equal(largeScenario.gasEfficiencyPercent,90);
+assert.equal(largeScenario.largeBoilerEfficiencyPercent,90);
+assert.ok(largeBase.rows[0].deliveredHeating>0);
+near(largeBase.rows[0].gasTherms,largeBase.rows[0].deliveredHeating/90000);
+const legacyLarge=simulateEquipment(annual,school,{...largeScenario,largeBoilerEfficiencyPercent:undefined},undefined,smallSizing);
+near(legacyLarge.rows[0].gasTherms,largeRating.naturalGasThermsPerHr*legacyLarge.rows[0].boilerRuntimeFraction);
+const largeCsv=parseCsv(equipmentResultsCsv(annual,school,largeBase,'Madison','CST',site));
+assert.equal(largeCsv[1][largeCsv[0].indexOf('Boiler_thermal_efficiency_percent')],'90');
 const noChillerDesign=simulateEquipment(annual,school,chillerScenario);
 assert.equal(noChillerDesign.coolingCapacityTons,null);assert.equal(noChillerDesign.rows[0].coolingElectricity,null);
 // Regression: selection minimizes unit count before installed nominal tonnage.
@@ -103,9 +118,52 @@ assert.match(html,/ASHRAE 2017/);assert.match(html,/Cooling 1%/);assert.match(ht
 const {AnalysisAssumptions}=load('components/analysis-assumptions.tsx');
 const inputHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:DEFAULT_SCHOOL,onSchool:()=>{}}));
 assert.equal((inputHtml.match(/<details/g)||[]).length,1);assert.match(inputHtml,/<select[^>]*id="input-coolingDesignPercent"/);assert.match(inputHtml,/<option value="1" selected="">1%/);
+assert.doesNotMatch(inputHtml,/<fieldset[^>]*disabled|type="radio"/);
+assert.match(inputHtml,/id="input-windowU"[^>]*value="0.5"/);
+assert.match(inputHtml,/id="input-weekendStartHour"/);
+const officeHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:{...DEFAULT_SCHOOL,summerPercent:100},onSchool:()=>{},summerOccupancyEditable:false}));
+assert.match(officeHtml,/id="input-summerPercent"[^>]*disabled[^>]*value="100"/);
 const {GET}=load('app/api/design-conditions/route.ts');
 assert.equal((await GET(new Request('http://localhost/api/design-conditions'))).status,400);
 assert.equal((await GET(new Request('http://localhost/api/design-conditions?latitude=43.14&longitude=-89.35'))).status,200);
 assert.equal((await GET(new Request('http://localhost/api/design-conditions?latitude=24&longitude=-125'))).status,422);
+
+// Exercise the ComStock route with a small county archive and both day types.
+const comstockHeaders=[
+  'in.comstock_building_type','weight','in.sqft..ft2',
+  'in.weekday_opening_time..hr','in.weekday_operating_hours..hr','in.weekend_opening_time..hr','in.weekend_operating_hours..hr',
+  'out.params.average_window_u_value..btu_per_ft2_f_hr','out.params.average_window_shgc',
+];
+const countyCsv=Buffer.from([
+  comstockHeaders,
+  ['PrimarySchool',1,58551,7.2,9.6,'',0,0.4321,0.3519],
+  ['SecondarySchool',1,76329,8,11,10,3,'',0.3521],
+  ['LargeOffice',1,300450,22,8,20,5,0.6381,0.271],
+  ['LargeOffice',3,310550,22,8,0,0,'',0.317],
+].map(row=>row.join(',')).join('\n'));
+const tarHeader=Buffer.alloc(512);
+tarHeader.write(countyCsv.length.toString(8),124);
+const countyArchive=gzipSync(Buffer.concat([tarHeader,countyCsv]));
+const originalFetch=globalThis.fetch;
+try {
+  globalThis.fetch=async input=>{
+    const url=new URL(input);
+    if(url.hostname==='geocoding.geo.census.gov')return Response.json({result:{geographies:{Counties:[{STATE:'27',COUNTY:'053',NAME:'Hennepin'}]}}});
+    if(url.searchParams.has('list-type'))return new Response(['PrimarySchool','SecondarySchool','LargeOffice'].map(type=>`<Key>up0-G2700530-${type}.csv</Key>`).join(''));
+    assert.match(url.pathname,/MN_G2700530_upgrade0_agg\.csv\.gz$/);
+    return new Response(countyArchive);
+  };
+  const {GET:comstock}=load('app/api/comstock/route.ts');
+  async function characteristics(type){
+    const reply=await comstock(new Request(`http://localhost/api/comstock?latitude=44.98&longitude=-93.26&state=MN&buildingType=${type}&characteristics=true`));
+    assert.equal(reply.status,200);
+    return (await reply.json()).assumptions;
+  }
+  assert.deepEqual(await characteristics('PrimarySchool'),{floorAreaFt2:58600,windowU:.43,shgc:.35,startHour:7,endHour:17,weekendStartHour:0,weekendEndHour:0,summerPercent:10});
+  assert.deepEqual(await characteristics('SecondarySchool'),{floorAreaFt2:76300,shgc:.35,startHour:8,endHour:19,weekendStartHour:10,weekendEndHour:13,summerPercent:10});
+  assert.deepEqual(await characteristics('LargeOffice'),{floorAreaFt2:308000,windowU:.64,shgc:.31,startHour:22,endHour:6,weekendStartHour:20,weekendEndHour:21,summerPercent:100});
+} finally {
+  globalThis.fetch=originalFetch;
+}
 console.log('PASS: ASHRAE station source, independent conditions, daily profiles, psychrometrics, solar, design schedules, sizing independence, unmet loads, missing-data behavior, API, controls and exports.');
 

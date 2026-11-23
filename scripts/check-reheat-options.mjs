@@ -72,5 +72,7 @@ assert.ok(overloaded.details.every(d=>d.staging.fullUnits===d.count&&d.recoveryC
 const constantSized=simulateEquipment(rows,school,{...newScenario('resistance'),airflowMode:'fixed'},undefined,sizing);
 assert.equal(constantSized.error,null);assert.ok(constantSized.selection);
 assert.ok(constantSized.rows.every(h=>h.unmetCooling<=1&&h.unmetVentilationCfm===0));
-assert.equal(newScenario().reheatOption,'electricity');assert.equal(newScenario().backupHeating,'resistance');assert.equal(newScenario('gas').cooling,'heat-pump');
+assert.equal(newScenario().reheatOption,'electricity');
+assert.equal(newScenario().reheatGasEfficiencyPercent,90);
+assert.equal(newScenario('gas').cooling,'heat-pump');
 console.log('PASS: 2340 table knots, range limits, all six airflow/reheat combinations, recovered-heat limits, independent fuel accounting, CSV and required dropdowns.');

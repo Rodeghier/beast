@@ -37,11 +37,20 @@ assert.equal(selected.error,null);assert.ok(selected.selection);
 const run=(rows,scenario=electric)=>simulateEquipment(rows,school,scenario,selected.selection,sizing);
 const weather=(temperatureF,heating=50000)=>({...heat,temperatureF,temperature:celsius(temperatureF),heating,heatBalance:heating});
 assert.deepEqual(Object.keys(BOILER_FUEL_NAMES),['natural-gas']);
-assert.match(validateBackup(newScenario()),/temperature/);
+const defaults=newScenario();
+assert.equal(defaults.backupHeating,'gas');
+assert.equal(defaults.backupSwitchoverF,0);
+assert.equal(defaults.backupGasEfficiencyPercent,90);
+assert.equal(validateBackup(defaults),null);
+const defaultRun=run([weather(.01),weather(0)],{...defaults,airflowMode:'fixed',reheatOption:undefined});
+assert.equal(defaultRun.error,null);
+assert.equal(defaultRun.rows[0].backupActive,false);
+assert.equal(defaultRun.rows[1].backupActive,true);
+near(defaultRun.rows[1].backupGasTherms,defaultRun.rows[1].backupDeliveredHeating/90000);
 for(const value of [null,NaN,Infinity])assert.match(validateBackup({...electric,backupSwitchoverF:value}),/temperature/);
 for(const value of [null,0,101,NaN])assert.match(validateBackup({...electric,backupHeating:'gas',backupGasEfficiencyPercent:value}),/efficiency/);
 assert.equal(validateBackup(newScenario('gas')),null);
-const invalid=run([heat],newScenario());assert.ok(invalid.error);assert.equal(invalid.rows[0].electricity,null);assert.equal(invalid.summary.fullYear,false);
+const invalid=run([heat],{...defaults,backupSwitchoverF:null});assert.ok(invalid.error);assert.equal(invalid.rows[0].electricity,null);assert.equal(invalid.summary.fullYear,false);
 
 for(const backupHeating of ['resistance','gas']){
   const scenario={...electric,backupHeating,backupGasEfficiencyPercent:80,rangeMode:'strict'};
