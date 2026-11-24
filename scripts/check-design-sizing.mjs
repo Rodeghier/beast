@@ -117,9 +117,11 @@ const html=renderToStaticMarkup(createElement(DesignSizingSummary,{design:respon
 assert.match(html,/ASHRAE 2017/);assert.match(html,/Cooling 1%/);assert.match(html,/Heating 99%/);assert.match(html,/design-weather-station/);
 const {AnalysisAssumptions}=load('components/analysis-assumptions.tsx');
 const inputHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:DEFAULT_SCHOOL,onSchool:()=>{}}));
-assert.equal((inputHtml.match(/<details/g)||[]).length,1);assert.match(inputHtml,/<select[^>]*id="input-coolingDesignPercent"/);assert.match(inputHtml,/<option value="1" selected="">1%/);
+assert.equal((inputHtml.match(/<details/g)||[]).length,2);assert.match(inputHtml,/<select[^>]*id="input-coolingDesignPercent"/);assert.match(inputHtml,/<option value="1" selected="">1%/);
 assert.doesNotMatch(inputHtml,/<fieldset[^>]*disabled|type="radio"/);
 assert.match(inputHtml,/id="input-windowU"[^>]*value="0.5"/);
+assert.match(inputHtml,/<select[^>]*id="input-wall-material"/);
+assert.match(inputHtml,/<input[^>]*id="input-interiorMassKjM2K"/);
 assert.match(inputHtml,/id="input-weekendStartHour"/);
 const officeHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:{...DEFAULT_SCHOOL,summerPercent:100},onSchool:()=>{},summerOccupancyEditable:false}));
 assert.match(officeHtml,/id="input-summerPercent"[^>]*disabled[^>]*value="100"/);
@@ -133,13 +135,17 @@ const comstockHeaders=[
   'in.comstock_building_type','weight','in.sqft..ft2',
   'in.weekday_opening_time..hr','in.weekday_operating_hours..hr','in.weekend_opening_time..hr','in.weekend_operating_hours..hr',
   'out.params.average_window_u_value..btu_per_ft2_f_hr','out.params.average_window_shgc',
+  'in.wall_construction_type','in.window_type','in.year_built','out.params.average_wall_u_value..btu_per_ft2_f_hr','out.params.average_roof_u_value..btu_per_ft2_f_hr','out.params.com_report_internal_mass_area_ratio',
 ];
 const countyCsv=Buffer.from([
   comstockHeaders,
-  ['PrimarySchool',1,58551,7.2,9.6,'',0,0.4321,0.3519],
+  ['PrimarySchool',1,58551,7.2,9.6,'',0,0.4321,0.3519,'Mass','Double pane',1985,0.0634,0.0442,2],
   ['SecondarySchool',1,76329,8,11,10,3,'',0.3521],
-  ['LargeOffice',1,300450,22,8,20,5,0.6381,0.271],
-  ['LargeOffice',3,310550,22,8,0,0,'',0.317],
+  ['LargeOffice',1,300450,22,8,20,5,0.6381,0.271,'Mass','Triple pane',2000],
+  ['LargeOffice',3,310550,22,8,0,0,'',0.317,'SteelFramed','Double pane',2000],
+  ['Warehouse',1,81000,7,9,0,0,'','','Metal Building','None',1987],
+  ['Warehouse',3,91000,7,9,0,0,'','','Mass','None',1975],
+  ['GroceryStore',1,50000,7,9,8,9,'','','Wood Framed','Double pane',1995],
 ].map(row=>row.join(',')).join('\n'));
 const tarHeader=Buffer.alloc(512);
 tarHeader.write(countyCsv.length.toString(8),124);
@@ -149,7 +155,7 @@ try {
   globalThis.fetch=async input=>{
     const url=new URL(input);
     if(url.hostname==='geocoding.geo.census.gov')return Response.json({result:{geographies:{Counties:[{STATE:'27',COUNTY:'053',NAME:'Hennepin'}]}}});
-    if(url.searchParams.has('list-type'))return new Response(['PrimarySchool','SecondarySchool','LargeOffice'].map(type=>`<Key>up0-G2700530-${type}.csv</Key>`).join(''));
+    if(url.searchParams.has('list-type'))return new Response(['PrimarySchool','SecondarySchool','LargeOffice','Warehouse','GroceryStore'].map(type=>`<Key>up0-G2700530-${type}.csv</Key>`).join(''));
     assert.match(url.pathname,/MN_G2700530_upgrade0_agg\.csv\.gz$/);
     return new Response(countyArchive);
   };
@@ -157,11 +163,59 @@ try {
   async function characteristics(type){
     const reply=await comstock(new Request(`http://localhost/api/comstock?latitude=44.98&longitude=-93.26&state=MN&buildingType=${type}&characteristics=true`));
     assert.equal(reply.status,200);
-    return (await reply.json()).assumptions;
+    return reply.json();
   }
-  assert.deepEqual(await characteristics('PrimarySchool'),{floorAreaFt2:58600,windowU:.43,shgc:.35,startHour:7,endHour:17,weekendStartHour:0,weekendEndHour:0,summerPercent:10});
-  assert.deepEqual(await characteristics('SecondarySchool'),{floorAreaFt2:76300,shgc:.35,startHour:8,endHour:19,weekendStartHour:10,weekendEndHour:13,summerPercent:10});
-  assert.deepEqual(await characteristics('LargeOffice'),{floorAreaFt2:308000,windowU:.64,shgc:.31,startHour:22,endHour:6,weekendStartHour:20,weekendEndHour:21,summerPercent:100});
+  const schoolInput=await characteristics('PrimarySchool');
+  const officeInput=await characteristics('LargeOffice');
+  const secondaryInput=await characteristics('SecondarySchool');
+  assert.deepEqual(schoolInput.assumptions,{floorAreaFt2:58600,windowU:.43,shgc:.35,wallU:.063,roofU:.044,startHour:7,endHour:17,weekendStartHour:0,weekendEndHour:0,summerPercent:10,interiorMassKjM2K:250,interiorMassCouplingWm2K:9});
+  assert.deepEqual(secondaryInput.assumptions,{floorAreaFt2:76300,shgc:.35,startHour:8,endHour:19,weekendStartHour:10,weekendEndHour:13,summerPercent:10});
+  assert.deepEqual(officeInput.assumptions,{floorAreaFt2:308000,windowU:.64,shgc:.31,startHour:22,endHour:6,weekendStartHour:20,weekendEndHour:21,summerPercent:100});
+  assert.equal(schoolInput.construction.county,'Hennepin');
+  assert.equal(schoolInput.construction.interiorMassAreaRatio,2);
+  assert.equal(officeInput.construction.interiorMassAreaRatio,undefined);
+  const {interiorMassDefaults}=load('lib/thermal-mass.ts');
+  assert.equal(interiorMassDefaults('LargeOffice').interiorMassKjM2K,170);
+  assert.equal(schoolInput.construction.wall.label,'Mass');
+  near(schoolInput.construction.wall.arealHeatCapacityKjM2K,2240*836.8*.127/1000);
+  assert.equal(officeInput.construction.wall.label,'Steel framed');
+  assert.equal(officeInput.construction.wall.share,.75);
+  assert.equal(officeInput.construction.window.label,'Double pane');
+  assert.equal(officeInput.construction.window.share,.75);
+  near(officeInput.construction.window.arealHeatCapacityKjM2K,2500*880*.012/1000);
+  assert.equal(officeInput.construction.slab.label,'Slab on grade');
+  assert.equal(secondaryInput.construction.wall,null);
+  assert.equal(secondaryInput.construction.window,null);
+  const warehouseInput=await characteristics('Warehouse');
+  assert.equal(warehouseInput.construction.roof.label,'Insulation entirely above deck');
+  assert.equal(warehouseInput.construction.roof.share,.75);
+  assert.equal((await characteristics('Grocery')).construction.roof.source,'PNNL supermarket prototype');
+  const {roofTemplateKind}=load('lib/envelope-construction.ts');
+  assert.equal(roofTemplateKind('LargeOffice','CA',1985,''),'mass');
+  assert.equal(roofTemplateKind('PrimarySchool','CA',1985,''),'wood-framed');
+  assert.equal(roofTemplateKind('Warehouse','MN',1987,''),'metal-building');
+  const imported={...DEFAULT_SCHOOL,...schoolInput.assumptions};
+  const {applyEnvelopeDefaults,applyEnvelopePreset,schoolCsv}=load('lib/school.ts');
+  const withConstruction=applyEnvelopeDefaults(DEFAULT_SCHOOL,{...schoolInput.assumptions,construction:schoolInput.construction});
+  const changed=applyEnvelopePreset({...withConstruction,wallU:.07,wallCapacityKjM2K:234},'wall','wood-framed');
+  assert.equal(changed.wallU,.055);
+  assert.notEqual(changed.wallCapacityKjM2K,234);
+  assert.equal(changed.roofCapacityKjM2K,withConstruction.roofCapacityKjM2K);
+  const restored=applyEnvelopePreset(changed,'wall','stock');
+  assert.equal(restored.wallU,.063);
+  assert.equal(restored.wallCapacityKjM2K,withConstruction.wallCapacityKjM2K);
+  assert.equal(applyEnvelopeDefaults(DEFAULT_SCHOOL,{construction:schoolInput.construction}).wallU,.08);
+  const importedHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:withConstruction,onSchool:()=>{}}));
+  assert.match(importedHtml,/Heavyweight concrete/);
+  assert.match(importedHtml,/id="input-wallCapacityKjM2K"[^>]*value="240"/);
+  assert.match(importedHtml,/0\.063/);
+  assert.deepEqual(simulateSchool(annual,withConstruction,site,'heating'),simulateSchool(annual,imported,site,'heating'));
+  const [fields,values]=parseCsv(schoolCsv([],withConstruction,'Minneapolis','CST'));
+  assert.equal(values[fields.indexOf('Wall_construction')],'Mass');
+  assert.equal(values[fields.indexOf('Wall_U_BTU_hr_ft2_F')],'0.063');
+  near(Number(values[fields.indexOf('Wall_UA_BTU_hr_F')]),.063*Number(values[fields.indexOf('Opaque_wall_area_ft2')]));
+  assert.equal(JSON.parse(values[fields.indexOf('Wall_representative_mass_layers')])[0].densityKgM3,2240);
+  assert.equal(values[fields.indexOf('Slab_construction')],'Slab on grade');
 } finally {
   globalThis.fetch=originalFetch;
 }

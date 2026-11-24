@@ -18,7 +18,8 @@ import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/p
 import { STATES, MIN_YEAR, MAX_YEAR, supportsClimate, type Place } from "@/lib/climate";
 import { parseClimateCsv, type ClimateData } from "@/lib/csv";
 import { solarLocation } from "@/lib/solar";
-import { comstockUsesSchoolSummerSchedule, DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
+import { applyEnvelopeDefaults, comstockUsesSchoolSummerSchedule, DEFAULT_SCHOOL, simulateSchool, validateSchool, type SchoolAssumptions } from "@/lib/school";
+import { interiorMassDefaults } from "@/lib/thermal-mass";
 import { simulateEquipment, equipmentResultsCsv, equipmentComparisonCsv } from "@/lib/equipment-model";
 import { coolingFor, curveRangeMode, scenarioName, newScenario, type EquipmentScenario, type CurveRangeMode } from "@/lib/equipment";
 import { EquipmentScenarios } from "@/components/equipment-scenarios";
@@ -69,7 +70,7 @@ export default function Home() {
   const [elapsed, setElapsed] = useState(0);
   // React state is the input worksheet. Call its setter to replace values; direct
   // mutation can leave the screen and the calculated results out of sync.
-  const [school, setSchool] = useState<SchoolAssumptions>({ ...DEFAULT_SCHOOL });
+  const [school, setSchool] = useState<SchoolAssumptions>(() => applyEnvelopeDefaults(DEFAULT_SCHOOL, interiorMassDefaults("PrimarySchool")));
   const [comstockType, setComstockType] = useState("");
   const [summerOccupancyEditable, setSummerOccupancyEditable] = useState(true);
   const assumptionsPanel = useRef<HTMLDetailsElement>(null);
@@ -79,7 +80,8 @@ export default function Home() {
     const isSchool = comstockUsesSchoolSummerSchedule(buildingType);
     setSummerOccupancyEditable(isSchool);
     const summerPercent = isSchool ? assumptions.summerPercent ?? DEFAULT_SCHOOL.summerPercent : 100;
-    setSchool(current => ({ ...current, ...assumptions, summerPercent }));
+    const mass = interiorMassDefaults(buildingType, assumptions.construction?.interiorMassAreaRatio);
+    setSchool(current => applyEnvelopeDefaults(current, { ...mass, ...assumptions, summerPercent }));
     if (assumptionsPanel.current) assumptionsPanel.current.open = true;
   }
   // Engineering pipeline step 1: weather + assumptions -> hourly building loads.

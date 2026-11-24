@@ -48,9 +48,9 @@ export function wallIrradiance(dhi: number, dni: number, ghi: number, albedo: nu
 }
 
 export function solarGains(row: ClimateRow, a: SolarInputs, area: number, site?: SolarLocation | null) {
-  const missing = { total: null, windows: null, opaque: null, status: "Missing solar radiation" };
+  const missing = { total: null, windows: null, opaque: null, walls: null, roof: null, status: "Missing solar radiation" };
   if ([row.dhi, row.dni, row.ghi].some(v => v === null || v === undefined || !Number.isFinite(v) || v < 0)) return missing;
-  if (row.dhi === 0 && row.dni === 0 && row.ghi === 0) return { total: 0, windows: 0, opaque: 0, status: "Zero irradiance" };
+  if (row.dhi === 0 && row.dni === 0 && row.ghi === 0) return { total: 0, windows: 0, opaque: 0, walls: 0, roof: 0, status: "Zero irradiance" };
   if (!site) return { ...missing, status: "Missing solar location or time-zone metadata" };
   // A rectangular floor plate is inferred from area/stories and length/width ratio.
   // The four faces are rotated together by the building rotation input.
@@ -65,6 +65,7 @@ export function solarGains(row: ClimateRow, a: SolarInputs, area: number, site?:
   }
   // Opaque sol-air gains use absorptance * irradiance / exterior film coefficient.
   // This added solar term is separate from the ordinary envelope-UA conduction term.
-  const opaque = walls + roof * a.roofU * a.roofSolarAbsorptance * row.ghi! * W_M2_TO_BTU_H_FT2 / a.outdoorFilm;
-  return { total: windows + opaque, windows, opaque, status: "Sup3rCC solar; steady-state glazing and sol-air correction" };
+  const roofGain = roof * a.roofU * a.roofSolarAbsorptance * row.ghi! * W_M2_TO_BTU_H_FT2 / a.outdoorFilm;
+  const opaque = walls + roofGain;
+  return { total: windows + opaque, windows, opaque, walls, roof: roofGain, status: "Sup3rCC solar; steady-state glazing and sol-air correction" };
 }

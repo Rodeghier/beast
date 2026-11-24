@@ -208,12 +208,12 @@ The total conditioned floor area is `floorAreaFt2` in `DEFAULT_SCHOOL`, initiall
 2. Calculate occupants, scheduled ventilation, infiltration and active thermostat setpoints.
 3. Convert outdoor temperature to Fahrenheit and calculate the overall heat-transfer coefficient.
 4. Calculate solar gain, lighting gain, equipment gain and occupant sensible gain.
-5. Calculate sensible cooling and heating demands with the steady-state balance.
-6. Estimate zone dry bulb from a free-float balance limited by the active setpoints.
+5. Solve the hourly sensible balance with heat storage in the enabled interior and envelope mass nodes.
+6. Limit the free-float temperature to the active setpoints and carry the resulting mass temperatures into the next hour.
 7. Calculate latent cooling from outdoor-air moisture and occupant moisture.
 8. Store cooling demands with negative signs and heating with a positive sign.
 
-The following is a readable equivalent of the key coefficient calculation, using the variable names an engineer would put on a worksheet:
+This steady-state conductance calculation provides the starting point for the hourly model and is also used for design-day loads.
 
 ```python
 infiltration_cfm = ach * floor_area * height / 60
@@ -230,9 +230,13 @@ Scheduled ventilation is off outside occupied hours; infiltration remains in all
 
 The internal gain schedules retain 10% of full lighting and 25% of full equipment power when unoccupied. Their watts become sensible heat in the load balance. The equipment-energy result does not separately bill those lighting and plug-load watts.
 
+### Hourly heat storage
+
+`lib/thermal-mass.ts` solves an implicit heat balance for the interior and envelope nodes. Each shell node has half the assembly's thermal resistance on either side. The interior node represents partitions, elevated floors and furnishings. Window solar gain and half the occupant, lighting and plug sensible gains enter the interior node when enabled. The ground slab uses 25% of the entered capacity and exchanges heat with the zone. Mass temperatures reset at the start of the weather series or after missing weather. Design sizing uses the steady-state conductances and entered setpoints.
+
 ### A numerical load example
 
-For a hypothetical hour with `K = 10,000 BTU/hr/F`, outdoor DB 90°F, cooling setpoint 75°F and total sensible gains of 100,000 BTU/hr, sensible cooling demand is 250,000 BTU/hr. The stored `sensibleCooling` field is −250,000. If the heating setpoint is 70°F, heating demand is zero for that same example.
+For a steady-state hour with `K = 10,000 BTU/hr/F`, outdoor DB 90°F, cooling setpoint 75°F and total sensible gains of 100,000 BTU/hr, sensible cooling demand is 250,000 BTU/hr. The stored `sensibleCooling` field is −250,000. If the heating setpoint is 70°F, heating demand is zero for that same example.
 
 The signed cooling balance is retained before clipping. It is used later when fan heat is added. This matters during ventilation-only operation: enough fan heat can create a cooling requirement, but the thermostat deadband must be respected.
 
