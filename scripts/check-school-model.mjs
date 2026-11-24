@@ -15,13 +15,17 @@ import ts from "typescript";
 // Exercise the actual TypeScript implementation without another dependency.
 const temp = mkdtempSync(join(tmpdir(), "school-model-"));
 async function moduleFrom(file) {
-  const output = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8").replace('from "./solar"', 'from "./solar.mjs"'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
+  const source = readFileSync(new URL(`../${file}`, import.meta.url), "utf8").replace(/from "(\.\/[^"]+)"/g, 'from "$1.mjs"');
+  const output = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
   const target = join(temp, file.split("/").pop().replace(/\.ts$/, ".mjs"));
   const { writeFileSync } = await import("node:fs"); writeFileSync(target, output);
   return import(pathToFileURL(target).href);
 }
 try {
   const solar = await moduleFrom("lib/solar.ts");
+  await moduleFrom("lib/envelope-construction.ts");
+  const mass = await moduleFrom("lib/thermal-mass.ts");
+  const rts = await moduleFrom("lib/radiant-time-series.ts");
   const m = await moduleFrom("lib/school.ts");
   const { parseClimateCsv, parseCsv } = await moduleFrom("lib/csv.ts");
   const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} != ${expected}`);
@@ -52,7 +56,57 @@ try {
   const bandCsv = parseCsv(m.schoolCsv(bandRows, banded, 'Test', 'UTC'));
   const bandMetadata = Object.fromEntries(bandCsv[0].map((key, i) => [key, bandCsv[1][i]]));
   assert.equal(bandMetadata.Thermostat_deadband_F, '2');
-  assert.match(bandMetadata.Thermostat_control, /does not resolve starts/);
+  assert.match(bandMetadata.Thermostat_control, /do not resolve starts/);
+  const node = [{capacity:100,toZone:100,toOutdoor:0}];
+  const airOnly = mass.thermalMassHour([], [], [], 100, 60, 0, 70, 75, {capacity:50,previousF:60});
+  close(airOnly.heatBalance, 1500);
+  close(airOnly.zoneF, 70);
+  const light = rts.radiantTimeFactors({stories:1,windowPercent:50,rtsMassClass:1});
+  const heavy = rts.radiantTimeFactors({stories:1,windowPercent:50,rtsMassClass:3});
+  close(light.solar[0], .45);
+  close(heavy.nonsolar[0], .25);
+  const carpet = rts.radiantTimeFactors({stories:1,windowPercent:30,rtsMassClass:2,rtsCarpetPercent:50});
+  close(carpet.solar[0], (.52+.54+.28+.29)/4);
+  assert.equal(rts.radiantTimeFactors({stories:1,windowPercent:50,interiorMassKjM2K:130}).construction, "Medium");
+  assert.equal(rts.radiantTimeFactors({stories:1,windowPercent:50,interiorMassKjM2K:130,slabCapacityKjM2K:200}).construction, "Heavy");
+  const pulseGains = Array.from({length:24},(_,hour)=>hour===23?1000:0);
+  const delayed = rts.periodicLoad(pulseGains, heavy.solar);
+  close(delayed[23], 270);
+  close(delayed[0], 130);
+  close(delayed.reduce((sum,load)=>sum+load,0), 1000);
+  const conduction = rts.conductionTimeFactors(.06, 240);
+  close(conduction.reduce((sum,factor)=>sum+factor,0), 1);
+  assert.ok(conduction[0]<rts.conductionTimeFactors(.06, 12)[0]);
+  close(rts.periodicLoad(Array(24).fill(1000),conduction)[10],1000);
+  const steadyConduction = rts.conductionTimeFactors(.06, 0);
+  const designPulse = pulseGains.map(beam=>({wall:0,roof:0,floor:0,window:0,outdoorAir:50,
+    beam,diffuse:beam,internalRadiant:0,internalConvective:10}));
+  const pulseLoads = rts.rtsDesignSensible(designPulse, heavy, steadyConduction, steadyConduction, .35);
+  close(pulseLoads[23].sensible, 60 + 270 + 250);
+  close(pulseLoads[0].sensible, 60 + 130 + 90);
+  close(pulseLoads.reduce((sum,hour)=>sum+hour.sensible,0), 24*60 + 2000);
+  const tank = mass.thermalMassHour(node, [60], [{outdoorF:60,heat:0}], 100, 60, 0, 70, 75);
+  // Outdoor loss is 1,000 BTU and the node gains another 500 BTU.
+  close(tank.heatBalance, 1500);
+  close(tank.temperatures[0], 65);
+  const pulse = mass.thermalMassHour(node, [70], [{outdoorF:70,heat:1000}], 100, 70, 0, 68, 70);
+  close(pulse.coolBalance, 500);
+  const release = mass.thermalMassHour(node, pulse.temperatures, [{outdoorF:70,heat:0}], 100, 70, 0, 68, 70);
+  close(release.coolBalance, 250);
+  const morning = [6, 7, 8].map(hour => row(m.celsius(20), 0, { hour }));
+  const withMass = { ...bare, interiorMassKjM2K: 110, interiorMassCouplingWm2K: 6 };
+  const staticMorning = m.simulateSchool(morning, bare);
+  const storedMorning = m.simulateSchool(morning, withMass);
+  close(storedMorning[0].interiorMassF, bare.setbackHeatingF);
+  assert.ok(storedMorning[1].heating > staticMorning[1].heating);
+  assert.ok(storedMorning[2].heating < storedMorning[1].heating);
+  assert.deepEqual(m.simulateSchool(morning,{...withMass,interiorMassCouplingWm2K:0}), staticMorning);
+  assert.deepEqual(m.simulateSchool(morning,withMass,null,"heating"), m.simulateSchool(morning,bare,null,"heating"));
+  close(storedMorning[1].zoneAirStorage, mass.AIR_VOLUME_CAPACITY_BTU_F_FT3 * bare.floorAreaFt2 * bare.ceilingFt * (bare.heatingF-bare.setbackHeatingF));
+  const storageCsv = parseCsv(m.schoolCsv(storedMorning, withMass, 'Test', 'UTC'));
+  close(Number(storageCsv[4][storageCsv[2].indexOf('Zone_air_storage_BTU_hr')]), storedMorning[1].zoneAirStorage);
+  const steadyShell = m.simulateSchool(morning,{...bare,wallCapacityKjM2K:240,roofCapacityKjM2K:70});
+  close(steadyShell[0].heating, staticMorning[0].heating);
   // Independent radiation geometry and hand-computed glazing/sol-air examples.
   const site = { latitude: 0, longitude: 0, utcOffset: 0 };
   const southSun = { east: 0, north: -0.6, up: 0.8 };

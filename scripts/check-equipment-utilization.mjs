@@ -18,13 +18,13 @@ function load(path){
  new Function('require','module','exports',outputText)(localRequire,module,module.exports);return module.exports;
 }
 const {equipmentUtilization,utilizationDistribution}=load('lib/equipment-utilization.ts');
-const {simulateEquipment:simulateEquipmentModel,BTU_PER_KWH,stagedSystemOperation}=load('lib/equipment-model.ts');
+const {simulateFixedAirflowReference:simulateEquipmentModel,BTU_PER_KWH,stagedSystemOperation}=load('lib/equipment-model.ts');
 // These component fixtures explicitly serve as their own controlled design days.
 const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel(rows,school,scenario,selection,{rows,basis:'Controlled design fixture',metadata:{Sizing_basis:'Controlled design fixture'},error:null});
 const {DEFAULT_SCHOOL,simulateSchool,celsius}=load('lib/school.ts');
 const {newScenario:createScenario}=load('lib/equipment.ts');
 // Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
-const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed',reheatOption:undefined});
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
 const {unitRatingFor}=load('lib/unit-ratings.ts');
 const near=(a,b,t=1e-7)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 const values=[null,NaN,Infinity,-1,0,0,.001,10,10.00000000002,10.1,20,99,100,100.001];

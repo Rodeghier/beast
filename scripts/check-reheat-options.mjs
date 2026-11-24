@@ -24,7 +24,7 @@ const {COOLING_MODELS}=load('lib/packaged-cooling.ts');
 const {variableFanModel}=load('lib/variable-fan.ts');
 const {solveVariableAirside}=load('lib/variable-airside.ts');
 const {heatingModelFor}=load('lib/packaged-heating.ts');
-const {simulateEquipment,equipmentResultsCsv,BTU_PER_KWH}=load('lib/equipment-model.ts');
+const {simulateEquipment,equipmentResultsCsv}=load('lib/equipment-model.ts');
 const {parseCsv}=load('lib/csv.ts');
 const {EquipmentScenarios}=load('components/equipment-scenarios.tsx');
 const near=(a,b,t=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${a} != ${b}`);
@@ -45,8 +45,8 @@ assert.equal(mhgrhPoint(model,80,55,70,4000,'strict'),null);
 assert.equal(mhgrhPoint(model,65,55,70,2999),null);
 assert.ok(mhgrhPoint(model,80,65,80,4000).boundaryEstimate);
 const sizing={rows,error:null,metadata:{}},prepared={groups,count:3,totalTons:30,supplyCfm:3*variableFanModel(model).referenceCfm,referenceCoolingBtuHr:360000,referenceHeatingBtuHr:360000,verifiedCoolingHours:5,estimatedCoolingHours:0,unverifiedCoolingHours:0,verifiedHeatingHours:5,unverifiedHeatingHours:0,rangeMode:'bounded',heatingAirflowApproximation:true,includesHeatPumpHeating:true,provisional:true,optimizationComplete:false,basis:'Fixture',designLoading:{heating:0,sensibleCooling:0,latentCooling:0,ventilation:0}};
-for(const airflowMode of ['variable','fixed'])for(const reheatOption of ['mhgrh','electricity','natural-gas']){
-  const scenario={...newScenario(),backupSwitchoverF:30,airflowMode,reheatOption,reheatGasEfficiencyPercent:80};
+for(const airflowMode of ['variable','fixed']){
+  const scenario={...newScenario(),backupSwitchoverF:30,airflowMode};
   const result=simulateEquipment(rows,school,scenario,prepared,sizing);assert.equal(result.error,null);
   assert.ok(result.rows.some(r=>r.reheatNeed>0));
   for(const h of result.rows){
@@ -54,25 +54,25 @@ for(const airflowMode of ['variable','fixed'])for(const reheatOption of ['mhgrh'
     near(h.supplyCfm,h.returnAirCfm+h.actualOutdoorAirCfm);
     near(h.reheatNeed,h.reheatDelivered+h.unmetReheat);
     if(airflowMode==='fixed')near(h.supplyCfm,prepared.supplyCfm);
-    if(reheatOption==='mhgrh'){
-      near(h.reheatElectricity,0);near(h.reheatGasTherms,0);
-      const details=JSON.parse(h.groupPerformance).cooling;
-      assert.ok(h.reheatDelivered<=details.reduce((s,d)=>s+d.recoveryCapacity,0)+1e-6);
-    }else if(reheatOption==='electricity'){near(h.reheatElectricity,h.reheatDelivered/BTU_PER_KWH);near(h.reheatGasTherms,0);}
-    else {near(h.reheatGasTherms,h.reheatDelivered/80000);near(h.reheatElectricity,0);assert.ok(h.gasTherms>=h.reheatGasTherms);}
+    near(h.reheatElectricity,0);near(h.reheatGasTherms,0);
+    const details=JSON.parse(h.groupPerformance).cooling;
+    assert.ok(h.reheatDelivered<=details.reduce((s,d)=>s+d.recoveryCapacity,0)+1e-6);
   }
   const html=renderToStaticMarkup(createElement(EquipmentScenarios,{choices:[scenario],results:[result],active:0,onActive:()=>{},onChange:()=>{}}));
-  assert.match(html,/MHGRH/);assert.match(html,/Constant airflow/);assert.match(html,/Reheat . required/);
-  const csv=parseCsv(equipmentResultsCsv(rows,school,result,'Test','Local'));assert.equal(csv[1][csv[0].indexOf('Reheat_fuel')],reheatOption);
+  assert.match(html,/MHGRH/);assert.match(html,/Constant airflow/);assert.doesNotMatch(html,/<select[^>]*-reheat|NG reheat efficiency|Reheat . required/);
+  const csv=parseCsv(equipmentResultsCsv(rows,school,result,'Test','Local'));assert.equal(csv[1][csv[0].indexOf('Reheat_fuel')],'mhgrh');
 }
-const full=solveVariableAirside(groups,rows[0],school,'bounded',true,{airflowMode:'fixed',reheatOption:'mhgrh'});
+const full=solveVariableAirside(groups,rows[0],school,'bounded',true,{airflowMode:'fixed'});
 for(const d of full.details)if(d.staging.fullUnits>0)assert.ok(d.recoveryCapacity>0);
-const overloaded=solveVariableAirside(groups,{...rows[0],occupants:1000000},school,'bounded',true,{airflowMode:'fixed',reheatOption:'mhgrh'});
+const overloaded=solveVariableAirside(groups,{...rows[0],occupants:1000000},school,'bounded',true,{airflowMode:'fixed'});
 assert.ok(overloaded.details.every(d=>d.staging.fullUnits===d.count&&d.recoveryCapacity>0),'Full compressor output must still provide recovered heat');
 const constantSized=simulateEquipment(rows,school,{...newScenario('resistance'),airflowMode:'fixed'},undefined,sizing);
 assert.equal(constantSized.error,null);assert.ok(constantSized.selection);
 assert.ok(constantSized.rows.every(h=>h.unmetCooling<=1&&h.unmetVentilationCfm===0));
-assert.equal(newScenario().reheatOption,'electricity');
-assert.equal(newScenario().reheatGasEfficiencyPercent,90);
+// Obsolete scenario fields cannot override recovered reheat.
+const oldScenario={...newScenario(),airflowMode:'fixed',reheatOption:'natural-gas',reheatGasEfficiencyPercent:0};
+const oldResult=simulateEquipment(rows,school,oldScenario,prepared,sizing);
+assert.equal(oldResult.error,null);
+assert.deepEqual(oldResult.rows,simulateEquipment(rows,school,{...newScenario(),airflowMode:'fixed'},prepared,sizing).rows);
 assert.equal(newScenario('gas').cooling,'heat-pump');
-console.log('PASS: 2340 table knots, range limits, all six airflow/reheat combinations, recovered-heat limits, independent fuel accounting, CSV and required dropdowns.');
+console.log('PASS: 2340 table knots, range limits, MHGRH in both airflow modes, recovery limits, energy accounting, CSV and fixed reheat display.');

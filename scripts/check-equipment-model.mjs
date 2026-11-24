@@ -31,9 +31,9 @@ function load(path) {
 const { DEFAULT_SCHOOL, simulateSchool, celsius }=load('lib/school.ts');
 const {newScenario:createScenario,scenarioName,coolingFor }=load('lib/equipment.ts');
 // Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
-const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed',reheatOption:undefined});
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
 const { UNIT_RATINGS,unitRatingFor }=load('lib/unit-ratings.ts');
-const { simulateEquipment:simulateEquipmentModel, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
+const { simulateFixedAirflowReference:simulateEquipmentModel, equipmentResultsCsv, equipmentComparisonCsv, BTU_PER_KWH }=load('lib/equipment-model.ts');
 // These component fixtures explicitly serve as their own controlled design days.
 const simulateEquipment=(rows,school,scenario,selection)=>simulateEquipmentModel(rows,school,scenario,selection,{rows,basis:'Controlled design fixture',metadata:{Sizing_basis:'Controlled design fixture'},error:null});
 const { airContext, mixAir, enthalpy, wetBulbF }=load('lib/mixed-air.ts');
@@ -133,7 +133,16 @@ for(const percent of [null,0,101,NaN]){const invalid=simulateEquipment([heatRow]
 const noRh=simulateEquipment([{...heatRow,humidity:null,latentCooling:null,totalCooling:null}],DEFAULT_SCHOOL,gasScenario);near(noRh.rows[0].gasTherms,14500/80000);assert.equal(noRh.rows[0].electricity,null);
 const fanOnly={...heatRow,heating:0,heatBalance:-10000,coolBalance:-5000,ventilationCfm:100};
 const ventilation=simulateEquipment([fanOnly],DEFAULT_SCHOOL,gasScenario).rows[0];near(ventilation.electricity,fkw);near(ventilation.heatingElectricity,0);near(ventilation.coolingElectricity,0);near(ventilation.gasTherms,0);
-const induced=simulateEquipment([{...row,heating:0,sensibleCooling:0,latentCooling:0,totalCooling:0,coolBalance:-100,ventilationCfm:100}],DEFAULT_SCHOOL,gasScenario).rows[0];assert.ok(induced.coolingElectricity>0);assert.ok(induced.fanHeat>0);assert.ok(induced.unmetCooling<=1);
+const fanInducedRow={...row,heating:0,sensibleCooling:0,latentCooling:0,totalCooling:0,coolBalance:-100,ventilationCfm:100};
+const inducedWithCutoff=simulateEquipment([fanInducedRow],DEFAULT_SCHOOL,gasScenario).rows[0];
+near(inducedWithCutoff.fanHeat,1000);
+assert.equal(inducedWithCutoff.coolingElectricity,0);
+near(inducedWithCutoff.unmetCooling,900);
+const inducedWithoutCutoff=simulateEquipment([fanInducedRow],{...DEFAULT_SCHOOL,minimumCompressorOnMinutes:0},gasScenario).rows[0];
+near(inducedWithoutCutoff.fanHeat,1000);
+assert.ok(inducedWithoutCutoff.coolingElectricity>0);
+assert.ok(Number.isFinite(inducedWithoutCutoff.unmetCooling));
+near(inducedWithoutCutoff.unmetCooling,0);
 const scheduled=simulateEquipment([{...fanOnly,occupied:true,ventilationCfm:0}],DEFAULT_SCHOOL,resistanceScenario).rows[0];near(scheduled.electricity,fkw);near(scheduled.fanElectricity,fkw);near(scheduled.coolingElectricity,0);
 const offResult=simulateEquipmentModel([{...fanOnly,occupied:false,ventilationCfm:0}],DEFAULT_SCHOOL,resistanceScenario,resistance.selection,{rows:[heatRow],basis:'Occupied design, unoccupied annual hour',metadata:{},error:null});assert.equal(offResult.error,null);const off=offResult.rows[0];near(off.electricity,0);near(off.fanElectricity,0);near(off.fanHeat,0);
 const high=simulateEquipment([row],DEFAULT_SCHOOL,{...newScenario(),efficiency:'high'});assert.ok(high.rows[0].coolingElectricity>0);assert.ok(high.rows[0].fanElectricity>0);near(high.rows[0].electricity,high.rows[0].heatingElectricity+high.rows[0].coolingElectricity+high.rows[0].fanElectricity);assert.equal(unitRatingFor({nominal_tons:30,efficiency:'high'}).scaledFromNominalTons,25);
@@ -179,10 +188,8 @@ console.log('Equipment checks passed: source heating fits and nominal power, inf
 
 const {AnalysisAssumptions}=load('components/analysis-assumptions.tsx');
 const buildingHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:DEFAULT_SCHOOL,onSchool:()=>{}}));
-assert.equal((buildingHtml.match(/<details/g)||[]).length,1);
-assert.match(buildingHtml,/Use defaults/);assert.match(buildingHtml,/Modify values/);assert.match(buildingHtml,/class="assumptions-values" disabled=""/);
-const customHtml=renderToStaticMarkup(createElement(AnalysisAssumptions,{school:{...DEFAULT_SCHOOL,heatingF:68},onSchool:()=>{}}));
-assert.doesNotMatch(customHtml,/class="assumptions-values" disabled/);
+assert.match(buildingHtml,/<details class="analysis-assumptions"/);
+assert.doesNotMatch(buildingHtml,/Use defaults|Modify values|class="assumptions-values" disabled/);
 // Geometry is editable through the existing building panel and carried into
 // equipment sizing and exported metadata, rather than being display-only.
 for(const key of ['floorAreaFt2','stories','ceilingFt']) assert.equal((buildingHtml.match(new RegExp(`id="input-${key}"`,'g'))||[]).length,1);
@@ -193,9 +200,11 @@ assert.match(customAreaHtml,/id="input-floorAreaFt2"[^>]*value="10000"/);
 const smallBuilding={...DEFAULT_SCHOOL,floorAreaFt2:1000,stories:1,people:0,infiltrationAch:0,ventilationArea:0,ventilationPerson:0,lightingW:0,equipmentW:0};
 const smallWeather=[{year:2025,month:1,day:7,hour:12,minute:0,temperature:celsius(20),humidity:0,dhi:0,dni:0,ghi:0}];
 const smallLoads=simulateSchool(smallWeather,smallBuilding),largerBuilding={...smallBuilding,floorAreaFt2:2000};
+const largerLoads=simulateSchool(smallWeather,largerBuilding);
 const smallGas=simulateEquipment(smallLoads,smallBuilding,gasScenario);
-const largerGas=simulateEquipment(simulateSchool(smallWeather,largerBuilding),largerBuilding,gasScenario);
-near(largerGas.heatingCapacityBtuHr-smallGas.heatingCapacityBtuHr,5000);
+const largerGas=simulateEquipment(largerLoads,largerBuilding,gasScenario);
+assert.ok(largerLoads[0].heating>smallLoads[0].heating);
+near(largerGas.heatingCapacityBtuHr-smallGas.heatingCapacityBtuHr,largerLoads[0].heating-smallLoads[0].heating);
 const sizeExport=parseCsv(equipmentResultsCsv(smallLoads,smallBuilding,smallGas,'Test','UTC'));
 assert.equal(sizeExport[1][sizeExport[0].indexOf('Floor_area_ft2')],'1000');
 assert.equal(sizeExport[1][sizeExport[0].indexOf('Number_of_floors')],'1');

@@ -13,7 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { DEFAULT_SCHOOL, SCHOOL_FIELDS, validateSchool, type SchoolAssumptions } from "@/lib/school";
 
 function draftOf(a: SchoolAssumptions) {
-  return Object.fromEntries(Object.entries(a).map(([key, value]) => [key, String(value)])) as Record<keyof SchoolAssumptions, string>;
+  return Object.fromEntries(SCHOOL_FIELDS.flatMap(group => group.fields.map(({ key }) => [key, String(a[key] ?? DEFAULT_SCHOOL[key])]))) as Record<keyof typeof DEFAULT_SCHOOL, string>;
 }
 
 export function SchoolModel({ value, onChange }: { value: SchoolAssumptions; onChange: (value: SchoolAssumptions) => void }) {
@@ -22,11 +22,11 @@ export function SchoolModel({ value, onChange }: { value: SchoolAssumptions; onC
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   useEffect(() => { setDraft(draftOf(value)); }, [value]);
-  const dirty = Object.keys(value).some(key => draft[key as keyof SchoolAssumptions] !== String(value[key as keyof SchoolAssumptions]));
+  const dirty = SCHOOL_FIELDS.some(group => group.fields.some(({ key }) => draft[key] !== String(value[key] ?? DEFAULT_SCHOOL[key])));
 
   function apply(e: React.FormEvent) {
     e.preventDefault();
-    const next = Object.fromEntries(Object.entries(draft).map(([key, v]) => [key, v.trim() === "" ? NaN : Number(v)])) as SchoolAssumptions;
+    const next = { ...value, ...Object.fromEntries(Object.entries(draft).map(([key, v]) => [key, v.trim() === "" ? NaN : Number(v)])) };
     const issue = validateSchool(next);
     if (issue) { setError(issue); setMessage(""); return; }
     onChange(next); setError(""); setMessage("Assumptions applied. Hourly results use these values.");

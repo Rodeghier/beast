@@ -7,9 +7,12 @@
  */
 
 import type { ClimateRow } from "./csv";
+import { COMSTOCK_CONSTRUCTION_SOURCE, FLOAT_GLASS_SOURCE, MATERIAL_PROPERTY_SOURCE, SUPERMARKET_ROOF_SOURCE, WOOD_FRAMING_SOURCE, envelopePreset, envelopePresetForProfile, type EnvelopeConstruction, type EnvelopeSurface } from "./envelope-construction";
+import { AIR_VOLUME_CAPACITY_BTU_F_FT3, AREAL_CAPACITY_TO_BTU_F_FT2, AREAL_CONDUCTANCE_TO_BTU_HR_F_FT2, INTERNAL_MASS_SOURCE, SLAB_ACTIVE_CAPACITY_FRACTION, THERMAL_MASS_BASIS, assemblyMassConductance, thermalMassHour } from "./thermal-mass";
+import { RADIANT_FRACTION, RTS_SOURCE, conductionTimeFactors, radiantTimeFactors, rtsDesignSensible, type DesignSensibleGains } from "./radiant-time-series";
 import { solarGains, type SolarLocation } from "./solar";
 
-export const MODEL_VERSION = "building-solar-2.7";
+export const MODEL_VERSION = "building-rts-2.9";
 export const BTU_PER_WH = 3.412141633;
 const PRESSURE_PA = 101325;
 export const SLAB_F2_OPTIONS = [
@@ -28,6 +31,8 @@ export const SLAB_F2_OPTIONS = [
 export const DEFAULT_SCHOOL = {
   floorAreaFt2: 150_000,
   coolingDesignPercent: 1, heatingDesignPercent: 99,
+  rtsMassClass: 0, rtsCarpetPercent: 0,
+  lightingRadiantPercent: 55, equipmentRadiantPercent: 30,
   heatingF: 70, coolingF: 75, setbackHeatingF: 60, setbackCoolingF: 85, indoorRh: 50,
   thermostatDeadbandF: 2,
   minimumCompressorOnMinutes: 20,
@@ -36,11 +41,63 @@ export const DEFAULT_SCHOOL = {
   ventilationPerson: 10, ventilationArea: 0.12,
   lightingW: 0.9, equipmentW: 0.6, sensiblePerson: 245, latentPerson: 155,
   stories: 2, aspectRatio: 2, rotationDeg: 0, windowPercent: 25, shgc: 0.35, shadeFactor: 1,
+  interiorMassKjM2K: 0, interiorMassCouplingWm2K: 6,
+  wallCapacityKjM2K: 0, roofCapacityKjM2K: 0, windowCapacityKjM2K: 0, slabCapacityKjM2K: 0,
   roofU: 0.04, wallU: 0.06, windowU: 0.50, roofSolarAbsorptance: 0.6, wallSolarAbsorptance: 0.6, outdoorFilm: 3, groundReflectance: 0.2,
 };
-type AddedSchoolField = "weekendStartHour" | "weekendEndHour" | "windowU";
-export type SchoolAssumptions = Omit<typeof DEFAULT_SCHOOL, AddedSchoolField> & Partial<Pick<typeof DEFAULT_SCHOOL, AddedSchoolField>>;
-export type SchoolField = { key: keyof SchoolAssumptions; label: string; unit: string; min: number; max: number; step: number; options?: { value: number; label: string }[] };
+const OPTIONAL_SCHOOL_FIELDS = [
+  "weekendStartHour", "weekendEndHour", "windowU", "interiorMassKjM2K", "interiorMassCouplingWm2K",
+  "wallCapacityKjM2K", "roofCapacityKjM2K", "windowCapacityKjM2K", "slabCapacityKjM2K",
+  "rtsMassClass", "rtsCarpetPercent", "lightingRadiantPercent", "equipmentRadiantPercent",
+] as const;
+type AddedSchoolField = (typeof OPTIONAL_SCHOOL_FIELDS)[number];
+export type SchoolAssumptions = Omit<typeof DEFAULT_SCHOOL, AddedSchoolField> & Partial<Pick<typeof DEFAULT_SCHOOL, AddedSchoolField>> & {
+  construction?: EnvelopeConstruction;
+  materialPresets?: Partial<Record<EnvelopeSurface, string>>;
+  stockEnvelopeCoefficients?: Partial<Record<EnvelopeSurface, number>>;
+  interiorMassSource?: string;
+};
+export type SchoolField = { key: keyof typeof DEFAULT_SCHOOL; label: string; unit: string; min: number; max: number; step: number; options?: { value: number; label: string }[] };
+
+export const ENVELOPE_FIELDS = {
+  wall: { label: "Opaque wall", coefficient: "wallU", capacity: "wallCapacityKjM2K" },
+  roof: { label: "Roof", coefficient: "roofU", capacity: "roofCapacityKjM2K" },
+  window: { label: "Window", coefficient: "windowU", capacity: "windowCapacityKjM2K" },
+  slab: { label: "Slab", coefficient: "slabF2", capacity: "slabCapacityKjM2K" },
+} as const;
+export const ENVELOPE_SURFACES = Object.keys(ENVELOPE_FIELDS) as EnvelopeSurface[];
+
+export function selectedEnvelopeProfile(a: SchoolAssumptions, surface: EnvelopeSurface) {
+  const selection = a.materialPresets?.[surface];
+  const imported = a.construction?.[surface];
+  if (imported && (!selection || selection === "stock")) return imported;
+  return envelopePreset(surface, selection).profile;
+}
+
+export function applyEnvelopePreset(a: SchoolAssumptions, surface: EnvelopeSurface, id: string): SchoolAssumptions {
+  const fields = ENVELOPE_FIELDS[surface];
+  const stock = id === "stock" ? a.construction?.[surface] : null;
+  const preset = stock ? envelopePresetForProfile(surface, stock) : envelopePreset(surface, id);
+  const capacity = stock?.arealHeatCapacityKjM2K ?? preset.profile.arealHeatCapacityKjM2K ?? 0;
+  return { ...a, materialPresets: { ...a.materialPresets, [surface]: stock ? "stock" : preset.id },
+    [fields.coefficient]: stock ? a.stockEnvelopeCoefficients?.[surface] ?? preset.coefficient : preset.coefficient,
+    [fields.capacity]: Number(capacity.toPrecision(2)) };
+}
+
+export function applyEnvelopeDefaults(current: SchoolAssumptions, imported: Partial<SchoolAssumptions>): SchoolAssumptions {
+  const stockEnvelopeCoefficients: Partial<Record<EnvelopeSurface, number>> = {};
+  const next = { ...current, ...imported, materialPresets: {}, stockEnvelopeCoefficients };
+  for (const surface of ENVELOPE_SURFACES) {
+    const fields = ENVELOPE_FIELDS[surface];
+    const stock = next.construction?.[surface];
+    const preset = envelopePresetForProfile(surface, stock);
+    next[fields.coefficient] = imported[fields.coefficient] ?? preset.coefficient;
+    if (stock) stockEnvelopeCoefficients[surface] = next[fields.coefficient];
+    const capacity = stock?.arealHeatCapacityKjM2K ?? preset.profile.arealHeatCapacityKjM2K ?? 0;
+    next[fields.capacity] = Number(capacity.toPrecision(2));
+  }
+  return next;
+}
 
 export function comstockUsesSchoolSummerSchedule(buildingType: string): boolean {
   return buildingType === "PrimarySchool" || buildingType === "SecondarySchool";
@@ -50,6 +107,11 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
   { title: "ASHRAE design sizing", fields: [
     { key: "coolingDesignPercent", label: "Cooling design condition", unit: "% annual exceedance", min: 0.4, max: 2, step: 0.1, options: [{value:0.4,label:"0.4%"},{value:1,label:"1%"},{value:2,label:"2%"}] },
     { key: "heatingDesignPercent", label: "Heating design condition", unit: "% annual cumulative frequency", min: 99, max: 99.6, step: 0.1, options: [{value:99,label:"99%"},{value:99.6,label:"99.6%"}] },
+    { key: "rtsMassClass", label: "RTS construction class", unit: "design cooling", min: 0, max: 3, step: 1, options: [
+      { value: 0, label: "Automatic from heat capacity" }, { value: 1, label: "Light" },
+      { value: 2, label: "Medium" }, { value: 3, label: "Heavy" },
+    ] },
+    { key: "rtsCarpetPercent", label: "Carpet coverage", unit: "% of conditioned floor", min: 0, max: 100, step: 1 },
   ] },
   { title: "Building size and geometry", fields: [
     { key: "floorAreaFt2", label: "Total conditioned floor area", unit: "ft² · all floors combined", min: 1, max: 10_000_000, step: 1 },
@@ -80,6 +142,12 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "roofU", label: "Roof U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
     { key: "wallU", label: "Opaque wall U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 1, step: 0.01 },
     { key: "windowU", label: "Window U-value", unit: "BTU/hr·ft²·°F", min: 0, max: 2, step: 0.01 },
+    { key: "wallCapacityKjM2K", label: "Opaque wall heat capacity", unit: "kJ/(m²·K) of wall", min: 0, max: 2000, step: 1 },
+    { key: "roofCapacityKjM2K", label: "Roof heat capacity", unit: "kJ/(m²·K) of roof", min: 0, max: 2000, step: 1 },
+    { key: "windowCapacityKjM2K", label: "Window heat capacity", unit: "kJ/(m²·K) of glazing", min: 0, max: 2000, step: 1 },
+    { key: "slabCapacityKjM2K", label: "Slab heat capacity", unit: "kJ/(m²·K) of ground floor", min: 0, max: 2000, step: 1 },
+    { key: "interiorMassKjM2K", label: "Interior heat capacity", unit: "kJ/(m²·K) of conditioned floor", min: 0, max: 6000, step: 1 },
+    { key: "interiorMassCouplingWm2K", label: "Interior-to-air conductance", unit: "W/(m²·K) of conditioned floor", min: 0, max: 200, step: 0.1 },
     { key: "infiltrationAch", label: "Infiltration (all hours)", unit: "air changes/hr", min: 0, max: 3, step: 0.01 },
     { key: "ventilationPerson", label: "Outdoor air per occupant", unit: "CFM/person", min: 0, max: 50, step: 0.5 },
     { key: "ventilationArea", label: "Outdoor air per floor area", unit: "CFM/ft²", min: 0, max: 1, step: 0.01 },
@@ -88,6 +156,8 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
     { key: "lightingW", label: "Full lighting power", unit: "W/ft²", min: 0, max: 5, step: 0.1 },
     { key: "equipmentW", label: "Full equipment power", unit: "W/ft²", min: 0, max: 10, step: 0.1 },
     { key: "sensiblePerson", label: "Sensible heat per occupant", unit: "BTU/hr·person", min: 0, max: 1000, step: 5 },
+    { key: "lightingRadiantPercent", label: "Lighting sensible heat emitted as radiation", unit: "%", min: 0, max: 100, step: 1 },
+    { key: "equipmentRadiantPercent", label: "Equipment sensible heat emitted as radiation", unit: "%", min: 0, max: 100, step: 1 },
     { key: "latentPerson", label: "Latent heat per occupant", unit: "BTU/hr·person", min: 0, max: 1000, step: 5 },
   ] },
   { title: "Solar gains · rectangular building", fields: [
@@ -105,7 +175,7 @@ export const SCHOOL_FIELDS: { title: string; fields: SchoolField[] }[] = [
 // This is an input check, not a calculation of equipment performance.
 export function validateSchool(a: SchoolAssumptions): string | null {
   for (const field of SCHOOL_FIELDS.flatMap(g => g.fields)) {
-    const optional = field.key === "weekendStartHour" || field.key === "weekendEndHour" || field.key === "windowU";
+    const optional = OPTIONAL_SCHOOL_FIELDS.some(key => key === field.key);
     const value = optional ? a[field.key] ?? DEFAULT_SCHOOL[field.key] : a[field.key];
     if (typeof value !== "number" || !Number.isFinite(value) || value < field.min || value > field.max) return `${field.label} must be between ${field.min} and ${field.max}.`;
     if (field.options && !field.options.some(option => option.value === value)) return `Select a listed ${field.label.toLowerCase()}.`;
@@ -201,6 +271,9 @@ export type SchoolRow = ClimateRow & {
   occupied: boolean; occupants: number; outdoorAirCfm: number;
   ventilationCfm: number; infiltrationCfm: number;
   heatBalance: number | null; coolBalance: number | null; heatTransfer: number;
+  zoneF?: number; interiorMassF?: number;
+  indoorRadiantGain?: number; zoneAirStorage?: number;
+  designSolarRadiantLoad?: number; designNonsolarRadiantLoad?: number;
   freeFloatF: number | null; heatingSetpointF: number; coolingSetpointF: number;
   solarGain: number | null; windowSolarGain: number | null; opaqueSolarGain: number | null; solarStatus: string;
 };
@@ -215,11 +288,47 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
   const infiltration = a.infiltrationAch * area * a.ceilingFt / 60;
   // Conductive UA covers the roof, opaque walls, windows and slab edge.
   // Geometry matches solarGains: equal floors and a rectangular footprint.
-  const ua = envelopeUA(a) + slabUA(a);
+  const slabConductance = slabUA(a);
+  const ua = envelopeUA(a) + slabConductance;
+  const roofArea = area / a.stories;
+  const wallArea = slabPerimeterFt(a) * a.stories * a.ceilingFt;
+  const glazing = a.windowPercent / 100;
+  const interiorCoupling = a.interiorMassCouplingWm2K ?? DEFAULT_SCHOOL.interiorMassCouplingWm2K;
+  const interiorCapacity = interiorCoupling > 0 ? (a.interiorMassKjM2K ?? 0) * area : 0;
+  const indoorNodes = [
+    { surface: "interior", capacity: interiorCapacity, conductance: interiorCoupling * area },
+    // Use a fraction of the nominal ground slab capacity for hourly storage.
+    { surface: "slab", capacity: SLAB_ACTIVE_CAPACITY_FRACTION * (a.slabCapacityKjM2K ?? 0) * roofArea, conductance: 3 * roofArea },
+  ].filter(node => node.capacity > 0).map(({surface, capacity, conductance}) => ({
+    surface, capacity: capacity * AREAL_CAPACITY_TO_BTU_F_FT2,
+    toZone: conductance * AREAL_CONDUCTANCE_TO_BTU_HR_F_FT2, toOutdoor: 0,
+  }));
+  const envelope = [
+    { surface: "walls", area: wallArea * (1 - glazing), u: a.wallU, capacity: a.wallCapacityKjM2K ?? 0 },
+    { surface: "roof", area: roofArea, u: a.roofU, capacity: a.roofCapacityKjM2K ?? 0 },
+    { surface: "windows", area: wallArea * glazing, u: a.windowU ?? DEFAULT_SCHOOL.windowU, capacity: a.windowCapacityKjM2K ?? 0 },
+  ];
+  // The two resistances in series preserve the editable assembly U-value.
+  const shellNodes = envelope.filter(e => e.capacity > 0 && e.area > 0 && e.u > 0).map(e => ({
+    surface: e.surface, capacity: e.capacity * e.area * AREAL_CAPACITY_TO_BTU_F_FT2,
+    toZone: assemblyMassConductance(e.u * e.area), toOutdoor: assemblyMassConductance(e.u * e.area),
+  }));
+  const nodes = designDay ? [] : [...indoorNodes, ...shellNodes];
+  const indoorConductance = indoorNodes.reduce((sum, node) => sum + node.toZone, 0);
+  const airCapacity = AIR_VOLUME_CAPACITY_BTU_F_FT3 * area * a.ceilingFt;
+  let previousZoneF = NaN;
+  const modeledUa = nodes.reduce((sum, node) => sum + node.toOutdoor / 2, 0);
+  let temperatures: number[] | undefined;
+  let previousHour = NaN;
   const weekdayHours = [a.startHour, a.endHour] as const;
   const weekendHours = [a.weekendStartHour ?? DEFAULT_SCHOOL.weekendStartHour, a.weekendEndHour ?? DEFAULT_SCHOOL.weekendEndHour] as const;
   const week = [weekendHours, weekdayHours, weekdayHours, weekdayHours, weekdayHours, weekdayHours, weekendHours];
-  return rows.map(row => {
+  // Apply cyclic factors only to complete design-day profiles.
+  const coolingRts = designDay === "cooling" && rows.length === 24 && rows.every((row, hour) =>
+    row.hour === hour && row.minute === rows[0].minute && row.day === rows[0].day
+    && row.month === rows[0].month && row.year === rows[0].year);
+  const designGains: DesignSensibleGains[] = [];
+  const loads = rows.map(row => {
     // Use the CSV's calendar directly. Date.UTC avoids shifting weekdays in
     // a visitor's browser time zone; the source excludes daylight saving time.
     const day = new Date(Date.UTC(row.year, row.month - 1, row.day)).getUTCDay();
@@ -234,11 +343,10 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     const occupants = a.people * fraction;
     const ventilation = occupied ? occupants * a.ventilationPerson + area * a.ventilationArea : 0;
     const outdoorAirCfm = infiltration + ventilation;
-    // Hourly steady-state allowance, not subhourly ON/OFF hysteresis. Preserve
-    // entered design temperatures so this control allowance cannot undersize units.
+    // The annual calculation uses the deadband. Design sizing uses the entered temperatures.
     const band = designDay ? 0 : a.thermostatDeadbandF;
     const heatSetpoint = (designDay === "heating" ? a.heatingF : occupied ? a.heatingF : a.setbackHeatingF) - band;
-    const coolSetpoint = (occupied ? a.coolingF : a.setbackCoolingF) + band;
+    const coolSetpoint = (occupied || coolingRts ? a.coolingF : a.setbackCoolingF) + band;
     const tempF = row.temperature !== null && Number.isFinite(row.temperature) && row.temperature >= -100 && row.temperature <= 100 ? fahrenheit(row.temperature) : null;
     // Slab edge conduction follows Q = F2 * exposed perimeter * (Tin - Tout).
     // Therefore F2 * perimeter is added as a conductance alongside envelope UA.
@@ -251,27 +359,90 @@ export function simulateSchool(rows: ClimateRow[], a: SchoolAssumptions, site?: 
     const base: SchoolRow = { ...row, temperatureF: tempF, wetBulbF: tempF === null || outdoorW === null ? null : wetBulbF(tempF, outdoorW), sensibleCooling: null, latentCooling: null, totalCooling: null, heating: null, occupied, occupants, outdoorAirCfm,
       ventilationCfm: ventilation, infiltrationCfm: infiltration, heatBalance: null, coolBalance: null, heatTransfer, freeFloatF: null, heatingSetpointF: heatSetpoint, coolingSetpointF: coolSetpoint,
       solarGain: solar.total, windowSolarGain: solar.windows, opaqueSolarGain: solar.opaque, solarStatus: solar.status };
-    if (tempF === null || solar.total === null) return base;
+    if (tempF === null || solar.total === null) {
+      temperatures = undefined;
+      return base;
+    }
     // Unoccupied lighting is 10% and equipment is 25% of full power. These electrical
     // inputs become sensible heat here; their electricity is not billed in HVAC totals.
     const lighting = area * a.lightingW * (0.10 + 0.90 * fraction) * BTU_PER_WH;
     const equipment = area * a.equipmentW * (0.25 + 0.75 * fraction) * BTU_PER_WH;
-    // Winter sizing does not rely on solar or internal gains to meet the load.
-    const gains = designDay === "heating" ? 0 : lighting + equipment + occupants * a.sensiblePerson + solar.total;
-    // These expressions are the familiar steady-state heat balance, clipped at zero.
-    // Cooling is negated only when the result is stored at the return statement.
-    const sensible = Math.max(0, heatTransfer * (tempF - coolSetpoint) + gains);
-    const heating = Math.max(0, heatTransfer * (heatSetpoint - tempF) - gains);
-    // A thermostat deadband: estimate the equilibrium zone temperature, then
-    // clamp to the active heating/cooling setpoints for the humidity target.
-    const zoneF = Math.min(coolSetpoint, Math.max(heatSetpoint, tempF + gains / heatTransfer));
+    const peopleSensible = occupants * a.sensiblePerson;
+    const internalRadiant = lighting * (a.lightingRadiantPercent ?? DEFAULT_SCHOOL.lightingRadiantPercent) / 100
+      + equipment * (a.equipmentRadiantPercent ?? DEFAULT_SCHOOL.equipmentRadiantPercent) / 100
+      + peopleSensible * RADIANT_FRACTION.people;
+    const internalSensible = lighting + equipment + peopleSensible;
+    // Winter sizing gives no credit for solar or internal gains.
+    const gains = designDay === "heating" ? 0 : internalSensible + solar.total;
+    if (coolingRts) {
+      const deltaF = tempF - coolSetpoint;
+      const wallUa = envelope[0].u * envelope[0].area;
+      const roofUa = envelope[1].u * envelope[1].area;
+      const windowUa = envelope[2].u * envelope[2].area;
+      // Chapter 18 sol-air approximation assumes unit emittance on a horizontal roof.
+      const roofLongwave = 20 * roofUa / a.outdoorFilm;
+      designGains.push({
+        wall: wallUa * deltaF + (solar.walls ?? 0), roof: roofUa * deltaF + (solar.roof ?? 0) - roofLongwave,
+        window: windowUa * deltaF, floor: slabConductance * deltaF, outdoorAir: 1.08 * outdoorAirCfm * deltaF,
+        beam: solar.windowBeam ?? 0, diffuse: solar.windowDiffuse ?? 0,
+        internalRadiant, internalConvective: internalSensible - internalRadiant,
+      });
+    }
+    let heatBalance = heatTransfer * (heatSetpoint - tempF) - gains;
+    let coolBalance = heatTransfer * (tempF - coolSetpoint) + gains;
+    let freeFloatF = heatTransfer > 0 ? tempF + gains / heatTransfer : (heatSetpoint + coolSetpoint) / 2;
+    let effectiveUa = heatTransfer;
+    let interiorMassF: number | undefined;
+    let indoorRadiantGain: number | undefined;
+    let zoneAirStorage: number | undefined;
+    if (nodes.length) {
+      const hour = Date.UTC(row.year, row.month - 1, row.day, row.hour, row.minute) / 3600000;
+      indoorRadiantGain = (solar.windows ?? 0) + internalRadiant;
+      const storedRadiant = indoorConductance > 0 ? indoorRadiantGain : 0;
+      // Opaque solar is expressed at the zone side of assembly U. Double it when
+      // applied at the midpoint, so the steady heat flow into the zone is unchanged.
+      const forcing = nodes.map(node => ({ outdoorF: tempF,
+        heat: node.toOutdoor === 0 ? storedRadiant * node.toZone / indoorConductance
+          : node.surface === "walls" ? 2 * (solar.walls ?? 0) : node.surface === "roof" ? 2 * (solar.roof ?? 0) : 0,
+      }));
+      const delayedOpaqueGains = nodes.reduce((sum, node, i) => sum + (node.toOutdoor > 0 ? forcing[i].heat / 2 : 0), 0);
+      if (!temperatures || hour - previousHour !== 1) {
+        const initialZone = Math.min(coolSetpoint, Math.max(heatSetpoint, freeFloatF));
+        temperatures = nodes.map(node => node.toOutdoor === 0 ? initialZone : (initialZone + tempF) / 2);
+        previousZoneF = initialZone;
+      }
+      const solved = thermalMassHour(nodes, temperatures, forcing, Math.max(0, heatTransfer - modeledUa), tempF,
+        gains - storedRadiant - delayedOpaqueGains, heatSetpoint, coolSetpoint, { capacity: airCapacity, previousF: previousZoneF });
+      zoneAirStorage = airCapacity * (solved.zoneF - previousZoneF);
+      previousZoneF = solved.zoneF;
+      ({ heatBalance, coolBalance, freeFloatF, heatTransfer: effectiveUa, temperatures } = solved);
+      if (interiorCapacity > 0) interiorMassF = temperatures[0];
+      previousHour = hour;
+    }
+    const sensible = Math.max(0, coolBalance);
+    const heating = Math.max(0, heatBalance);
+    const zoneF = coolingRts ? coolSetpoint : Math.min(coolSetpoint, Math.max(heatSetpoint, freeFloatF));
     // Calculate moisture demand separately. The 0.68 coefficient uses CFM and grains/lb;
     // 7000 converts humidity ratio from lb/lb to grains/lb before that multiplication.
     const indoorW = humidityRatio(celsius(zoneF), a.indoorRh)!;
     const latent = outdoorW === null ? null : Math.max(0, 0.68 * outdoorAirCfm * 7000 * (outdoorW - indoorW) + occupants * a.latentPerson);
     return { ...base, sensibleCooling: sensible === 0 ? 0 : -sensible, latentCooling: latent === null ? null : latent === 0 ? 0 : -latent,
       totalCooling: latent === null ? null : sensible + latent === 0 ? 0 : -(sensible + latent), heating,
-      heatBalance: heatTransfer * (heatSetpoint - tempF) - gains, coolBalance: heatTransfer * (tempF - coolSetpoint) + gains, freeFloatF: tempF + gains / heatTransfer };
+      heatBalance, coolBalance, heatTransfer: effectiveUa, freeFloatF, zoneF, interiorMassF, indoorRadiantGain, zoneAirStorage };
+  });
+  if (!coolingRts) return loads;
+  if (designGains.length !== 24) {
+    return loads.map(row => ({ ...row, sensibleCooling: null, totalCooling: null, coolBalance: null, freeFloatF: null }));
+  }
+  const sensibleLoads = rtsDesignSensible(designGains, radiantTimeFactors(a),
+    conductionTimeFactors(a.wallU, a.wallCapacityKjM2K ?? 0),
+    conductionTimeFactors(a.roofU, a.roofCapacityKjM2K ?? 0), a.shgc);
+  return loads.map((row, hour) => {
+    const { sensible, solarRadiant, nonsolarRadiant } = sensibleLoads[hour];
+    const sensibleCooling = -Math.max(0, sensible) || 0;
+    const totalCooling = row.latentCooling === null ? null : sensibleCooling + row.latentCooling;
+    return { ...row, sensibleCooling, totalCooling, coolBalance: sensible, heatBalance: null,
+      heating: 0, freeFloatF: row.coolingSetpointF, designSolarRadiantLoad: solarRadiant, designNonsolarRadiantLoad: nonsolarRadiant };
   });
 }
 
@@ -301,31 +472,67 @@ export function summarizeLoads(rows: SchoolRow[]) {
 // Write assumptions/metadata first, then the hourly table. Formatting to four
 // decimal places happens only in the export, not in the load calculations.
 export function schoolCsv(rows: SchoolRow[], a: SchoolAssumptions, location: string, zone: string, site?: SolarLocation | null): string {
+  const wallArea = slabPerimeterFt(a) * a.stories * a.ceilingFt;
+  const windowArea = wallArea * a.windowPercent / 100;
+  const opaqueWallArea = wallArea - windowArea;
+  const windowU = a.windowU ?? DEFAULT_SCHOOL.windowU;
+  const construction = a.construction;
   const metadata: Record<string, string | number> = {
     Model: MODEL_VERSION, Location: location, Time: zone, Floor_area_ft2: a.floorAreaFt2,
     Number_of_floors: a.stories, Building_footprint_ft2: a.floorAreaFt2 / a.stories,
     Conditioned_volume_ft3: a.floorAreaFt2 * a.ceilingFt,
-    Basis: "Illustrative single-zone hourly steady-state load estimate; cooling negative; heating positive; total cooling includes sensible cooling",
+    Basis: "Illustrative single-zone hourly load estimate; cooling negative; heating positive; total cooling includes sensible cooling",
+    Thermal_mass_method: THERMAL_MASS_BASIS,
+    Thermal_mass_reference: RTS_SOURCE,
+    Zone_air_heat_capacity_BTU_F: AIR_VOLUME_CAPACITY_BTU_F_FT3 * a.floorAreaFt2 * a.ceilingFt,
+    Interior_mass_default_source: a.interiorMassSource ?? "",
+    ComStock_internal_mass_area_ratio: construction?.interiorMassAreaRatio ?? "",
+    Interior_mass_reference: INTERNAL_MASS_SOURCE,
     Schedule: "Weekday and weekend occupied periods; June-August occupancy factor; no holidays; fixed local standard time; no Feb 29",
     Thermostat_deadband_F: a.thermostatDeadbandF,
-    Thermostat_control: "Annual sensible loads use heating setpoint minus deadband and cooling setpoint plus deadband, including setbacks; humidity control remains active; design sizing uses entered setpoints without this allowance. Hourly steady-state model does not resolve starts, minimum run/off times or temperature hysteresis.",
-    Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and steady-state sol-air correction; no thermal lag or longwave sky correction",
+    Thermostat_control: "Annual sensible loads use heating setpoint minus deadband and cooling setpoint plus deadband, including setbacks; humidity control remains active; design sizing uses entered setpoints without this allowance. Hourly loads do not resolve starts or minimum off-times.",
+    Solar_method: "Sup3rCC DHI/DNI/GHI W/m2; NOAA solar position at hourly midpoint; vertical walls use DNI projection + DHI/2 + ground reflectance x GHI/2; horizontal roof uses GHI; glazing SHGC and sol-air forcing; enabled heat storage delays sensible gains",
     Solar_latitude: site?.latitude ?? "", Solar_longitude: site?.longitude ?? "", Solar_UTC_offset: site?.utcOffset ?? "",
     Envelope_UA_BTU_hr_F: envelopeUA(a), Slab_F2_BTU_hr_ft_F: a.slabF2,
-    Window_area_ft2: slabPerimeterFt(a) * a.stories * a.ceilingFt * a.windowPercent / 100,
-    Window_U_BTU_hr_ft2_F: a.windowU ?? DEFAULT_SCHOOL.windowU,
+    Opaque_wall_area_ft2: opaqueWallArea,
+    Wall_U_BTU_hr_ft2_F: a.wallU, Roof_U_BTU_hr_ft2_F: a.roofU,
+    Window_area_ft2: windowArea,
+    Window_U_BTU_hr_ft2_F: windowU,
+    Wall_UA_BTU_hr_F: a.wallU * opaqueWallArea,
+    Roof_UA_BTU_hr_F: a.roofU * a.floorAreaFt2 / a.stories,
+    Window_UA_BTU_hr_F: windowU * windowArea,
     Slab_perimeter_ft: slabPerimeterFt(a), Slab_UA_BTU_hr_F: slabUA(a),
     Total_conductive_UA_BTU_hr_F: envelopeUA(a) + slabUA(a),
-    Limitations: "No thermal mass, warm-up, zoning, equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; envelope UA sums roof, opaque wall and window U-values times their respective areas; sky longwave exchange is not modeled separately; slab edge conduction uses F2 times exposed perimeter times indoor-to-outdoor temperature difference",
+    Limitations: "Single zone; no equipment losses, heat recovery, economizer, fan heat, reheat or humidification in building loads; standard sea-level air; envelope UA sums roof, opaque wall and window U-values times their respective areas; sky longwave exchange is not modeled separately; slab edge conduction uses F2 times exposed perimeter times indoor-to-outdoor temperature difference",
     Dew_point: "ASHRAE ice/water saturation convention; frost point below freezing; blank at RH=0 or missing input",
     Wet_bulb: "ASHRAE wet-bulb relations at 101325 Pa from dry bulb and RH; blank for missing or invalid input",
     ...Object.fromEntries(SCHOOL_FIELDS.flatMap(g => g.fields.map(f => [`${f.label} (${f.unit})`, a[f.key] ?? DEFAULT_SCHOOL[f.key]]))),
+    ...(construction && {
+      ComStock_construction_type: construction.buildingType,
+      ComStock_construction_county: construction.county,
+      ComStock_construction_state: construction.state,
+      Construction_reference: COMSTOCK_CONSTRUCTION_SOURCE,
+      Construction_grocery_roof_reference: construction.buildingType === "Grocery" ? SUPERMARKET_ROOF_SOURCE : "",
+    }),
+    ...Object.fromEntries(ENVELOPE_SURFACES.flatMap(surface => {
+      const profile = selectedEnvelopeProfile(a, surface);
+      const key = surface[0].toUpperCase() + surface.slice(1);
+      return [
+        [`${key}_construction`, profile.label],
+        [`${key}_construction_basis`, profile.source],
+        [`${key}_construction_share`, profile.share ?? ""],
+        [`${key}_nominal_heat_capacity_kJ_m2_K`, profile.arealHeatCapacityKjM2K ?? ""],
+        [`${key}_representative_mass_layers`, JSON.stringify(profile.layers)],
+      ];
+    })),
+    Construction_material_references: `${MATERIAL_PROPERTY_SOURCE} | ${WOOD_FRAMING_SOURCE} | ${FLOAT_GLASS_SOURCE}`,
+    Construction_heat_capacity_basis: "Representative layer density times specific heat times thickness times area fraction. The model uses the editable capacities, with 25% of the ground slab capacity coupled to the zone.",
   };
   const escape = (v: unknown) => v === null || v === undefined ? "" : `"${String(v).replace(/"/g, '""')}"`;
   const line = (values: unknown[]) => values.map(escape).join(",");
   const precision = (v: number | null) => v === null ? null : Number(v.toFixed(4));
   return [line(Object.keys(metadata)), line(Object.values(metadata)), "",
-    line(["Date", "Time_local", "Air_temperature_F", "Wet_bulb_F", "Sensible_cooling_BTU_hr", "Latent_cooling_BTU_hr", "Total_cooling_BTU_hr", "Heating_BTU_hr", "Occupied", "Occupants", "Outdoor_air_including_infiltration_CFM", "DHI_W_m2", "DNI_W_m2", "GHI_W_m2", "Solar_gain_BTU_hr", "Window_solar_gain_BTU_hr", "Opaque_solar_gain_BTU_hr", "Solar_status"]),
-    ...rows.map(r => line([dateLabel(r), timeLabel(r), precision(r.temperatureF), precision(r.wetBulbF), precision(r.sensibleCooling), precision(r.latentCooling), precision(r.totalCooling), precision(r.heating), r.occupied ? "Yes" : "No", r.occupants, precision(r.outdoorAirCfm), r.dhi, r.dni, r.ghi, precision(r.solarGain), precision(r.windowSolarGain), precision(r.opaqueSolarGain), r.solarStatus])),
+    line(["Date", "Time_local", "Air_temperature_F", "Wet_bulb_F", "Sensible_cooling_BTU_hr", "Latent_cooling_BTU_hr", "Total_cooling_BTU_hr", "Heating_BTU_hr", "Occupied", "Occupants", "Outdoor_air_including_infiltration_CFM", "DHI_W_m2", "DNI_W_m2", "GHI_W_m2", "Solar_gain_BTU_hr", "Window_solar_gain_BTU_hr", "Opaque_solar_gain_BTU_hr", "Solar_status", "Zone_temperature_F", "Interior_mass_temperature_F", "Indoor_radiant_gain_BTU_hr", "Zone_air_storage_BTU_hr"]),
+    ...rows.map(r => line([dateLabel(r), timeLabel(r), precision(r.temperatureF), precision(r.wetBulbF), precision(r.sensibleCooling), precision(r.latentCooling), precision(r.totalCooling), precision(r.heating), r.occupied ? "Yes" : "No", r.occupants, precision(r.outdoorAirCfm), r.dhi, r.dni, r.ghi, precision(r.solarGain), precision(r.windowSolarGain), precision(r.opaqueSolarGain), r.solarStatus, precision(r.zoneF ?? null), precision(r.interiorMassF ?? null), precision(r.indoorRadiantGain ?? null), precision(r.zoneAirStorage ?? null)])),
   ].join("\r\n");
 }

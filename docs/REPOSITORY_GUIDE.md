@@ -208,12 +208,12 @@ The total conditioned floor area is `floorAreaFt2` in `DEFAULT_SCHOOL`, initiall
 2. Calculate occupants, scheduled ventilation, infiltration and active thermostat setpoints.
 3. Convert outdoor temperature to Fahrenheit and calculate the overall heat-transfer coefficient.
 4. Calculate solar gain, lighting gain, equipment gain and occupant sensible gain.
-5. Calculate sensible cooling and heating demands with the steady-state balance.
-6. Estimate zone dry bulb from a free-float balance limited by the active setpoints.
+5. Solve the hourly sensible balance with heat storage in the enabled interior and envelope mass nodes.
+6. Limit the free-float temperature to the active setpoints and carry the resulting mass temperatures into the next hour.
 7. Calculate latent cooling from outdoor-air moisture and occupant moisture.
 8. Store cooling demands with negative signs and heating with a positive sign.
 
-The following is a readable equivalent of the key coefficient calculation, using the variable names an engineer would put on a worksheet:
+This steady-state conductance calculation provides the starting point for the hourly model and is also used for design-day loads.
 
 ```python
 infiltration_cfm = ach * floor_area * height / 60
@@ -230,9 +230,21 @@ Scheduled ventilation is off outside occupied hours; infiltration remains in all
 
 The internal gain schedules retain 10% of full lighting and 25% of full equipment power when unoccupied. Their watts become sensible heat in the load balance. The equipment-energy result does not separately bill those lighting and plug-load watts.
 
+### Hourly heat storage
+
+The annual calculation uses an implicit hourly heat balance in `lib/thermal-mass.ts`. Each shell node has half the assembly's thermal resistance on either side. The model carries the old zone-air temperature with a sensible capacity of 0.018 BTU/(ft³·°F) times conditioned volume. This is enabled with any active solid mass node. The interior node represents partitions, elevated floors and furnishings. Window solar and the radiant portions of lighting, plug loads and people enter the interior and ground slab nodes in proportion to their air-side conductances. The slab uses 25% of its entered areal capacity. Convective gains enter the air balance immediately, and latent gains follow the separate humidity calculation. Air and mass states initialize at the start of the weather series and after missing weather.
+
+Cooling design uses `lib/radiant-time-series.ts`. It applies ASHRAE Handbook—Fundamentals (2025), Chapter 18, equations 30–33 and exterior-zone radiant factors in Tables 22–23. For each repeating 24-hour profile at the occupied cooling setpoint:
+
+1. Form wall and roof heat inputs from outdoor temperature and sol-air gains. Use the Chapter 18 horizontal sky loss approximation of 20 BTU/(hr·ft²) at unit emittance on the roof. Form wall and roof periodic conduction factors from each editable U-value and the capacitance of a single midpoint node.
+2. Split heat gains into radiant and convective portions using Table 17 and the entered lighting and equipment fractions. Defaults are 55% radiant for lighting, 30% for equipment and 60% for occupant sensible gains. Outdoor-air and latent loads receive no radiant delay.
+3. Convolve direct beam solar with the solar factors. Convolve diffuse solar, radiant conduction and radiant internal gains with the nonsolar factors. Add the convective components for each design hour.
+
+Window solar uses the entered SHGC and solar multiplier with no specific interior shade model. RTS factors interpolate glazing between the table's 10%, 50% and 90% entries and interpolate between carpeted and bare-floor entries. The automatic construction class is a BEAST estimate from interior capacity plus active slab capacity per conditioned floor area. Light is below 75 kJ/(m²·K), medium is 75 to below 150, and heavy starts at 150. The user can select an explicit construction class and carpet coverage. Design CSV metadata records the interpolated factors and the selected class. The model represents a single zone, with lumped envelope conduction and no room-by-room surface heat balance.
+
 ### A numerical load example
 
-For a hypothetical hour with `K = 10,000 BTU/hr/F`, outdoor DB 90°F, cooling setpoint 75°F and total sensible gains of 100,000 BTU/hr, sensible cooling demand is 250,000 BTU/hr. The stored `sensibleCooling` field is −250,000. If the heating setpoint is 70°F, heating demand is zero for that same example.
+For a steady-state hour with `K = 10,000 BTU/hr/F`, outdoor DB 90°F, cooling setpoint 75°F and total sensible gains of 100,000 BTU/hr, sensible cooling demand is 250,000 BTU/hr. The stored `sensibleCooling` field is −250,000. If the heating setpoint is 70°F, heating demand is zero for that same example.
 
 The signed cooling balance is retained before clipping. It is used later when fan heat is added. This matters during ventilation-only operation: enough fan heat can create a cooling requirement, but the thermostat deadband must be respected.
 
@@ -266,13 +278,13 @@ Supply-fan heat is applied later in the sensible/heating balances. It is not add
 
 ### Current packaged-airside path
 
-The website defaults to variable airflow and electric resistance reheat. Both the variable and constant dropdown choices use the physical airside model in `lib/variable-airside.ts`. Constant mode holds running fans at each unit's AHRI reference airflow, capped by the standard-motor limit. It does not hold airflow at 480 CFM/ton. That maximum catalog airflow is the normalization basis of the cooling-capacity data, a different quantity from AHRI reference airflow.
+The website defaults to variable airflow. Packaged cooling uses modulating hot gas reheat (MHGRH). Both the variable and constant dropdown choices use the physical airside model in `lib/variable-airside.ts`. Constant mode holds running fans at each unit's AHRI reference airflow, capped by the standard-motor limit. It does not hold airflow at 480 CFM/ton. That maximum catalog airflow is the normalization basis of the cooling-capacity data, a different quantity from AHRI reference airflow.
 
 `solveVariableAirside` solves each installed group's nominal-tonnage share. It removes scheduled mechanical-ventilation heat and moisture from the zone demand before conditioning mixed outdoor and return air, preventing double counting. Infiltration remains a zone load and is excluded from the mixer. Airflow candidates are ranked by service before purchased input energy. The model uses sensible and latent demand rather than a fixed supply-temperature target or dew-point trigger.
 
 The controller conserves modeled sensible-plus-latent cooling while correcting coil-leaving air for nonnegative humidity and saturation consistency. It solves duty against this corrected state, checks full available output before reporting a shortfall, and enforces a provisional 45 F minimum coil-leaving temperature. Fan heat enters downstream; primary heat and reheat then establish final supply temperature. Reheat changes dry bulb without adding moisture. Source-curve SHR and final operating SHR can therefore differ.
 
-The older `mixAir` plus fixed-rating fan worksheet remains available for reference callers that explicitly choose fixed airflow and omit `reheatOption`. It is not the constant-airflow dropdown's current calculation. Sections below label the older arithmetic where it remains useful for tracing ratings and stages. See `docs/VARIABLE_AIRFLOW.md` and `docs/MHGRH.md` for focused technical notes.
+The `simulateFixedAirflowReference` entry point preserves the `mixAir` and fixed-rating fan worksheet for reference calculations. Sections below label the older arithmetic where it remains useful for tracing ratings and stages. See `docs/VARIABLE_AIRFLOW.md` and `docs/MHGRH.md` for focused technical notes.
 
 ## 9 Equipment curves and ratings
 
@@ -341,7 +353,7 @@ Cooling source coverage is generally outdoor 85–125°F, entering WB 61–73°F
 
 ### Current selection and legacy seed search
 
-The current page runs `optimizePackagedBank` in `lib/equipment-sizing.worker.ts` and passes that prepared selection to `simulateEquipment`. The worker request key includes heating mode, efficiency, packaged-cooling choice, range policy and stage preference, but not airflow mode or reheat choice. Consequently, the page's installed bank still comes from the legacy cooling-only optimizer; changing airflow/reheat changes annual dispatch and design reheat calculations but does not invoke the nonlinear bank recheck.
+The page runs `optimizeVariablePackagedBank` in `lib/equipment-sizing.worker.ts` and passes the selected bank to `simulateEquipment`. The worker request key includes heating mode, efficiency, packaged cooling, curve range, stage preference and airflow mode. The search rechecks cooling and ventilation feasibility under the selected airflow mode.
 
 `simulateEquipment` calls `optimizeVariablePackagedBank` in `lib/variable-sizing.ts` only when its prepared-selection argument is omitted (`undefined`) for a physical-airside scenario. Explicit `null` does not request sizing. This distinction matters when comparing direct-call checks with the browser path.
 
@@ -355,7 +367,7 @@ The local catalog contains 1,724 complete U.S. stations from the EnergyPlus team
 
 Building assumptions select 1% cooling and 99% heating by default; published 0.4%/2% cooling and 99.6% heating alternatives are available. `buildDesignSizing` first generates 96 hourly load rows, then retains only scheduled occupied hours: one winter day and three summer days checking dry-bulb/mean-coincident-wet-bulb, wet-bulb/mean-coincident-dry-bulb and dew-point/mean-coincident-dry-bulb conditions. The published daily range and default ASHRAE/EnergyPlus hourly temperature multipliers form each summer profile. Humidity ratio is constant with a saturation cap, and clear-sky solar uses the 2017 tau equations and station optical depths. The fixed 2001 calendar keeps sizing independent of the selected weather year.
 
-Cooling uses the existing June-August occupancy reduction for people, person-based ventilation and scheduled gains. Zero-occupancy scheduled hours do not size any equipment. Winter uses occupied heating temperature during occupied hours and takes no credit for internal or solar gains; ventilation follows occupied hours. Infiltration remains active. Psychrometrics retain the existing standard-pressure basis; station elevation is disclosed but does not change air-density coefficients. These are steady-state design loads with no thermal storage or morning warm-up simulation.
+Cooling uses the existing June-August occupancy reduction for people, person-based ventilation and scheduled gains. Zero-occupancy scheduled hours do not size any equipment. Winter uses occupied heating temperature during occupied hours and takes no credit for internal or solar gains; ventilation follows occupied hours. Infiltration remains active. Psychrometrics retain the existing standard-pressure basis; station elevation is disclosed but does not change air-density coefficients. Heating design is steady-state with no morning warm-up allowance. Cooling design includes thermal lag through periodic RTS and CTS factors.
 
 `simulateEquipment` receives annual rows and a separate `DesignSizing` context. Heat-pump selection, boiler/resistance output and chiller capacity use only the context's design rows. Sizes remain fixed throughout the annual simulation. Annual extreme hours can exceed installed capacity and produce unmet loads; they do not trigger resizing. Equipment CSVs include station ID, edition, probabilities, design temperatures, design loads and source provenance.
 
@@ -375,11 +387,11 @@ In the legacy seed search, all heating selections use cooling-only packaged-bank
 
 ### Current airflow, reheat and backup dispatch
 
-`simulateEquipment` selects the physical airside branch for packaged cooling when airflow is variable or a reheat choice is present. New UI scenarios always supply reheat. The active equipment model version is `equipment-reheat-options-21.0`.
+`simulateEquipment` uses the physical airside balance and MHGRH for packaged cooling in both airflow modes. The equipment model version is `equipment-mhgrh-21.3`.
 
 Fans run through occupied hours and other heating/cooling/ventilation calls, with airflow and power established by the selected controller. Full-hour fan operation does not mean full reference fan power in variable mode. Each group's fixed nominal-tonnage zone share retains its own cooling duty, fan heat and stage records. Spare capacity is not transferred between assigned zones.
 
-Reheat choices are electric resistance (COP 1), natural gas at its dedicated entered efficiency (default 80%), or modulating hot-gas reheat (MHGRH). Electric reheat is the default for every primary heating type. Occupied ASHRAE design airside operation fixes reheat capacity; annual demand beyond this capacity becomes unmet reheat/residual overcooling. Heat-pump compressors do not simultaneously provide primary heating and dehumidification cooling; the airside dispatch accounts for needed heat through the selected reheat path.
+Packaged cooling uses modulating hot gas reheat (MHGRH). The occupied ASHRAE design airside calculation reports design reheat demand. Hourly delivery is limited by the recovery tables, compressor runtime and estimated heat rejection. The model reports unmet reheat and residual overcooling. When the heat-pump compressors are cooling for dehumidification, the airside calculation can use recovered heat to serve the remaining heating demand.
 
 Heat-pump heating requires resistance or natural-gas backup and an explicit outdoor switchover temperature. At or below that temperature, backup replaces heat-pump heating. Backup capacity is based on design heating demand after fan heat, rather than unlimited auxiliary capacity. Natural-gas backup has its own efficiency input.
 

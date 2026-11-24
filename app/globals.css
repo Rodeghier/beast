@@ -233,6 +233,7 @@ th.numeric > span { display: flex; align-items: center; justify-content: flex-en
 .assumption-group { min-width: 0; border: 0; padding: 0; margin: 0 0 24px; }
 .assumption-group legend { font-size: .9375rem; font-weight: 620; margin-bottom: 16px; color: #253a5a; }
 .assumption-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 22px; }
+.envelope-material-row { margin-bottom: 16px; }
 .assumption-grid .form-field { justify-content: flex-end; }
 .assumption-grid .form-field label { font-weight: 450; font-size: .875rem; line-height: 1.45; }
 .input-unit { display: block; color: #7a879c; font-size: .8125rem; margin-top: 2px; }

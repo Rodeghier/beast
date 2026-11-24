@@ -1,8 +1,8 @@
-# Reheat and airflow selections
+# Modulating hot gas reheat
 
-Equipment scenarios require populated airflow and reheat dropdowns. Defaults are variable airflow and electric resistance reheat. Cooling defaults to packaged heat-pump equipment and heat-pump backup defaults to electric resistance; the user must still enter a backup switchover temperature. NG reheat has a separate efficiency input, initially 80%, independent of the primary heat source.
+Packaged cooling uses modulating hot gas reheat (MHGRH) in both airflow modes. Variable airflow is the default.
 
-Constant airflow uses each unit's AHRI reference CFM, capped at the standard-motor limit, whenever the fan runs. Both modes use the airflow-dependent coil fits, moisture balance, fan heat, supply temperature and reheat calculations. The design search checks ventilation and cooling at the selected airflow mode. Reheat choices affect hourly airflow ranking; the installed-bank search uses the default electric-reheat ranking and does not optimize annual energy or eliminate every possible reheat shortfall.
+Constant airflow uses each unit's AHRI reference CFM, capped at the standard-motor limit, whenever the fan runs. Both modes use the airflow-dependent coil fits, moisture balance, fan heat, supply temperature and reheat calculations. The design search checks ventilation and cooling at the selected airflow mode. Recovered heat shortfall contributes to airflow ranking during design and annual calculations. The installed-bank search checks cooling and ventilation feasibility.
 
 ## MHGRH source and calculation
 
@@ -14,10 +14,10 @@ Reheat delivery is the smaller of demand and available recovery. There is no aut
 
 ## Limits
 
-The tables describe both evaporator and reheat temperatures changing with valve position. This implementation uses their **temperature rise as a recovery limit**, while retaining the existing cooling capacity/SHR and compressor power models. It is an approximate recovery option, not a coupled refrigerant-cycle model. No reheat-mode compressor input map was supplied. Below minimum-valve heat output, bypass/duty modulation is assumed; full-load recovery is scaled by compressor runtime without a stage-specific MHGRH map.
+The tables describe both evaporator and reheat temperatures changing with valve position. This implementation uses their **temperature rise as a recovery limit**, while retaining the existing cooling capacity/SHR and compressor power models. It approximates recovery using the base-unit curves. No reheat-mode compressor input map was supplied. Below minimum-valve heat output, bypass/duty modulation is assumed; full-load recovery is scaled by compressor runtime without a stage-specific MHGRH map.
 
 Temperatures outside 60–70°F ambient, 51–59°F entering WB or 60–75°F entering DB use flagged boundary estimates in bounded mode. Strict mode credits no recovery outside these ranges. Airflow is never extrapolated. Large-unit proxies and using the common tables for both efficiency families remain assumptions, not manufacturer certification. Supply temperatures remain calculated CSV outputs; no 55°F control is introduced.
 
 ## Verification
 
-`node scripts/check-reheat-options.mjs` checks all source knots, boundary handling, all six airflow/reheat combinations, energy accounting, CSV metadata, and controls. Existing airflow and air-state checks cover cooling curves and physical balances. Legacy fixed-airflow fixtures explicitly omit the new reheat choice to retain their original reference calculation.
+`node scripts/check-reheat-options.mjs` checks all source knots, boundary handling, MHGRH in both airflow modes, energy accounting, CSV metadata, and the equipment controls. The fixed-rating reference worksheet is exercised separately.

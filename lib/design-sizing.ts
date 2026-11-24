@@ -9,6 +9,7 @@ import type { ClimateRow } from "./csv";
 import { fahrenheit, humidityRatio, saturationPressure, simulateSchool, type SchoolAssumptions, type SchoolRow } from "./school";
 import { humidityRatioAtWetBulb, MIXING_PRESSURE_PA } from "./mixed-air";
 import { sunVector, type SolarLocation } from "./solar";
+import { RTS_DESIGN_BASIS, RTS_SOURCE, conductionTimeFactors, radiantTimeFactors } from "./radiant-time-series";
 
 export type DesignPoint = { month:number; day:number; dryC:number; rangeC:number; humidityType:string; humidityC:number; tauB:number; tauD:number };
 export type DesignStation = { id:string; name:string; state:string; latitude:number; longitude:number; utcOffset:number; elevationM:number; pressurePa:number;
@@ -69,6 +70,7 @@ export function buildDesignSizing(station:DesignStationChoice|undefined,school:S
     const coolingRows=(["dryBulb","wetBulb","dewPoint"] as const).flatMap(kind=>simulateSchool(designCoolingWeather(cooling[kind],site),school,site,"cooling").map(row=>({...row,heating:0})));
     const rows=[...heatingRows,...coolingRows].filter(row=>row.occupied);
     if(!rows.length)return unavailable("No occupied design hours are available under the selected occupancy schedule.");
+    const rts = radiantTimeFactors(school);
     const peak=(key:"heating"|"sensibleCooling"|"latentCooling"|"totalCooling")=>Math.max(0,...rows.map(row=>Math.abs(row[key]??0)));
     return {rows,basis,error:null,metadata:{Sizing_basis:basis,ASHRAE_edition:source.edition,Design_station:station.name,Design_station_state:station.state,Design_station_WMO:station.id,
       Design_station_distance_km:station.distanceKm,Design_station_latitude:station.latitude,Design_station_longitude:station.longitude,Design_station_elevation_m:station.elevationM,
@@ -77,7 +79,13 @@ export function buildDesignSizing(station:DesignStationChoice|undefined,school:S
       Cooling_WB_design_WB_F:fahrenheit(cooling.wetBulb.humidityC),Cooling_WB_design_MCDB_F:fahrenheit(cooling.wetBulb.dryC),
       Cooling_DP_design_DP_F:fahrenheit(cooling.dewPoint.humidityC),Cooling_DP_design_MCDB_F:fahrenheit(cooling.dewPoint.dryC),
       Design_heating_load_BTU_hr:peak("heating"),Design_sensible_cooling_load_BTU_hr:peak("sensibleCooling"),Design_latent_cooling_load_BTU_hr:peak("latentCooling"),Design_total_cooling_load_BTU_hr:peak("totalCooling"),
-      Design_schedule:"Includes hours occupied under either the weekday or weekend schedule; applies the June-August occupancy factor; winter uses occupied heating setpoint and gives no credit for internal or solar gains",
+      Design_cooling_method:RTS_DESIGN_BASIS, Design_cooling_method_source:RTS_SOURCE,
+      Design_RTS_construction_class:rts.construction, Design_RTS_glazing_percent:rts.glassPercent, Design_RTS_carpet_percent:rts.carpetPercent,
+      Design_RTS_effective_interior_capacity_kJ_m2_K:rts.activeCapacity,
+      Design_RTS_solar_factors:JSON.stringify(rts.solar), Design_RTS_nonsolar_factors:JSON.stringify(rts.nonsolar),
+      Design_CTS_wall_factors:JSON.stringify(conductionTimeFactors(school.wallU,school.wallCapacityKjM2K??0)),
+      Design_CTS_roof_factors:JSON.stringify(conductionTimeFactors(school.roofU,school.roofCapacityKjM2K??0)),
+      Design_schedule:"Includes hours occupied under either the weekday or weekend schedule; applies the June-August occupancy factor; RTS holds the occupied cooling setpoint for its repeating day; winter uses occupied heating setpoint and gives no credit for internal or solar gains",
       Design_weather_basis:"24-hour default ASHRAE/EnergyPlus DB profile; constant humidity ratio capped at saturation; DB/MCWB, WB/MCDB and DP/MCDB cooling days; ASHRAETau2017 clear-sky solar; existing standard-pressure psychrometrics",
       Design_annual_relationship:"Installed sizes are fixed from design days. Annual weather determines energy, capacity utilization and unmet loads; annual extreme hours do not resize equipment."}};
   }catch(cause){return unavailable(cause instanceof Error?cause.message:"ASHRAE design loads could not be calculated.");}

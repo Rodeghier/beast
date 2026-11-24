@@ -4,7 +4,7 @@
  * Fan heat is downstream of cooling. Reheat is solved separately from primary heat. */
 import type { PackagedGroup } from "./packaged-bank";
 import { mhgrhPoint } from "./mhgrh";
-import { DEFAULT_GAS_EFFICIENCY_PERCENT, type ReheatOption, type CurveRangeMode } from "./equipment";
+import type { CurveRangeMode } from "./equipment";
 import { celsius, humidityRatio, type SchoolAssumptions, type SchoolRow } from "./school";
 import { airContext, mixAir } from "./mixed-air";
 import { airflowCoolingPoint, coolingAirflowRange } from "./airflow-cooling";
@@ -65,7 +65,7 @@ export function coolingForAirState(dryF:number,w:number,cfm:number,capacity:numb
   return {required:meets(full)?delivered:null,linearRequired:required,delivered,leaving,deliverableCapacity,availableSensible:full.sensible,availableLatent:full.latent};
 }
 
-export type AirsideOptions={airflowMode?:"variable"|"fixed";reheatOption?:ReheatOption;reheatGasEfficiencyPercent?:number|null;minimumOnMinutes?:number};
+export type AirsideOptions={airflowMode?:"variable"|"fixed";minimumOnMinutes?:number};
 function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,share:number,mode:CurveRangeMode,runs:boolean,options:AirsideOptions){
   const fan=variableFanModel(group.model),range=coolingAirflowRange(group.model),rating=unitRatingFor(group.model),context=airContext(row,school);
   if(!fan||!range||!rating||!context||!finite(row.coolBalance)||!finite(row.latentCooling)||!finite(row.heating))return null;
@@ -111,14 +111,12 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     const unmetSensible=Math.max(0,sensibleNeed-leaving.sensible),unmetLatent=Math.max(0,latentNeed-leaving.latent);
     const missingOutdoor=Math.max(0,vent-cfm);
     const unmet=unmetSensible+unmetLatent;
-    // Prefer supported conditions meeting sensible and latent loads, then
-    // minimize compressor+fan+ideal electric reheat input. Fuel conversion is
-    // applied later using the selected heating system's reheat fuel.
-    const recovery=options.reheatOption==="mhgrh"&&delivered>0?mhgrhPoint(group.model,context.outdoorF,mixed.wetF,mixed.dryF,cfm/count,mode):null;
+    // Rank by load recovery and ventilation, then compressor and fan power.
+    const recovery=delivered>0?mhgrhPoint(group.model,context.outdoorF,mixed.wetF,mixed.dryF,cfm/count,mode):null;
     const recoveryCapacity=recovery?Math.min(recovery.maxBtuHr*(operation.fullUnits+(operation.partialUnits??0)*operation.partialUnitRuntimeFraction),delivered+electricity*BTU_PER_KWH):0;
-    const reheatShortfall=options.reheatOption==="mhgrh"?Math.max(0,reheatNeed-recoveryCapacity):0;
+    const reheatShortfall=Math.max(0,reheatNeed-recoveryCapacity);
     const penalty=unmet+missingOutdoor*1000+reheatShortfall;
-    const score=penalty*1000+electricity+fanKw+(options.reheatOption==="mhgrh"?0:reheatNeed/(BTU_PER_KWH*(options.reheatOption==="natural-gas"?(options.reheatGasEfficiencyPercent??DEFAULT_GAS_EFFICIENCY_PERCENT)/100:1)));
+    const score=penalty*1000+electricity+fanKw;
     return {model:group.model.id,count,share,cfm,returnCfm:Math.max(0,cfm-vent),outdoorCfm:admitted,
       fanKw,fanHeat,fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed,
       cooling:point,capacity,shr,deliverableCapacity,availableSensible,availableLatent,sensibleNeed,latentNeed,required,linearRequired,delivered,deliveredSensible:leaving.sensible,deliveredLatent:leaving.latent,
