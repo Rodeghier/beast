@@ -22,6 +22,6 @@ The physical constant- and variable-airflow cooling paths apply the check after 
 
 Fans retain their schedule. Boilers, resistance heaters, backup heat and the chiller placeholder are excluded. Design bank selection and design reheat sizing disable this annual cutoff. Hourly runtime is calculated after cycling PLF, rather than being inferred from nominal tons or electrical power. The model still cannot resolve individual cycles or guarantee a continuous 20-minute run.
 
-Hourly status identifies lockout. Group JSON exports `minimumRuntimeLockout` and `requestedOnMinutesPerUnit` (the proposed runtime before lockout). CSV metadata uses `Minimum_compressor_on_minutes` and `Compressor_minimum_runtime_basis`. Equipment model version: `equipment-reheat-options-21.2`.
+Hourly status identifies lockout. Group JSON exports `minimumRuntimeLockout` and `requestedOnMinutesPerUnit` (the proposed runtime before lockout). CSV metadata uses `Minimum_compressor_on_minutes` and `Compressor_minimum_runtime_basis`.
 
-Run `node scripts/check-minimum-compressor-load.mjs` to verify runtime thresholds, exact equality, disabled control, group-specific dispatch, both airflow modes, all reheat choices, latent-only calls, energy, OFF states, unmet demand and unchanged design reheat capacity.
+Run `node scripts/check-minimum-compressor-load.mjs` to verify runtime thresholds, exact equality, disabled control, group-specific dispatch, both airflow modes, MHGRH, latent-only calls, energy, OFF states, unmet demand and unchanged design reheat capacity.

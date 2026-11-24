@@ -20,7 +20,7 @@ function load(path){
 }
 const {DEFAULT_SCHOOL,simulateSchool,celsius}=load('lib/school.ts');
 const {newScenario,validateBackup,BOILER_FUEL_NAMES}=load('lib/equipment.ts');
-const {simulateEquipment,equipmentResultsCsv,equipmentComparisonCsv,BTU_PER_KWH}=load('lib/equipment-model.ts');
+const {simulateFixedAirflowReference:simulateEquipment,equipmentResultsCsv,equipmentComparisonCsv,BTU_PER_KWH}=load('lib/equipment-model.ts');
 const {equipmentOperation,equipmentOperationCsv}=load('lib/equipment-operation.ts');
 const {equipmentUtilization}=load('lib/equipment-utilization.ts');
 const {parseCsv}=load('lib/csv.ts');
@@ -31,7 +31,7 @@ const raw=simulateSchool([{year:2025,month:1,day:7,hour:12,minute:0,temperature:
 const heat={...raw,occupied:true,ventilationCfm:0,freeFloatF:70,heating:100000,heatBalance:100000,coolBalance:-1e6,sensibleCooling:0,latentCooling:0,totalCooling:0};
 const cool={...heat,temperatureF:95,temperature:celsius(95),freeFloatF:75,heating:0,heatBalance:-1e6,coolBalance:60000,sensibleCooling:-60000,latentCooling:-20000,totalCooling:-80000};
 const sizing={rows:[heat,cool],basis:'Controlled design fixture',metadata:{},error:null};
-const electric={...newScenario(),airflowMode:'fixed',reheatOption:undefined,backupHeating:'resistance',backupSwitchoverF:20};
+const electric={...newScenario(),airflowMode:'fixed',backupHeating:'resistance',backupSwitchoverF:20};
 const selected=simulateEquipment([heat],school,electric,undefined,sizing);
 assert.equal(selected.error,null);assert.ok(selected.selection);
 const run=(rows,scenario=electric)=>simulateEquipment(rows,school,scenario,selected.selection,sizing);
@@ -42,7 +42,7 @@ assert.equal(defaults.backupHeating,'gas');
 assert.equal(defaults.backupSwitchoverF,0);
 assert.equal(defaults.backupGasEfficiencyPercent,90);
 assert.equal(validateBackup(defaults),null);
-const defaultRun=run([weather(.01),weather(0)],{...defaults,airflowMode:'fixed',reheatOption:undefined});
+const defaultRun=run([weather(.01),weather(0)],{...defaults,airflowMode:'fixed'});
 assert.equal(defaultRun.error,null);
 assert.equal(defaultRun.rows[0].backupActive,false);
 assert.equal(defaultRun.rows[1].backupActive,true);

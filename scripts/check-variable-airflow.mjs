@@ -86,7 +86,7 @@ for(let i=0;i<rows.length;i++){
 assert.ok(air.some(p=>p.reheatNeed>0),'Humid mild weather should require reheat');
 const sizing={rows,basis:'Controlled variable-airflow design',metadata:{},error:null};
 const prepared={groups,count:3,totalTons:30,supplyCfm:groups[0].count*4800,referenceCoolingBtuHr:groups[0].count*model.reference_capacity_Btu_hr,referenceHeatingBtuHr:groups[0].count*groups[0].heatingModel.reference_capacity_Btu_hr,verifiedCoolingHours:5,estimatedCoolingHours:0,unverifiedCoolingHours:0,verifiedHeatingHours:5,estimatedHeatingHours:0,unverifiedHeatingHours:0,rangeMode:'bounded',heatingAirflowApproximation:true,includesHeatPumpHeating:true,provisional:true,optimizationComplete:false,basis:'Controlled fixture',designLoading:{heating:0,sensibleCooling:0,latentCooling:0,ventilation:0}};
-const scenarios=[{...newScenario('gas'),cooling:'heat-pump',gasEfficiencyPercent:80,reheatOption:'natural-gas'},{...newScenario('resistance'),cooling:'heat-pump'},{...newScenario(),backupHeating:'gas',backupSwitchoverF:30,backupGasEfficiencyPercent:80}];
+const scenarios=[{...newScenario('gas'),cooling:'heat-pump',gasEfficiencyPercent:80},{...newScenario('resistance'),cooling:'heat-pump'},{...newScenario(),backupHeating:'gas',backupSwitchoverF:30,backupGasEfficiencyPercent:80}];
 for(const scenario of scenarios){
   const result=simulateEquipment(rows,school,scenario,prepared,sizing);assert.equal(result.error,null);
   assert.ok(result.reheatCapacityBtuHr>0);
@@ -102,11 +102,11 @@ for(const scenario of scenarios){
       near(hour.coolingShr,detail.reduce((s,d)=>s+d.capacity*d.shr,0)/hour.availableCooling);
       if(hour.deliveredCooling>0)near(hour.coolingOperatingShr,detail.reduce((s,d)=>s+d.deliveredSensible,0)/hour.deliveredCooling);
     }
-    assert.ok(hour.reheatDelivered<=result.reheatCapacityBtuHr+1e-6);
+    near(hour.reheatNeed,hour.reheatDelivered+hour.unmetReheat);
+    assert.ok(hour.reheatDelivered<=hour.mhgrhAvailableBtuHr+1e-6);
+    near(hour.reheatElectricity,0);near(hour.reheatGasTherms,0);
     if(hour.reheatDelivered>1){
       reheatHours++;
-      if(scenario.heating==='gas'){near(hour.reheatGasTherms,hour.reheatDelivered/90000);near(hour.reheatElectricity,0);}
-      else{near(hour.reheatElectricity,hour.reheatDelivered/BTU_PER_KWH);near(hour.reheatGasTherms,0);}
       assert.ok(hour.supplyDryF>hour.coilLeavingDryF);
     }
     near(hour.boilerFuelInputBtu,hour.gasTherms*100000);
@@ -119,14 +119,16 @@ for(const scenario of scenarios){
   for(const name of ['Return_air_CFM','Supply_CFM','Cooling_coil_leaving_DB_F','Final_supply_DB_F','Reheat_electricity_kWh','Reheat_gas_therms','Operating_cooling_SHR','Deliverable_cooling_at_45F_limit_BTU_hr'])assert.ok(csv[2].includes(name));
   const comparison=parseCsv(equipmentComparisonCsv([result]));assert.equal(comparison[0].length,comparison[1].length);
   const html=renderToStaticMarkup(createElement(EquipmentScenarios,{choices:[scenario],results:[result],active:0,onActive:()=>{},onChange:()=>{}}));
-  assert.match(html,/dedicated reheat output/);assert.match(html,/Airflow varies within source limits/);
+  assert.match(html,/design reheat demand/);assert.match(html,/Airflow varies within source limits/);
 }
 assert.equal(newScenario().airflowMode,'variable');
 const shortage=solveVariableAirside([{model:COOLING_MODELS[0],heatingModel:heatingModelFor(COOLING_MODELS[0]),count:1}],rows[0],school,'bounded');
 assert.ok(shortage.unmetVentilationCfm>0);near(shortage.returnCfm,0);near(shortage.outdoorCfm,shortage.cfm);
 const drySizing={...sizing,rows:[rows[4]]};
-const reheatShortfall=simulateEquipment([rows[1]],school,scenarios[1],prepared,drySizing);
-assert.equal(reheatShortfall.reheatCapacityBtuHr,0);assert.ok(reheatShortfall.rows[0].unmetReheat>0);
+const recoveryAfterDrySizing=simulateEquipment([rows[1]],school,scenarios[1],prepared,drySizing);
+assert.equal(recoveryAfterDrySizing.reheatCapacityBtuHr,0);
+assert.ok(recoveryAfterDrySizing.rows[0].reheatDelivered>0);
+near(recoveryAfterDrySizing.rows[0].reheatDelivered,air[1].reheatNeed);
 const missing=simulateSchool([raw(80,null)],school);
 assert.equal(simulateEquipment(missing,school,scenarios[1],prepared,sizing).rows[0].electricity,null);
 
@@ -163,7 +165,9 @@ const {annualPerformance}=load('lib/utility-billing.ts');
 const purchased=annualPerformance(annual,annualRows);
 near(purchased.energy,annual.summary.electricity*BTU_PER_KWH/1e6+annual.summary.gasTherms*.1,1e-6);
 near(annual.summary.heatingElectricity,annual.rows.reduce((s,r)=>s+r.heatingElectricity,0),1e-6);
-assert.ok(annual.summary.reheatElectricity>0);assert.ok(annual.summary.gasTherms>0);
-assert.ok(annual.summary.reheatElectricity<=annual.summary.heatingElectricity);
+assert.ok(annual.summary.reheatBtu>0);assert.ok(annual.summary.gasTherms>0);
+near(annual.summary.reheatBtu,annual.rows.reduce((s,r)=>s+r.reheatDelivered,0),1e-6);
+assert.equal(annual.summary.reheatElectricity,0);
+assert.equal(annual.summary.reheatGasTherms,0);
 console.log(`Annual variable-airflow simulation: ${(performance.now()-annualStart).toFixed(0)} ms for 8760 hours.`);
-console.log('PASS: all 7192 source points, 46 sizes/families, shared airflow capacity, SHR, fan cubic law/HP limits, airflow and moisture balances, supply temperature reporting, reheat fuels, backup, stages and CSVs.');
+console.log('PASS: all 7192 source points, 46 sizes/families, shared airflow capacity, SHR, fan cubic law/HP limits, airflow and moisture balances, supply temperature reporting, MHGRH, backup, stages and CSVs.');

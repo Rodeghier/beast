@@ -22,7 +22,7 @@ export function EndUseBreakdown({results,performance}:{results:EquipmentResult[]
         <tfoot><tr><th scope="row">Total equipment</th>{results.map((_,i)=><Fragment key={i}><td>{number(performance[i]?.energy)}</td><td>{number(performance[i]?.co2e)}</td></Fragment>)}</tr></tfoot>
       </table>
     </div>
-    <p>Heating includes primary heat, backup heat and reheat. Supply fans serve heating, cooling and ventilation and are counted once in their own row. Emissions use the selected electricity-region and fuel factors. Annual values require 8,760 complete hourly energy records; missing factors leave affected emissions unavailable. Totals use unrounded values.</p>
+    <p>Heating energy includes primary and backup heat. Supply fans serve heating, cooling and ventilation and are counted once in their own row. Emissions use the selected electricity-region and fuel factors. Annual values require 8,760 complete hourly energy records; missing factors leave affected emissions unavailable. Totals use unrounded values.</p>
      {results.map((result,i)=>{const summary=result.summary;return (summary.unmetHeatingBtu??0)>0||(summary.unmetCoolingBtu??0)>0?<p key={i} className="service-note"><strong>{scenarioName(result.scenario)}:</strong> Known unmet heating {number((summary.unmetHeatingBtu??0)/1e6)} MMBtu across {number(summary.unmetHeatingHours,0)} hours; unmet cooling {number((summary.unmetCoolingBtu??0)/1e6)} MMBtu across {number(summary.unmetCoolingHours,0)} hours. Unmet loads remain after any configured backup heating; their energy and emissions are excluded.</p>:null;})}
   </div>;
 }

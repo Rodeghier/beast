@@ -36,7 +36,7 @@ const { heatingModelFor } = load('lib/packaged-heating.ts');
 const { unitRatingFor } = load('lib/unit-ratings.ts');
 const { newScenario } = load('lib/equipment.ts');
 const { airContext, mixAir } = load('lib/mixed-air.ts');
-const { simulateEquipment, equipmentResultsCsv } = load('lib/equipment-model.ts');
+const { simulateEquipment, simulateFixedAirflowReference, equipmentResultsCsv } = load('lib/equipment-model.ts');
 const { parseCsv } = load('lib/csv.ts');
 const { AnalysisAssumptions } = load('components/analysis-assumptions.tsx');
 const near = (a,b) => assert.ok(Math.abs(a-b)<1e-7, `${a} != ${b}`);
@@ -88,20 +88,20 @@ const fan=bankRatings([g]),mix=mixAir(airContext(base,school),model.fixed_cfm),b
 const row={...base,coolBalance:-fan.fanHeat+.01*bank.sensible};
 const selection={groups:[g],count:1,totalTons:3,supplyCfm:model.fixed_cfm,referenceHeatingBtuHr:g.heatingModel.reference_capacity_Btu_hr,referenceCoolingBtuHr:model.reference_capacity_Btu_hr,rangeMode:'bounded',designLoading:{}};
 const sizing={error:null,rows:[row],metadata:{}};
-const scenario={...newScenario(),airflowMode:"fixed",reheatOption:undefined,backupSwitchoverF:-100};
-const result=simulateEquipment([row],school,scenario,selection,sizing),hour=result.rows[0];
+const scenario={...newScenario(),airflowMode:"fixed",backupSwitchoverF:-100};
+const result=simulateFixedAirflowReference([row],school,scenario,selection,sizing),hour=result.rows[0];
 assert.equal(result.error,null);near(hour.coolingElectricity,0);near(hour.deliveredCooling,0);near(hour.unmetCooling,.01*bank.sensible);
 near(hour.fanElectricity,fan.fanKw);near(hour.electricity,fan.fanKw);assert.equal(hour.coolingStage,'Off');assert.equal(hour.coolingOnMinutes,'0.0');
 assert.equal(hour.fanOnMinutes,60);assert.match(hour.status,/Cooling compressors held off.*20 minutes/);
 assert.equal(JSON.parse(hour.groupPerformance).cooling[0].minimumRuntimeLockout,true);
 assert.equal(result.summary.unmetCoolingHours,1);assert.equal(result.summary.coolingCyclingSharePercent,null);
-const disabled=simulateEquipment([row],{...school,minimumCompressorOnMinutes:0},scenario,selection,sizing).rows[0];
+const disabled=simulateFixedAirflowReference([row],{...school,minimumCompressorOnMinutes:0},scenario,selection,sizing).rows[0];
 assert.ok(disabled.coolingElectricity>0);near(disabled.unmetCooling,0);
 // Heating capacity excludes fan heat; the fan still provides its credited heat.
 const heatBase={...base,temperature: celsius(47),temperatureF:47,freeFloatF:70,sensibleCooling:0,totalCooling:0,coolBalance:-1e6};
 const heatMix=mixAir(airContext(heatBase,school),model.fixed_cfm),heatBank=bankHeating([g],47,heatMix.dryF,'bounded');
 const coilCapacity=heatBank.capacity-fan.fanHeat,heatRow={...heatBase,heating:fan.fanHeat+.01*coilCapacity};
-const heatResult=simulateEquipment([heatRow],school,scenario,selection,{...sizing,rows:[heatRow]}).rows[0];
+const heatResult=simulateFixedAirflowReference([heatRow],school,scenario,selection,{...sizing,rows:[heatRow]}).rows[0];
 near(heatResult.heatingElectricity,0);near(heatResult.deliveredHeating,fan.fanHeat);near(heatResult.unmetHeating,.01*coilCapacity);
 assert.equal(heatResult.heatingStage,'Off');assert.match(heatResult.status,/Heating compressors held off.*20 minutes/);
 const csv=parseCsv(equipmentResultsCsv([row],school,result,'Test','UTC'));
@@ -116,11 +116,11 @@ console.log('PASS: 20-minute heating/cooling cutoff, equality, disabled control,
 // Regression: real UI scenarios use the physical airside path, including fixed airflow.
 const { solveVariableAirside }=load('lib/variable-airside.ts');
 const physicalRow={...base,occupants:0,infiltrationCfm:0,outdoorAirCfm:0,coolBalance:0};
-const offOptions={airflowMode:'fixed',reheatOption:'electricity',minimumOnMinutes:0};
+const offOptions={airflowMode:'fixed',minimumOnMinutes:0};
 const reference=solveVariableAirside([g],physicalRow,school,'bounded',true,offOptions);
 const light={...physicalRow,coolBalance:-reference.fanHeat+.01*reference.capacity*reference.sourceShr};
-for(const reheatOption of ['electricity','natural-gas','mhgrh']) {
-  const options={...offOptions,reheatOption,minimumOnMinutes:20};
+{
+  const options={...offOptions,minimumOnMinutes:20};
   const on=solveVariableAirside([g],light,school,'bounded',true,{...options,minimumOnMinutes:0});
   assert.ok(on.delivered>0&&on.delivered/on.capacity<.05);
   const off=solveVariableAirside([g],light,school,'bounded',true,options);
@@ -129,7 +129,7 @@ for(const reheatOption of ['electricity','natural-gas','mhgrh']) {
   const d=off.details[0];assert.equal(d.minimumRuntimeLockout,true);
   near(d.coilLeavingF,d.mixed.dryF);near(d.supplyHumidityRatio,d.mixed.humidityRatio);
   near(d.recoveryCapacity,0);near(d.staging.powerEquivalentUnits,0);
-  const ui={...newScenario(),airflowMode:'fixed',reheatOption,backupSwitchoverF:-100};
+  const ui={...newScenario(),airflowMode:'fixed',backupSwitchoverF:-100};
   const uiResult=simulateEquipment([light],school,ui,selection,sizing),h=uiResult.rows[0];
   assert.equal(uiResult.error,null);near(h.coolingElectricity,0);near(h.deliveredCooling,0);
   near(h.reheatDelivered,0);near(h.reheatElectricity,0);near(h.reheatGasTherms,0);
@@ -155,4 +155,4 @@ const humidOn=solveVariableAirside([g],humidityRow,humidSchool,'bounded',true,of
 const humidOff=solveVariableAirside([g],humidityRow,humidSchool,'bounded',true,{...offOptions,minimumOnMinutes:20});
 assert.ok(humidOn.delivered>0&&humidOn.delivered<.05*humidOn.capacity);
 near(humidOff.delivered,0);assert.ok(humidOff.unmetLatent>0);near(humidOff.reheatNeed,0);
-console.log('PASS: current fixed/variable airside cutoff, all reheat fuels, OFF air state, mixed groups, latent-only demand, annual status/energy and unchanged design reheat capacity.');
+console.log('PASS: current fixed/variable airside cutoff, MHGRH, OFF air state, mixed groups, latent-only demand, annual status/energy and unchanged design reheat capacity.');
