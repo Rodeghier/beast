@@ -87,6 +87,7 @@ export function AnalysisAssumptions({ school, onSchool, ref, summerOccupancyEdit
       <fieldset className="assumptions-values"><legend className="sr-only">Building input values</legend>
         {SCHOOL_FIELDS.map(group => <fieldset className="assumption-group" key={group.title}>
           <legend>{group.title}</legend>
+          {group.title === "ASHRAE design sizing" && <p className="assumption-intro">The Radiant Time Series (RTS) construction class and carpet coverage affect peak cooling. Annual loads use the editable heat capacities in the envelope section.</p>}
           {group.title === "Occupancy schedule" && <p className="assumption-intro">Matching start and end hours mark a closed period. An end before the start continues into the next day. June–August occupancy can be reduced for schools.</p>}
           {group.title === "Envelope and outdoor air" && <>
             <p className="assumption-intro">Changing a material sets its assembly U-value or slab F₂ and heat capacity. Both can be edited.</p>

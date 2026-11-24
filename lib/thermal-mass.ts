@@ -1,5 +1,5 @@
 export const INTERNAL_MASS_SOURCE = "https://github.com/NatLabRockies/openstudio-standards/blob/6417dffaa04dd6f60ab2bcae9343569e1194a70b/lib/openstudio-standards/prototypes/common/objects/Prototype.Model.rb";
-export const THERMAL_MASS_BASIS = "Hourly implicit heat balance with ideal thermostat control, interior and envelope mass temperatures carried between hours, and reset after missing weather. Hourly loads feed the equipment model without feedback from equipment capacity or runtime.";
+export const THERMAL_MASS_BASIS = "Hourly implicit heat balance with ideal thermostat control and air, interior, slab and envelope temperatures carried between hours. Sensible gains are split into convective and radiant parts. The state resets after missing weather. Hourly loads feed the equipment model without feedback from equipment capacity or runtime.";
 
 // The structure allowance covers interior partitions and elevated decks.
 // Ground slab heat storage is represented separately.
@@ -27,6 +27,13 @@ export function interiorMassDefaults(buildingType: string, reportedAreaRatio?: n
 export const AREAL_CAPACITY_TO_BTU_F_FT2 = 1000 * 0.09290304 / (1055.05585262 * 1.8);
 export const AREAL_CONDUCTANCE_TO_BTU_HR_F_FT2 = 3.412141633 * 0.09290304 / 1.8;
 
+// ASHRAE zone-air balance uses air density times specific heat times volume.
+export const AIR_VOLUME_CAPACITY_BTU_F_FT3 = 0.075 * 0.24;
+export const SLAB_ACTIVE_CAPACITY_FRACTION = 0.25;
+
+// Two equal resistances in series preserve the overall assembly U-value.
+export const assemblyMassConductance = (ua: number) => 2 * ua;
+
 export type MassNode = { capacity: number; toZone: number; toOutdoor: number };
 export type MassForcing = { outdoorF: number; heat: number };
 
@@ -34,6 +41,7 @@ export type MassForcing = { outdoorF: number; heat: number };
 export function thermalMassHour(
   nodes: readonly MassNode[], temperatures: readonly number[], forcing: readonly MassForcing[],
   directUa: number, outdoorF: number, directGains: number, heatSetpoint: number, coolSetpoint: number,
+  airStorage?: { capacity: number; previousF: number },
 ) {
   const eliminated = nodes.map(({capacity, toZone, toOutdoor}, i) => {
     const denominator = capacity + toZone + toOutdoor;
@@ -42,8 +50,9 @@ export function thermalMassHour(
       zoneFraction: toZone / denominator,
     };
   });
-  let heatTransfer = directUa;
-  let forcingToZone = directUa * outdoorF + directGains;
+  const airCapacity = airStorage?.capacity ?? 0;
+  let heatTransfer = directUa + airCapacity;
+  let forcingToZone = directUa * outdoorF + directGains + airCapacity * (airStorage?.previousF ?? 0);
   nodes.forEach(({toZone}, i) => {
     heatTransfer += toZone * (1 - eliminated[i].zoneFraction);
     forcingToZone += toZone * eliminated[i].intercept;
@@ -51,6 +60,6 @@ export function thermalMassHour(
   const freeFloatF = heatTransfer > 0 ? forcingToZone / heatTransfer : (heatSetpoint + coolSetpoint) / 2;
   const zoneF = Math.min(coolSetpoint, Math.max(heatSetpoint, freeFloatF));
   const next = eliminated.map(({intercept, zoneFraction}) => intercept + zoneFraction * zoneF);
-  return { heatTransfer, freeFloatF, temperatures: next, heatBalance: heatTransfer * heatSetpoint - forcingToZone,
+  return { heatTransfer, freeFloatF, zoneF, temperatures: next, heatBalance: heatTransfer * heatSetpoint - forcingToZone,
     coolBalance: forcingToZone - heatTransfer * coolSetpoint };
 }

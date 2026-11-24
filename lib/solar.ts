@@ -42,30 +42,38 @@ export function sunVector(row: Pick<ClimateRow, "year" | "month" | "day" | "hour
 // horizontal total and is never added to DNI as if both were normal irradiance.
 // Project direct normal irradiance onto one vertical face, then add isotropic
 // sky diffuse and ground-reflected terms. Negative beam incidence contributes zero.
-export function wallIrradiance(dhi: number, dni: number, ghi: number, albedo: number, azimuthDeg: number, sun: ReturnType<typeof sunVector>) {
+function beamOnWall(dni: number, azimuthDeg: number, sun: ReturnType<typeof sunVector>) {
   const incidence = sun.east * Math.sin(azimuthDeg * RAD) + sun.north * Math.cos(azimuthDeg * RAD);
-  return (sun.up > 0 ? dni * Math.max(0, incidence) : 0) + dhi / 2 + ghi * albedo / 2;
+  return sun.up > 0 ? dni * Math.max(0, incidence) : 0;
+}
+
+export function wallIrradiance(dhi: number, dni: number, ghi: number, albedo: number, azimuthDeg: number, sun: ReturnType<typeof sunVector>) {
+  return beamOnWall(dni, azimuthDeg, sun) + dhi / 2 + ghi * albedo / 2;
 }
 
 export function solarGains(row: ClimateRow, a: SolarInputs, area: number, site?: SolarLocation | null) {
-  const missing = { total: null, windows: null, opaque: null, walls: null, roof: null, status: "Missing solar radiation" };
+  const missing = { total: null, windows: null, windowBeam: null, windowDiffuse: null, opaque: null, walls: null, roof: null, status: "Missing solar radiation" };
   if ([row.dhi, row.dni, row.ghi].some(v => v === null || v === undefined || !Number.isFinite(v) || v < 0)) return missing;
-  if (row.dhi === 0 && row.dni === 0 && row.ghi === 0) return { total: 0, windows: 0, opaque: 0, walls: 0, roof: 0, status: "Zero irradiance" };
+  if (row.dhi === 0 && row.dni === 0 && row.ghi === 0) return { total: 0, windows: 0, windowBeam: 0, windowDiffuse: 0, opaque: 0, walls: 0, roof: 0, status: "Zero irradiance" };
   if (!site) return { ...missing, status: "Missing solar location or time-zone metadata" };
   // A rectangular floor plate is inferred from area/stories and length/width ratio.
   // The four faces are rotated together by the building rotation input.
   const roof = area / a.stories, length = Math.sqrt(roof * a.aspectRatio), width = roof / length;
   const height = a.stories * a.ceilingFt, sun = sunVector(row, site), glass = a.windowPercent / 100;
-  let windows = 0, walls = 0;
+  let windowBeam = 0, windowDiffuse = 0, walls = 0;
+  const diffuse = (row.dhi! + row.ghi! * a.groundReflectance) * W_M2_TO_BTU_H_FT2 / 2;
   for (const [azimuth, faceWidth] of [[0, length], [90, width], [180, length], [270, width]]) {
-    const incident = wallIrradiance(row.dhi!, row.dni!, row.ghi!, a.groundReflectance, azimuth + a.rotationDeg, sun) * W_M2_TO_BTU_H_FT2;
+    const beam = beamOnWall(row.dni!, azimuth + a.rotationDeg, sun) * W_M2_TO_BTU_H_FT2;
     const faceArea = faceWidth * height;
-    windows += faceArea * glass * a.shgc * a.shadeFactor * incident;
-    walls += faceArea * (1 - glass) * a.wallU * a.wallSolarAbsorptance * incident / a.outdoorFilm;
+    const windowGainPerIrradiance = faceArea * glass * a.shgc * a.shadeFactor;
+    windowBeam += windowGainPerIrradiance * beam;
+    windowDiffuse += windowGainPerIrradiance * diffuse;
+    walls += faceArea * (1 - glass) * a.wallU * a.wallSolarAbsorptance * (beam + diffuse) / a.outdoorFilm;
   }
+  const windows = windowBeam + windowDiffuse;
   // Opaque sol-air gains use absorptance * irradiance / exterior film coefficient.
   // This added solar term is separate from the ordinary envelope-UA conduction term.
   const roofGain = roof * a.roofU * a.roofSolarAbsorptance * row.ghi! * W_M2_TO_BTU_H_FT2 / a.outdoorFilm;
   const opaque = walls + roofGain;
-  return { total: windows + opaque, windows, opaque, walls, roof: roofGain, status: "Sup3rCC solar; steady-state glazing and sol-air correction" };
+  return { total: windows + opaque, windows, windowBeam, windowDiffuse, opaque, walls, roof: roofGain, status: "Sup3rCC solar; steady-state glazing and sol-air correction" };
 }

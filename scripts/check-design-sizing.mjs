@@ -52,7 +52,16 @@ assert.equal(sizing.error,null);assert.equal(sizing.rows.length,40);assert.equal
 assert.ok(sizing.rows.every(r=>r.heating!==null&&r.totalCooling!==null));
 const winter=sizing.rows.filter(r=>r.heating>0),summer=sizing.rows.filter(r=>r.heating===0);
 assert.ok(winter.every(r=>r.heatingSetpointF===70&&r.totalCooling===0));
-assert.ok(summer.every(r=>r.heating===0));assert.ok(summer.filter(r=>r.hour>=7&&r.hour<17).every(r=>r.occupants===120));
+assert.ok(summer.every(r=>r.heating===0 && r.zoneF===DEFAULT_SCHOOL.coolingF));
+assert.match(sizing.metadata.Design_cooling_method,/24-hour periodic RTS/);
+assert.equal(JSON.parse(sizing.metadata.Design_RTS_nonsolar_factors).length,24);
+assert.ok(summer.some(r=>r.designSolarRadiantLoad>0&&r.designNonsolarRadiantLoad>0));
+const heavySchool={...DEFAULT_SCHOOL,rtsMassClass:3,wallCapacityKjM2K:240,roofCapacityKjM2K:240};
+const heavySizing=buildDesignSizing(station,heavySchool,response.source,site);
+assert.equal(heavySizing.metadata.Design_RTS_construction_class,'Heavy');
+assert.equal(heavySizing.metadata.Design_heating_load_BTU_hr,sizing.metadata.Design_heating_load_BTU_hr);
+assert.notEqual(heavySizing.metadata.Design_sensible_cooling_load_BTU_hr,sizing.metadata.Design_sensible_cooling_load_BTU_hr);
+assert.ok(summer.filter(r=>r.hour>=7&&r.hour<17).every(r=>r.occupants===120));
 const weekendSizing=buildDesignSizing(station,{...DEFAULT_SCHOOL,weekendStartHour:18,weekendEndHour:21},response.source,site);
 assert.equal(weekendSizing.rows.length,52);assert.ok(weekendSizing.rows.some(r=>r.hour===20));
 const windowSizing=buildDesignSizing(station,{...DEFAULT_SCHOOL,windowU:0},response.source,site);

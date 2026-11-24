@@ -151,7 +151,17 @@ const defaultStart=performance.now();
 const defaultResult=simulateEquipment(defaultDesign.rows,DEFAULT_SCHOOL,{...scenarios[0]},undefined,defaultDesign);
 assert.equal(defaultResult.error,null);assert.ok(defaultResult.selection);
 assert.equal(defaultResult.summary.unknownHeatingHours,0);assert.equal(defaultResult.summary.unknownCoolingHours,0);
-assert.equal(defaultResult.summary.unmetCoolingHours,0);assert.equal(defaultResult.summary.unmetReheatHours,0);
+assert.equal(defaultResult.summary.unmetCoolingHours,0);
+// A bank can meet the RTS cooling loads and still be limited by hot-gas recovery.
+const designReheatShortfalls=defaultResult.rows.filter(r=>r.unmetReheat>1);
+assert.equal(defaultResult.summary.unmetReheatHours,designReheatShortfalls.length);
+for(const r of designReheatShortfalls){
+  near(r.unmetReheat,r.reheatNeed-r.reheatDelivered);
+  assert.ok(r.reheatDelivered<=r.mhgrhAvailableBtuHr+1e-6);
+  assert.equal(r.reheatElectricity,0);
+  assert.equal(r.reheatGasTherms,0);
+  assert.match(r.status,/MHGRH recovery cannot meet reheat demand/);
+}
 assert.ok(defaultResult.rows.every(r=>(r.unmetVentilationCfm??1)===0));
 console.log(`Default 150000 ft² design sizing: ${(performance.now()-defaultStart).toFixed(0)} ms, ${defaultResult.selection.count} units / ${defaultResult.selection.totalTons} tons.`);
 const weather=Array.from({length:8760},(_,i)=>{
