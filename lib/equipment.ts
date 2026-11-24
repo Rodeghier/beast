@@ -11,10 +11,9 @@ export type CurveRangeMode = "bounded" | "strict";
 export type EquipmentStage = "automatic" | "single" | "multi" | "variable";
 export type BoilerSizeClass = "small" | "large";
 export type BoilerFuel = "natural-gas";
-export type ReheatOption = "mhgrh" | "electricity" | "natural-gas";
 export type BackupHeating = "resistance" | "gas";
 export type BoilerFiringMode = "on-off" | "modulating";
-export type EquipmentScenario = { heating: HeatingEquipment; cooling: CoolingEquipment | null; efficiency: "standard" | "high"; stage: EquipmentStage; boilerSizeClass: BoilerSizeClass; boilerFuel: BoilerFuel; boilerFiringMode: BoilerFiringMode; gasEfficiencyPercent: number | null; largeBoilerEfficiencyPercent?: number | null; backupHeating: BackupHeating | null; backupSwitchoverF: number | null; backupGasEfficiencyPercent: number | null; reheatOption?: ReheatOption; reheatGasEfficiencyPercent?: number | null; airflowMode?: "variable" | "fixed"; rangeMode?: CurveRangeMode };
+export type EquipmentScenario = { heating: HeatingEquipment; cooling: CoolingEquipment | null; efficiency: "standard" | "high"; stage: EquipmentStage; boilerSizeClass: BoilerSizeClass; boilerFuel: BoilerFuel; boilerFiringMode: BoilerFiringMode; gasEfficiencyPercent: number | null; largeBoilerEfficiencyPercent?: number | null; backupHeating: BackupHeating | null; backupSwitchoverF: number | null; backupGasEfficiencyPercent: number | null; airflowMode?: "variable" | "fixed"; rangeMode?: CurveRangeMode };
 export const curveRangeMode = (scenario: EquipmentScenario): CurveRangeMode => scenario.rangeMode ?? "bounded";
 export const EQUIPMENT_NAMES: Record<HeatingEquipment, string> = { "heat-pump": "Rooftop Packaged Heat Pump", gas: "Natural Gas", resistance: "Electric Resistance" };
 export const COOLING_NAMES:Record<CoolingEquipment,string>={"heat-pump":"Rooftop Packaged Heat Pump","air-cooled-chiller":"Air-cooled chiller (placeholder)"};
@@ -29,7 +28,6 @@ export const newScenario = (heating: HeatingEquipment = "heat-pump"): EquipmentS
   gasEfficiencyPercent: DEFAULT_GAS_EFFICIENCY_PERCENT,
   largeBoilerEfficiencyPercent: DEFAULT_GAS_EFFICIENCY_PERCENT,
   backupHeating: "gas", backupSwitchoverF: 0, backupGasEfficiencyPercent: DEFAULT_GAS_EFFICIENCY_PERCENT,
-  reheatOption: "electricity", reheatGasEfficiencyPercent: DEFAULT_GAS_EFFICIENCY_PERCENT,
   rangeMode: "bounded", airflowMode: "variable",
 });
 export function validGasEfficiency(percent: number | null): percent is number { return typeof percent === "number" && Number.isFinite(percent) && percent > 0 && percent <= 100; }

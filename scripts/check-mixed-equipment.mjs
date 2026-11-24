@@ -24,10 +24,10 @@ const {COOLING_MODELS}=load('lib/packaged-cooling.ts');
 const {DEFAULT_SCHOOL,simulateSchool,celsius}=load('lib/school.ts');
 const {optimizePackagedBank}=load('lib/packaged-optimizer.ts');
 const {bankRatings,bankCooling,bankHeating,dispatchCooling,dispatchHeating}=load('lib/packaged-bank.ts');
-const {simulateEquipment,equipmentResultsCsv,equipmentComparisonCsv,BTU_PER_KWH}=load('lib/equipment-model.ts');
+const {simulateFixedAirflowReference:simulateEquipment,equipmentResultsCsv,equipmentComparisonCsv,BTU_PER_KWH}=load('lib/equipment-model.ts');
 const {newScenario:createScenario}=load('lib/equipment.ts');
 // Keep these existing heat-pump fixtures above their explicitly configured backup cutoff.
-const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed',reheatOption:undefined});
+const newScenario=(heating)=>({...createScenario(heating),backupHeating:'resistance',backupSwitchoverF:-200,airflowMode:'fixed'});
 const {parseCsv}=load('lib/csv.ts');
 const {equipmentUtilization}=load('lib/equipment-utilization.ts');
 const {nearestDesignStations}=load('lib/ashrae-design-stations.ts');

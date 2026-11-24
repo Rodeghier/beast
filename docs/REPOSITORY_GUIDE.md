@@ -270,13 +270,13 @@ Supply-fan heat is applied later in the sensible/heating balances. It is not add
 
 ### Current packaged-airside path
 
-The website defaults to variable airflow and electric resistance reheat. Both the variable and constant dropdown choices use the physical airside model in `lib/variable-airside.ts`. Constant mode holds running fans at each unit's AHRI reference airflow, capped by the standard-motor limit. It does not hold airflow at 480 CFM/ton. That maximum catalog airflow is the normalization basis of the cooling-capacity data, a different quantity from AHRI reference airflow.
+The website defaults to variable airflow. Packaged cooling uses modulating hot gas reheat (MHGRH). Both the variable and constant dropdown choices use the physical airside model in `lib/variable-airside.ts`. Constant mode holds running fans at each unit's AHRI reference airflow, capped by the standard-motor limit. It does not hold airflow at 480 CFM/ton. That maximum catalog airflow is the normalization basis of the cooling-capacity data, a different quantity from AHRI reference airflow.
 
 `solveVariableAirside` solves each installed group's nominal-tonnage share. It removes scheduled mechanical-ventilation heat and moisture from the zone demand before conditioning mixed outdoor and return air, preventing double counting. Infiltration remains a zone load and is excluded from the mixer. Airflow candidates are ranked by service before purchased input energy. The model uses sensible and latent demand rather than a fixed supply-temperature target or dew-point trigger.
 
 The controller conserves modeled sensible-plus-latent cooling while correcting coil-leaving air for nonnegative humidity and saturation consistency. It solves duty against this corrected state, checks full available output before reporting a shortfall, and enforces a provisional 45 F minimum coil-leaving temperature. Fan heat enters downstream; primary heat and reheat then establish final supply temperature. Reheat changes dry bulb without adding moisture. Source-curve SHR and final operating SHR can therefore differ.
 
-The older `mixAir` plus fixed-rating fan worksheet remains available for reference callers that explicitly choose fixed airflow and omit `reheatOption`. It is not the constant-airflow dropdown's current calculation. Sections below label the older arithmetic where it remains useful for tracing ratings and stages. See `docs/VARIABLE_AIRFLOW.md` and `docs/MHGRH.md` for focused technical notes.
+The `simulateFixedAirflowReference` entry point preserves the `mixAir` and fixed-rating fan worksheet for reference calculations. Sections below label the older arithmetic where it remains useful for tracing ratings and stages. See `docs/VARIABLE_AIRFLOW.md` and `docs/MHGRH.md` for focused technical notes.
 
 ## 9 Equipment curves and ratings
 
@@ -345,7 +345,7 @@ Cooling source coverage is generally outdoor 85–125°F, entering WB 61–73°F
 
 ### Current selection and legacy seed search
 
-The current page runs `optimizePackagedBank` in `lib/equipment-sizing.worker.ts` and passes that prepared selection to `simulateEquipment`. The worker request key includes heating mode, efficiency, packaged-cooling choice, range policy and stage preference, but not airflow mode or reheat choice. Consequently, the page's installed bank still comes from the legacy cooling-only optimizer; changing airflow/reheat changes annual dispatch and design reheat calculations but does not invoke the nonlinear bank recheck.
+The page runs `optimizeVariablePackagedBank` in `lib/equipment-sizing.worker.ts` and passes the selected bank to `simulateEquipment`. The worker request key includes heating mode, efficiency, packaged cooling, curve range, stage preference and airflow mode. The search rechecks cooling and ventilation feasibility under the selected airflow mode.
 
 `simulateEquipment` calls `optimizeVariablePackagedBank` in `lib/variable-sizing.ts` only when its prepared-selection argument is omitted (`undefined`) for a physical-airside scenario. Explicit `null` does not request sizing. This distinction matters when comparing direct-call checks with the browser path.
 
@@ -379,11 +379,11 @@ In the legacy seed search, all heating selections use cooling-only packaged-bank
 
 ### Current airflow, reheat and backup dispatch
 
-`simulateEquipment` selects the physical airside branch for packaged cooling when airflow is variable or a reheat choice is present. New UI scenarios always supply reheat. The active equipment model version is `equipment-reheat-options-21.0`.
+`simulateEquipment` uses the physical airside balance and MHGRH for packaged cooling in both airflow modes. The equipment model version is `equipment-mhgrh-21.3`.
 
 Fans run through occupied hours and other heating/cooling/ventilation calls, with airflow and power established by the selected controller. Full-hour fan operation does not mean full reference fan power in variable mode. Each group's fixed nominal-tonnage zone share retains its own cooling duty, fan heat and stage records. Spare capacity is not transferred between assigned zones.
 
-Reheat choices are electric resistance (COP 1), natural gas at its dedicated entered efficiency (default 80%), or modulating hot-gas reheat (MHGRH). Electric reheat is the default for every primary heating type. Occupied ASHRAE design airside operation fixes reheat capacity; annual demand beyond this capacity becomes unmet reheat/residual overcooling. Heat-pump compressors do not simultaneously provide primary heating and dehumidification cooling; the airside dispatch accounts for needed heat through the selected reheat path.
+Packaged cooling uses modulating hot gas reheat (MHGRH). The occupied ASHRAE design airside calculation reports design reheat demand. Hourly delivery is limited by the recovery tables, compressor runtime and estimated heat rejection. The model reports unmet reheat and residual overcooling. When the heat-pump compressors are cooling for dehumidification, the airside calculation can use recovered heat to serve the remaining heating demand.
 
 Heat-pump heating requires resistance or natural-gas backup and an explicit outdoor switchover temperature. At or below that temperature, backup replaces heat-pump heating. Backup capacity is based on design heating demand after fan heat, rather than unlimited auxiliary capacity. Natural-gas backup has its own efficiency input.
 
