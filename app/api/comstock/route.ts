@@ -1,5 +1,6 @@
 import { STATES } from "@/lib/climate";
 import { parseCsv } from "@/lib/csv";
+import { interiorMassDefaults } from "@/lib/thermal-mass";
 import { comstockUsesSchoolSummerSchedule, DEFAULT_SCHOOL } from "@/lib/school";
 import { constructionProfile, roofTemplateKind, slabConstruction, wallConstructionKind, windowConstruction, type ConstructionKind, type EnvelopeConstruction } from "@/lib/envelope-construction";
 
@@ -28,6 +29,7 @@ const META_FIELDS = {
   roofU: "out.params.average_roof_u_value..btu_per_ft2_f_hr", wallU: "out.params.average_wall_u_value..btu_per_ft2_f_hr",
   windowU: "out.params.average_window_u_value..btu_per_ft2_f_hr",
   roofAbsorptance: "out.params.average_roof_absorptance",
+  internalMassAreaRatio: "out.params.internal_mass_area_ratio",
   peopleDensity: "out.params.occupant_density_ppl_per_m_2..people_per_m2",
 } as const;
 const CATEGORY_FIELDS = {
@@ -90,6 +92,7 @@ async function readWeightedCharacteristics(state: string, { fips: countyFips, na
     if (!header) {
       header = cells;
       indexes = Object.fromEntries((Object.keys(META_FIELDS) as (keyof typeof META_FIELDS)[]).map(name => [name, header!.indexOf(META_FIELDS[name])]));
+      if (indexes.internalMassAreaRatio === -1) indexes.internalMassAreaRatio = header.findIndex(name => /(?:^|\.)(?:com_report_)?internal_mass_area_ratio(?:$|\.\.)/i.test(name));
       categoryIndexes = Object.fromEntries((Object.keys(CATEGORY_FIELDS) as (keyof typeof CATEGORY_FIELDS)[]).map(name => [name, header!.indexOf(CATEGORY_FIELDS[name])]));
       return;
     }
@@ -113,6 +116,7 @@ async function readWeightedCharacteristics(state: string, { fips: countyFips, na
       if (["type", "weight", "peopleDensity", "rotation"].includes(field)) continue;
       const number = value(field);
       if (!Number.isFinite(number) || number === 999) continue;
+      if (field === "internalMassAreaRatio" && (number < 0 || number > 50)) continue;
       if ((field === "weekdayStart" && value("weekdayHours") === 0)
         || (field === "weekendStart" && value("weekendHours") === 0)) continue;
       const sum = group.sums.get(field) ?? { sum: 0, weight: 0 };
@@ -180,6 +184,12 @@ async function readWeightedCharacteristics(state: string, { fips: countyFips, na
     const wall = mostCommon(group.walls, group.representedWeight);
     const roof = mostCommon(group.roofs, group.representedWeight);
     const window = mostCommon(group.windows, group.representedWeight);
+    const massAreaRatio = toMean(group, "internalMassAreaRatio");
+    if (massAreaRatio !== undefined) {
+      const mass = interiorMassDefaults(type, massAreaRatio);
+      assumptions.interiorMassKjM2K = mass.interiorMassKjM2K;
+      assumptions.interiorMassCouplingWm2K = mass.interiorMassCouplingWm2K;
+    }
     const construction = {
       buildingType: type,
       county,
@@ -188,6 +198,7 @@ async function readWeightedCharacteristics(state: string, { fips: countyFips, na
       roof: constructionProfile(roof?.label ?? null, type === "Grocery" ? "PNNL supermarket prototype" : "ComStock roof template, Table 57", roof?.share),
       window: window ? windowConstruction(window.label, window.share) : null,
       slab: slabConstruction,
+      interiorMassAreaRatio: massAreaRatio === undefined ? undefined : Number(massAreaRatio.toPrecision(2)),
     };
     values[type] = { assumptions, construction };
   }

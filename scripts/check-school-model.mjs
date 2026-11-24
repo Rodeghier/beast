@@ -24,6 +24,7 @@ async function moduleFrom(file) {
 try {
   const solar = await moduleFrom("lib/solar.ts");
   await moduleFrom("lib/envelope-construction.ts");
+  const mass = await moduleFrom("lib/thermal-mass.ts");
   const m = await moduleFrom("lib/school.ts");
   const { parseClimateCsv, parseCsv } = await moduleFrom("lib/csv.ts");
   const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} != ${expected}`);
@@ -54,7 +55,27 @@ try {
   const bandCsv = parseCsv(m.schoolCsv(bandRows, banded, 'Test', 'UTC'));
   const bandMetadata = Object.fromEntries(bandCsv[0].map((key, i) => [key, bandCsv[1][i]]));
   assert.equal(bandMetadata.Thermostat_deadband_F, '2');
-  assert.match(bandMetadata.Thermostat_control, /does not resolve starts/);
+  assert.match(bandMetadata.Thermostat_control, /do not resolve starts/);
+  const node = [{capacity:100,toZone:100,toOutdoor:0}];
+  const tank = mass.thermalMassHour(node, [60], [{outdoorF:60,heat:0}], 100, 60, 0, 70, 75);
+  // Outdoor loss is 1,000 BTU and the node gains another 500 BTU.
+  close(tank.heatBalance, 1500);
+  close(tank.temperatures[0], 65);
+  const pulse = mass.thermalMassHour(node, [70], [{outdoorF:70,heat:1000}], 100, 70, 0, 68, 70);
+  close(pulse.coolBalance, 500);
+  const release = mass.thermalMassHour(node, pulse.temperatures, [{outdoorF:70,heat:0}], 100, 70, 0, 68, 70);
+  close(release.coolBalance, 250);
+  const morning = [6, 7, 8].map(hour => row(m.celsius(20), 0, { hour }));
+  const withMass = { ...bare, interiorMassKjM2K: 110, interiorMassCouplingWm2K: 6 };
+  const staticMorning = m.simulateSchool(morning, bare);
+  const storedMorning = m.simulateSchool(morning, withMass);
+  close(storedMorning[0].interiorMassF, bare.setbackHeatingF);
+  assert.ok(storedMorning[1].heating > staticMorning[1].heating);
+  assert.ok(storedMorning[2].heating < storedMorning[1].heating);
+  assert.deepEqual(m.simulateSchool(morning,{...withMass,interiorMassCouplingWm2K:0}), staticMorning);
+  assert.deepEqual(m.simulateSchool(morning,withMass,null,"heating"), m.simulateSchool(morning,bare,null,"heating"));
+  const steadyShell = m.simulateSchool(morning,{...bare,wallCapacityKjM2K:240,roofCapacityKjM2K:70});
+  close(steadyShell[0].heating, staticMorning[0].heating);
   // Independent radiation geometry and hand-computed glazing/sol-air examples.
   const site = { latitude: 0, longitude: 0, utcOffset: 0 };
   const southSun = { east: 0, north: -0.6, up: 0.8 };

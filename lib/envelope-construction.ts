@@ -1,4 +1,5 @@
 export type ConstructionKind = "mass" | "steel-framed" | "wood-framed" | "metal-building" | "insulation-above-deck";
+export type EnvelopeSurface = "wall" | "roof" | "window" | "slab";
 type MaterialLayer = {
   material: string;
   thicknessM: number;
@@ -22,6 +23,7 @@ export type EnvelopeConstruction = {
   roof: ConstructionProfile | null;
   window: ConstructionProfile | null;
   slab: ConstructionProfile;
+  interiorMassAreaRatio?: number;
 };
 
 export const COMSTOCK_CONSTRUCTION_SOURCE = "https://natlabrockies.github.io/ComStock.github.io/assets/files/comstock_reference_documentation_2025_3.pdf";
@@ -73,12 +75,48 @@ function profileFromLayers(label: string, source: string, layers: readonly Mater
 
 export const slabConstruction = profileFromLayers("Slab on grade", "ComStock ground-floor assumption", [concrete]);
 
-export function windowConstruction(label: string, share: number): ConstructionProfile {
-  const panes = /\b(single|sgl)\b/i.test(label) ? 1 : /\b(double|dbl)\b/i.test(label) ? 2 : /\b(triple|tpl)\b/i.test(label) ? 3 : 0;
+function windowPaneCount(label: string) {
+  return /\b(single|sgl)\b/i.test(label) ? 1 : /\b(double|dbl)\b/i.test(label) ? 2 : /\b(triple|tpl)\b/i.test(label) ? 3 : 0;
+}
+
+export function windowConstruction(label: string, share?: number): ConstructionProfile {
+  const panes = windowPaneCount(label);
   // Combine the solid glass thickness for heat storage. The assumed 6 mm per
   // pane excludes frames, coatings and cavities from the mass estimate.
   const glass = { material: "Float glass (combined pane thickness)", thicknessM: panes * 0.006, conductivityWmK: 0.937, densityKgM3: 2500, specificHeatJKgK: 880 };
   return profileFromLayers(label, "ComStock county window metadata", panes ? [glass] : [], share);
+}
+
+// These screening defaults describe complete assemblies, including insulation and films.
+const presetSource = "BEAST screening preset";
+const opaquePreset = (kind: ConstructionKind, coefficient: number) => ({
+  id: kind, profile: constructionProfile(kind, presetSource)!, coefficient,
+});
+const windowPreset = (id: string, label: string, coefficient: number) => ({
+  id, profile: { ...windowConstruction(label), source: presetSource }, coefficient,
+});
+
+export const ENVELOPE_PRESETS = {
+  wall: [opaquePreset("steel-framed", 0.06), opaquePreset("wood-framed", 0.055), opaquePreset("mass", 0.08), opaquePreset("metal-building", 0.09)],
+  roof: [opaquePreset("insulation-above-deck", 0.04), opaquePreset("mass", 0.045), opaquePreset("wood-framed", 0.035), opaquePreset("metal-building", 0.065)],
+  window: [windowPreset("double", "Double pane", 0.50), windowPreset("single", "Single pane", 1.02), windowPreset("triple", "Triple pane", 0.30)],
+  slab: [
+    { id: "concrete", profile: { ...slabConstruction, label: "Heavyweight concrete", source: presetSource }, coefficient: 0.73 },
+    { id: "lightweight", profile: profileFromLayers("Lightweight concrete", presetSource, [{ ...concrete, material: "Lightweight concrete", conductivityWmK: 0.5, densityKgM3: 1600, specificHeatJKgK: 1000 }]), coefficient: 0.73 },
+  ],
+};
+
+export function envelopePreset(surface: EnvelopeSurface, id?: string) {
+  return ENVELOPE_PRESETS[surface].find(preset => preset.id === id) ?? ENVELOPE_PRESETS[surface][0];
+}
+
+export function envelopePresetForProfile(surface: EnvelopeSurface, profile?: ConstructionProfile | null) {
+  if (!profile) return envelopePreset(surface);
+  if (surface === "window") {
+    const panes = windowPaneCount(profile.label);
+    return ENVELOPE_PRESETS.window.find(preset => windowPaneCount(preset.profile.label) === panes) ?? envelopePreset(surface);
+  }
+  return ENVELOPE_PRESETS[surface].find(preset => preset.profile.label === profile.label) ?? envelopePreset(surface);
 }
 
 // ComStock 2025 R3, Table 57. Grocery uses the PNNL supermarket prototype.
