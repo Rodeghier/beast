@@ -44,6 +44,7 @@ export type StageOperation={
   partialUnits?:number;
   partialUnitLoadFraction:number;partialUnitStageTimes:number[];partialUnitRuntimeFraction:number;
   powerEquivalentUnits:number;belowMinimumStage:boolean;
+  modulatingCapacityFraction?:number;
 };
 /** Current zoned dispatch gives identical per-unit profiles within each group.
  * ON-time includes cycling PLF; it is total time in the hour, not cycle length. */
@@ -67,6 +68,15 @@ export function zonedSystemOperation(loadBtuHr:number,unitCapacityBtuHr:number,u
     partialUnitRuntimeFraction:partialUnitStageTimes.reduce((s,t)=>s+t,0),powerEquivalentUnits:count*stagedPowerFraction(plr,stageLevels,cd),
     belowMinimumStage:partial&&plr<stageLevels[0]-1e-9};
 }
+/** Modulate directly to load, or cycle at minimum capacity below turndown. */
+export function zonedModulatingOperation(loadBtuHr:number,unitCapacityBtuHr:number,unitCount:number,minimum:number):StageOperation {
+  const operation=zonedSystemOperation(loadBtuHr,unitCapacityBtuHr,unitCount,[minimum]);
+  const fraction=operation.fullUnits?1:operation.partialUnitLoadFraction;
+  const capacity=fraction>0?Math.max(minimum,fraction):0;
+  return {...operation,modulatingCapacityFraction:capacity,
+    powerEquivalentUnits:capacity*(operation.fullUnits+(operation.partialUnits??0)*operation.partialUnitRuntimeFraction)};
+}
+
 /** Lead/lag identical units: full units, at most one partially loaded unit, and
  * the remaining idle units. Unit positions are fixed within each size group. */
 export function stagedSystemOperation(loadBtuHr:number,unitCapacityBtuHr:number,unitCount:number,stages:number[],cd=CYCLING_DEGRADATION_COEFFICIENT):StageOperation {

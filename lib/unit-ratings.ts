@@ -17,13 +17,14 @@ export function unitRatingFor(model: Pick<CoolingModel,"nominal_tons"|"efficienc
   if(match)return match;
   const table=intellipakCoolingTable(model.nominal_tons,model.efficiency);
   if(!table)return null;
-  const base=UNIT_RATINGS.find(r=>r.efficiency===model.efficiency&&r.nominal_tons===25);
+  const proxyEfficiency=model.efficiency==="standard"?"standard":"high";
+  const base=UNIT_RATINGS.find(r=>r.efficiency===proxyEfficiency&&r.nominal_tons===25);
   if(!base)return null;
   const scale=model.nominal_tons/25;
   const maxCfm=axisLimits(table.cfm)[1];
   // Scale thermal/electrical quantities together, preserving reference COP and
   // the fan decomposition. Source table/motor fields describe the proxy only.
-  return {...base,nominal_tons:model.nominal_tons,model:`scaled-${model.efficiency}-${model.nominal_tons}ton`,
+  return {...base,efficiency:model.efficiency,nominal_tons:model.nominal_tons,model:`scaled-${model.efficiency}-${model.nominal_tons}ton`,
     nominal_cfm:Math.min(maxCfm,base.nominal_cfm*scale),ahri_cfm:Math.min(maxCfm,base.ahri_cfm*scale),
     rated_gross_cooling_Btu_hr:base.rated_gross_cooling_Btu_hr*scale,rated_net_cooling_Btu_hr:base.rated_net_cooling_Btu_hr*scale,
     cooling_system_power_kW:base.cooling_system_power_kW*scale,inferred_supply_fan_heat_Btu_hr:base.inferred_supply_fan_heat_Btu_hr*scale,

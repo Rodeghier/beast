@@ -5,7 +5,7 @@
 import { optimizePackagedBank } from "./packaged-optimizer";
 import { COOLING_MODELS } from "./packaged-cooling";
 import { heatingModelFor } from "./packaged-heating";
-import { matchesStagePreference } from "./precedent-stages";
+import { matchesPackagedScenario } from "./precedent-stages";
 import { solveVariableAirside } from "./variable-airside";
 import { variableFanModel } from "./variable-fan";
 import type { SchoolRow, SchoolAssumptions } from "./school";
@@ -53,7 +53,7 @@ export function optimizeVariablePackagedBank(rows:SchoolRow[],school:SchoolAssum
   };
   let best=evaluate(seed.groups);
   for(let extra=1;!best&&extra<=32;extra++)best=evaluate(seed.groups.map(g=>({...g,count:g.count+extra})));
-  const models=COOLING_MODELS.filter(m=>m.efficiency===efficiency&&matchesStagePreference(m.efficiency,m.nominal_tons,stage)).sort((a,b)=>b.nominal_tons-a.nominal_tons);
+  const models=COOLING_MODELS.filter(m=>matchesPackagedScenario(m,efficiency,stage,heating)).sort((a,b)=>b.nominal_tons-a.nominal_tons);
   const start=Date.now();
   for(const model of models){
     if(Date.now()-start>15000)break;

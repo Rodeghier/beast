@@ -148,7 +148,24 @@ for(const airflowMode of ['fixed','variable']){
   const tables=JSON.parse(csv[1][csv[0].indexOf('IntelliPak_capacity_tables')]);
   assert.equal(tables[0].coolingTable,65);
   assert.equal(tables[0].heating.scaledFromTons,60);
+  assert.ok(csv[2].includes('Heating_modulating_capacity_percent'));
+  assert.ok(csv[2].includes('Cooling_stage_4_capacity_percent'));
+  const html=renderToStaticMarkup(createElement(EquipmentScenarios,{choices:[result.scenario],results:[result],active:0,onActive:()=>{},onChange:()=>{}}));
+  assert.doesNotMatch(html,/extrapolat/i);
+  assert.match(html,/23% \/ 46% \/ 73% \/ 100% cooling stages/);
 }
+
+const eModel=COOLING_MODELS.find(m=>m.table===54);
+const eHeat=heatingModelFor(eModel);
+const eSelection={...largeSelection,groups:[{model:eModel,heatingModel:eHeat,count:1}],totalTons:60,
+  supplyCfm:eModel.fixed_cfm,referenceCoolingBtuHr:eModel.reference_capacity_Btu_hr,referenceHeatingBtuHr:eHeat.reference_capacity_Btu_hr};
+const eResult=simulateEquipment(rows,{...school,minimumCompressorOnMinutes:0},{...largeScenario,stage:'variable'},eSelection,sizing);
+assert.equal(eResult.error,null);
+const eCsv=parseCsv(equipmentResultsCsv(rows,school,eResult,'Test','Local'));
+const eCapacityColumn=eCsv[2].indexOf('Cooling_modulating_capacity_percent');
+assert.ok(eCapacityColumn>=0);
+assert.ok(Number(eCsv[3][eCapacityColumn])>=15);
+assert.ok(eCsv[2].includes('Cooling_modulating_minutes_per_unit'));
 
 // Exercise the website's default sizing path, rather than only prepared banks.
 const {nearestDesignStations}=load('lib/ashrae-design-stations.ts');
@@ -198,4 +215,4 @@ near(annual.summary.reheatBtu,annual.rows.reduce((s,r)=>s+r.reheatDelivered,0),1
 assert.equal(annual.summary.reheatElectricity,0);
 assert.equal(annual.summary.reheatGasTherms,0);
 console.log(`Annual variable-airflow simulation: ${(performance.now()-annualStart).toFixed(0)} ms for 8760 hours.`);
-console.log('PASS: all 7192 source points, 43 size/family combinations, shared airflow capacity, SHR, fan cubic law/HP limits, airflow and moisture balances, supply temperature reporting, MHGRH, backup, stages and CSVs.');
+console.log('PASS: all 7192 source points, 54 catalog models, shared airflow capacity, SHR, fan cubic law/HP limits, airflow and moisture balances, supply temperature reporting, MHGRH, backup, stages and CSVs.');

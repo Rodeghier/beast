@@ -25,7 +25,7 @@ const {COOLING_MODELS,SOURCE_COOLING_MODELS,SHARED_COOLING_CAPACITY,coolingPoint
 const {EXTENDED_UNIT_TONS}=load('lib/catalog-sizes.ts');
 const {heatingModelFor,heatingPoint}=load('lib/packaged-heating.ts');
 const {unitRatingFor}=load('lib/unit-ratings.ts');
-const {compressorStages}=load('lib/precedent-stages.ts');
+const {compressorStages,matchesPackagedScenario,packagedCompressorOperation}=load('lib/precedent-stages.ts');
 const {zonedSystemOperation}=load('lib/equipment-staging.ts');
 const {bankCooling,dispatchCooling,dispatchHeating}=load('lib/packaged-bank.ts');
 const {equipmentOperation}=load('lib/equipment-operation.ts');
@@ -35,7 +35,7 @@ const near=(a,b,t=1e-7)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 const {intellipakHeating}=load('lib/intellipak-performance.ts');
 const {airflowCoolingPoint}=load('lib/airflow-cooling.ts');
 const {operatingHeatingPoint}=load('lib/curve-evaluation.ts');
-assert.equal(COOLING_MODELS.length,43);
+assert.equal(COOLING_MODELS.length,54);
 assert.deepEqual(EXTENDED_UNIT_TONS,[30,40,50,55,60,70,75,90,105,115,130]);
 for(const family of ['standard','high']){
  const base=COOLING_MODELS.find(m=>m.nominal_tons===25&&m.efficiency===family);
@@ -53,12 +53,31 @@ for(const family of ['standard','high']){
   near(rating.cooling_system_power_kW,rating.inferred_supply_fan_power_kW+rating.cooling_non_supply_fan_power_kW);
   const h=heatingPoint(heatingModelFor(model),17,65),hb=heatingPoint(heatingModelFor(base),17,65);
   near(h.powerKw,scale*hb.powerKw);assert.ok(h.capacityBtuHr>0);
-  assert.deepEqual(compressorStages(family,model.nominal_tons),compressorStages(family,25));assert.equal(rating.scaledFromNominalTons,25);
+  assert.ok(compressorStages(family,model.nominal_tons).length>=4);assert.equal(rating.scaledFromNominalTons,25);
  }
 }
 const standard=tons=>COOLING_MODELS.find(m=>m.nominal_tons===tons&&m.efficiency==='standard');
 const large=standard(130);
 assert.equal(large.table,65);
+assert.deepEqual(compressorStages('standard',130),[.23,.46,.73,1]);
+assert.deepEqual(compressorStages('standard',30),[.21,.39,.61,.79,1]);
+assert.deepEqual(compressorStages('high',30),[.23,.38,.62,.77,1]);
+assert.deepEqual(compressorStages('high',75),[.20,.46,.73,1]);
+const eflex=COOLING_MODELS.find(m=>m.table===53);
+const eflexHp=COOLING_MODELS.find(m=>m.table===54);
+assert.equal(matchesPackagedScenario(eflex,'high','variable','heat-pump'),false);
+assert.equal(matchesPackagedScenario(eflexHp,'high','variable','heat-pump'),true);
+assert.equal(matchesPackagedScenario(eflex,'standard','variable','gas'),true);
+assert.equal(matchesPackagedScenario(eflexHp,'standard','automatic','heat-pump'),false);
+near(coolingPoint(eflexHp,95,67,80).capacityBtuHr,739000);
+near(coolingPoint(eflexHp,115,67,80).capacityBtuHr,645000);
+const eMod=packagedCompressorOperation(eflexHp,'cooling',37,100,1);
+near(eMod.modulatingCapacityFraction,.37);near(eMod.partialUnitRuntimeFraction,1);near(eMod.powerEquivalentUnits,.37);
+const lowMod=packagedCompressorOperation(eflexHp,'cooling',7.5,100,1);
+near(lowMod.modulatingCapacityFraction,.15);near(lowMod.partialUnitRuntimeFraction,.5/.925);near(lowMod.powerEquivalentUnits,.15*.5/.925);
+assert.ok(lowMod.belowMinimumStage);
+const heatMod=packagedCompressorOperation(large,'heating',37,100,1);
+near(heatMod.modulatingCapacityFraction,.37);near(heatMod.powerEquivalentUnits,.37);
 assert.equal(unitRatingFor({nominal_tons:130,efficiency:'high'}),null);
 const ratedCooling=coolingPoint(large,95,67,80);
 near(ratedCooling.capacityBtuHr,1502000);near(ratedCooling.shr,1166/1502);
@@ -97,10 +116,10 @@ for(const r of samples){
 assert.equal(samples.length,SHARED_COOLING_CAPACITY.source_fit.points);equations.forEach(v=>near(v,0,1e-10));
 assert.ok(SHARED_COOLING_CAPACITY.source_fit.relative_rmse_percent<2);
 // Every zone gets 5% load, rather than one full unit and 19 shed units.
-const stages=[.25,.37,.63,1],runtime=.2/.88;
+const stages=compressorStages("standard",30), minimum=stages[0], part=.05/minimum, runtime=part/(1-.15*(1-part));
 const op=zonedSystemOperation(100,100,20,stages);
 assert.equal(op.fullUnits,0);assert.equal(op.idleUnits,0);assert.equal(op.partialUnits,20);near(op.partialUnitLoadFraction,.05);
-near(op.partialUnitRuntimeFraction,runtime);near(op.powerEquivalentUnits,20*.25*runtime);
+near(op.partialUnitRuntimeFraction,runtime);near(op.powerEquivalentUnits,20*minimum*runtime);
 const model=COOLING_MODELS.find(m=>m.nominal_tons===30&&m.efficiency==='standard'),group={model,heatingModel:heatingModelFor(model),count:20};
 const result={scenario:newScenario(),selection:{groups:[group],count:20},rows:[{coolingElectricity:1,groupPerformance:JSON.stringify({cooling:[{model:model.id,staging:op}]})}],error:null};
 const histogram=equipmentOperation(result,'cooling');assert.equal(histogram.includedUnitHours,20);assert.equal(histogram.idleUnitHoursExcluded,0);
@@ -120,4 +139,4 @@ const evaluated=smallGroups.map((g,i)=>({g,rating:unitRatingFor(g.model),point:{
 const heating=dispatchHeating({evaluated},20000);near(heating.delivered,20000*3/7+4000);assert.ok(heating.delivered<20000);
 const cooling=dispatchCooling({evaluated:evaluated.map((v,i)=>({...v,point:{capacityBtuHr:i===0?40000:4000,shr:.75}}))},15000,5000);
 near(cooling.unmet,20000*4/7-4000);
-console.log('PASS: pooled-fit normal equations, 43 size/family combinations, IntelliPak cooling and heating data and extrapolation, local compressor cycling for all assigned zones, no cross-zone capacity transfer, and unit-hour conservation.');
+console.log('PASS: pooled-fit normal equations, 54 catalog models, IntelliPak cooling and heating data and extrapolation, local compressor cycling for all assigned zones, no cross-zone capacity transfer, and unit-hour conservation.');

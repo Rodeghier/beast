@@ -20,7 +20,7 @@ gross capacity = unit reference capacity × dot(shared coefficients, terms)
 SHR = clip(dot(unit SHR numerator coefficients, terms) / normalized capacity, 0, 1)
 ```
 
-All 24 Precedent units have individual fitted SHR numerators. The 19 IntelliPak size and efficiency combinations interpolate gross total and sensible capacities at actual airflow within each table’s source airflow range. SHR is sensible capacity divided by total capacity.
+All 24 Precedent units have individual fitted SHR numerators. The 30 IntelliPak cooling models interpolate gross total and sensible capacities at actual airflow within each table’s source airflow range. SHR is sensible capacity divided by total capacity.
 
 Capacity relative RMS error is 1.983%; leaving one complete unit out of the shared fit gives 2.046% RMS. SHR RMS error is 0.002256; withholding the 400 CFM/ton data gives 0.002125 RMS. These measure agreement with catalog data, not field-calibrated building accuracy.
 
@@ -73,4 +73,4 @@ Cooling source fits describe full-output capacity and SHR as functions of temper
 
 The former maximum-airflow evaluator remains available for strict source checks and explicit fixed-airflow comparison fixtures. The website requires a populated airflow dropdown, defaulting to variable; constant mode holds each running unit at its AHRI reference airflow, capped by standard-motor HP. Both modes use the physical airside/reheat balance and are rechecked at design conditions. CSV metadata identifies the active policy and coefficients.
 
-Verification: `node scripts/check-variable-airflow.mjs` checks every accepted source sample, all 43 size and efficiency combinations, cubic fan power and motor ceilings, air/moisture/energy balances, dehumidification, MHGRH, backup interactions, sizing, numeric exports and a complete annual simulation. `node scripts/check-air-state-control.mjs` independently checks the final-state controller against sensible-plus-latent balances, sensible/moisture loads without a fixed supply target, true capacity limits, reduced overconditioning, and humid-weather regressions. Existing fixed-airflow regression checks remain separate reference checks.
+Verification: `node scripts/check-variable-airflow.mjs` checks every accepted source sample, all 54 catalog models, cubic fan power and motor ceilings, air/moisture/energy balances, dehumidification, MHGRH, backup interactions, sizing, numeric exports and a complete annual simulation. `node scripts/check-air-state-control.mjs` independently checks the final-state controller against sensible-plus-latent balances, sensible/moisture loads without a fixed supply target, true capacity limits, reduced overconditioning, and humid-weather regressions. Existing fixed-airflow regression checks remain separate reference checks.
