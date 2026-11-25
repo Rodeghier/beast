@@ -135,8 +135,10 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
   }
   if(options.airflowMode==="fixed")return evaluate(Math.min(fan.referenceCfm,fan.maxCfm)*count);
   const sourceMin=range[0]*count;
+  const airflowSamples=group.model.intellipak?.cfm
+    ??[300,330,360,380,400,420,440,460,480].map(perTon=>perTon*group.model.nominal_tons);
   const candidates=new Set<number>([minimum,maxCfm,Math.max(minimum,Math.min(maxCfm,sourceMin)),
-    ...[300,330,360,380,400,420,440,460,480].map(perTon=>Math.max(minimum,Math.min(maxCfm,perTon*group.model.nominal_tons*count)))]);
+    ...airflowSamples.map(cfm=>Math.max(minimum,Math.min(maxCfm,cfm*count)))]);
   let best:ReturnType<typeof evaluate>=null;
   for(const cfm of candidates){if(cfm<=0)continue;const candidate=evaluate(cfm);if(candidate&&(!best||candidate.score<best.score))best=candidate;}
   return best;

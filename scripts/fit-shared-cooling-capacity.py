@@ -47,7 +47,7 @@ def fit():
         cc = solve(~mask)
         held[mask] = cc[0] + a[mask] @ cc[1:]
     return {"id": "shared-normalized-cooling-capacity-v1", "source_sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
-            "basis": "Pooled accepted maximum-airflow data, normalized by each source model's 95/67/80 F reference; equal total weight per source model. Applied to all sizes by modeling assumption, including added large sizes; not an independently validated large-unit fit.",
+            "basis": "Pooled accepted maximum-airflow data, normalized by each source model's 95/67/80 F reference; equal total weight per source model. Applied to the 24 Precedent size and efficiency combinations.",
             "reference_temperatures_F": [95, 67, 80], "temperature_scales_F": [20, 6, 10],
             "terms": ["1", "x", "y", "z", "x^2", "x*y", "x*z", "y^2", "y*z", "z^2"],
             "capacity_coefficients": c.tolist(), "source_models": len(np.unique(tables)),

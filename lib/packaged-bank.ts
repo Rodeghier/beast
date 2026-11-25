@@ -1,5 +1,4 @@
-/** A bank may contain several catalog sizes. Cooling capacity has one shared
- * normalized shape; each group retains its reference scale, SHR/heating curves,
+/** A bank may contain several catalog sizes. Each group retains its cooling and heating curves,
  * rating, fan estimate and compressor stages. Shared mixed air represents the
  * existing single-zone air-handler model; this is not a duct/zoning simulation. */
 import type { CoolingModel } from "./packaged-cooling";

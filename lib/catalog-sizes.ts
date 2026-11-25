@@ -1,4 +1,4 @@
-/** Additional nominal sizes authorized for the simplified rooftop model.
- * Their performance is a scaled 25-ton proxy, not supplied large-unit ratings. */
-export const EXTENDED_UNIT_TONS=[30,40,55,60,70,75,90,105,120,130,150];
-export const LARGE_UNIT_BASIS="Added 30–150 ton sizes use the shared normalized cooling-capacity fit. Reference capacity, heating, power and fan quantities scale from the selected efficiency family's 25-ton data by nominal tonnage; SHR and fractional stage levels reuse the 25-ton patterns. These are modeling assumptions, not supplied large-unit performance ratings.";
+import { INTELLIPAK_COOLING_TABLES } from "./intellipak-performance";
+
+export const EXTENDED_UNIT_TONS = [...new Set(INTELLIPAK_COOLING_TABLES.map(table => table.tons))];
+export const LARGE_UNIT_BASIS = "IntelliPak cooling uses size- and efficiency-specific gross total and sensible capacity tables. Heat-pump heating uses eFlex tables at reference airflow, interpolated at 55 tons and extrapolated above 60 tons in proportion to nominal tons at equivalent CFM/ton. Heating capacity above 60 tons is a screening estimate. Electrical input, fan power and fractional stages retain 25-ton proxy assumptions.";

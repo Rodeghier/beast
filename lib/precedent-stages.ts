@@ -1,5 +1,5 @@
 import type { EquipmentStage } from "./equipment";
-import { EXTENDED_UNIT_TONS } from "./catalog-sizes";
+import { intellipakCoolingTable } from "./intellipak-performance";
 
 /** Trane Precedent WSK/WHK catalog stage capacities as a fraction of full output. */
 const STAGES:Record<"standard"|"high",Record<number,number[]>>={
@@ -9,7 +9,7 @@ const STAGES:Record<"standard"|"high",Record<number,number[]>>={
 
 export function compressorStages(efficiency:"standard"|"high",nominalTons:number):number[] {
   // Added sizes reuse the 25-ton fractional pattern as an explicit assumption.
-  return STAGES[efficiency][nominalTons]??(EXTENDED_UNIT_TONS.includes(nominalTons)?STAGES[efficiency][25]:[]);
+  return STAGES[efficiency][nominalTons]??(intellipakCoolingTable(nominalTons,efficiency)?STAGES[efficiency][25]:[]);
 }
 
 export function matchesStagePreference(efficiency:"standard"|"high",nominalTons:number,preference:EquipmentStage):boolean {

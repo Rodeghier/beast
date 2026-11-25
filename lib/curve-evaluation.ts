@@ -51,18 +51,19 @@ function closestCoolingInput(model: CoolingModel, input: number[]): number[] | n
 /** Strict source evaluators stay unchanged. Only this explicit policy bounds inputs. */
 // Try actual conditions first. If covered, return the source result unchanged.
 // Only bounded mode proceeds to limit/project the curve-evaluation temperatures.
-export function operatingCoolingPoint(model: CoolingModel, outdoorF: number, wetF: number, dryF: number, mode: CurveRangeMode) {
+export function operatingCoolingPoint(model: CoolingModel, outdoorF: number, wetF: number, dryF: number, mode: CurveRangeMode, cfm = model.fixed_cfm) {
   if (![outdoorF,wetF,dryF].every(Number.isFinite)) return null;
-  const source = coolingPoint(model,outdoorF,wetF,dryF);
+  const source = coolingPoint(model,outdoorF,wetF,dryF,cfm);
   if (source) return {...source,boundaryEstimate:false,curveOutdoorF:outdoorF,curveWetF:wetF,curveDryF:dryF};
   if (mode==="strict") return null;
   let input = [clamp(outdoorF,model.axis_ranges_F.outdoor_dry_bulb_F),clamp(wetF,model.axis_ranges_F.entering_wet_bulb_F),clamp(dryF,model.axis_ranges_F.entering_dry_bulb_F)];
-  if (!coolingPoint(model,input[0],input[1],input[2])) {
+  let point = coolingPoint(model,input[0],input[1],input[2],cfm);
+  if (!point && !model.intellipak) {
     const projected = closestCoolingInput(model,[outdoorF,wetF,dryF]);
     if (!projected) return null;
     input = projected;
+    point = coolingPoint(model,input[0],input[1],input[2],cfm);
   }
-  const point = coolingPoint(model,input[0],input[1],input[2]);
   return point ? {...point,boundaryEstimate:true,curveOutdoorF:input[0],curveWetF:input[1],curveDryF:input[2]} : null;
 }
 

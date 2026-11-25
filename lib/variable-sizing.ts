@@ -49,7 +49,7 @@ export function optimizeVariablePackagedBank(rows:SchoolRow[],school:SchoolAssum
       optimizationComplete:false,designLoading:{heating:heatingLoading,
         sensibleCooling:known.length?Math.max(...known.flatMap(p=>p.details.map(d=>d.availableSensible>0?d.sensibleNeed/d.availableSensible:0))):null,
         latentCooling:known.length?Math.max(...known.flatMap(p=>p.details.map(d=>d.availableLatent>0?d.latentNeed/d.availableLatent:0))):null,ventilation:peakVent/maxAir},
-      basis:"Occupied ASHRAE design hours; all-airflow shared capacity and per-unit SHR fits, fan HP/CFM limits, ventilation and sensible/latent loads. Supply temperature is a calculated output, not a sizing target. Heating remains diagnostic. Mixed-bank seed plus homogeneous alternatives; fewest units then lowest nominal tons among evaluated feasible banks. Nonlinear search is bounded; global optimality is not proven. Unknown curve checks remain flagged and excluded."};
+      basis:"Occupied ASHRAE design hours; airflow-dependent catalog cooling capacity and SHR, fan HP/CFM limits, ventilation and sensible/latent loads. Supply temperature is a calculated output, not a sizing target. Heating remains diagnostic. Mixed-bank seed plus homogeneous alternatives; fewest units then lowest nominal tons among evaluated feasible banks. Nonlinear search is bounded; global optimality is not proven. Unknown curve checks remain flagged and excluded."};
   };
   let best=evaluate(seed.groups);
   for(let extra=1;!best&&extra<=32;extra++)best=evaluate(seed.groups.map(g=>({...g,count:g.count+extra})));
