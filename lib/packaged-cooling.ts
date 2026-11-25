@@ -1,6 +1,6 @@
 /**
- * COOLING CURVE EVALUATOR. Reads fitted coefficients from JSON; it does not fit
- * curves during a simulation. Inputs: outdoor DB, entering WB and entering DB in F.
+ * COOLING CURVE EVALUATOR. Uses stored Precedent fits or IntelliPak tables.
+ * Inputs: outdoor DB, entering WB and entering DB in F, and IntelliPak airflow.
  * Outputs: gross unit capacity in BTU/hr and dimensionless SHR.
  * This strict evaluator returns null outside the accepted data domain. The
  * operating policy is applied separately in curve-evaluation.ts.
@@ -8,15 +8,16 @@
 
 import catalog from "./data/precedent-cooling.json";
 import shared from "./data/shared-cooling-capacity.json";
-import { EXTENDED_UNIT_TONS } from "./catalog-sizes";
+import { axisLimits, INTELLIPAK_COOLING_TABLES, intellipakCooling, intellipakCoolingTable } from "./intellipak-performance";
 
-export type CoolingModel = typeof catalog.models[number] & {
-  capacityCurveId?:string;shr_capacity_coefficients?:number[];scaledFromNominalTons?:number;
+export type CoolingModel = Pick<typeof catalog.models[number],
+  "table"|"id"|"nominal_tons"|"efficiency"|"fixed_cfm"|"reference_capacity_MBh"|"reference_capacity_Btu_hr"|
+  "axis_ranges_F"|"valid_domain_halfspaces"|"capacity_coefficients"|"shr_numerator_coefficients"> & {
+  capacityCurveId?:string;shr_capacity_coefficients?:number[];intellipak?:typeof INTELLIPAK_COOLING_TABLES[number];
 };
 export const SOURCE_COOLING_MODELS = catalog.models;
 export const SHARED_COOLING_CAPACITY = shared;
-// Keep original fits as provenance. Every runtime model uses exactly the same
-// normalized capacity polynomial; Qref still supplies the unit's size scale.
+// The source Precedent fits retain their pooled capacity and individual SHR.
 const runtime=(model:typeof catalog.models[number]):CoolingModel=>({...model,
   capacity_coefficients:shared.capacity_coefficients,capacityCurveId:shared.id,
   // Preserve the supplied SHR fit. Its original denominator must not change
@@ -24,16 +25,31 @@ const runtime=(model:typeof catalog.models[number]):CoolingModel=>({...model,
   shr_capacity_coefficients:model.capacity_coefficients});
 export const COOLING_MODELS:CoolingModel[] = [
   ...catalog.models.map(runtime),
-  ...(["standard","high"] as const).flatMap(efficiency=>EXTENDED_UNIT_TONS.map(tons=>{
-    const base=catalog.models.find(m=>m.efficiency===efficiency&&m.nominal_tons===25)!;
-    return runtime({...base,id:`heat-pump-${efficiency}-${tons}ton`,nominal_tons:tons,
-      fixed_cfm:base.fixed_cfm*tons/25,reference_capacity_MBh:base.reference_capacity_MBh*tons/25,
-      reference_capacity_Btu_hr:base.reference_capacity_Btu_hr*tons/25}) as CoolingModel;
-  })).map(m=>({...m,scaledFromNominalTons:25})),
+  ...INTELLIPAK_COOLING_TABLES.map(table=>{
+    const { tons, efficiency } = table;
+    const fixed_cfm = axisLimits(table.cfm)[1];
+    const reference = intellipakCooling(table,95,67,80,fixed_cfm)!;
+    return {
+      id:`heat-pump-${efficiency}-${tons}ton`,table:table.table,
+      nominal_tons:tons,efficiency,fixed_cfm,reference_capacity_MBh:reference.capacityBtuHr/1000,
+      reference_capacity_Btu_hr:reference.capacityBtuHr,
+      axis_ranges_F:{
+        outdoor_dry_bulb_F:axisLimits(table.outdoorF),
+        entering_wet_bulb_F:axisLimits(table.wetF),
+        entering_dry_bulb_F:axisLimits(table.dryF),
+      },
+      capacityCurveId:`intellipak-table-${table.table}`,intellipak:table,
+      valid_domain_halfspaces:[],capacity_coefficients:[],shr_numerator_coefficients:[],
+    };
+  }),
 ];
 export const COOLING_SOURCE = catalog.source;
-/** Gross catalog capacity and SHR at the model's fixed maximum airflow. */
-export function coolingPoint(model: CoolingModel, outdoorF: number, enteringWetBulbF: number, enteringDryBulbF: number) {
+/** Gross catalog capacity and SHR at maximum airflow by default. */
+export function coolingPoint(model: CoolingModel, outdoorF: number, enteringWetBulbF: number, enteringDryBulbF: number, cfm = model.fixed_cfm) {
+  if (model.intellipak) {
+    const point = intellipakCooling(model.intellipak,outdoorF,enteringWetBulbF,enteringDryBulbF,cfm);
+    return point && {...point, normalized:point.capacityBtuHr/model.reference_capacity_Btu_hr};
+  }
   const input = [outdoorF, enteringWetBulbF, enteringDryBulbF];
   if (!input.every(Number.isFinite) || model.valid_domain_halfspaces.some(([a,b,c,d]) => a*outdoorF+b*enteringWetBulbF+c*enteringDryBulbF+d > 1e-7)) return null;
   // Normalize the three temperatures so the polynomial terms have convenient scales.

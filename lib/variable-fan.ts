@@ -3,16 +3,18 @@
  * The rating-derived fan kW at AHRI CFM anchors a provisional cubic system curve. */
 import type { CoolingModel } from "./packaged-cooling";
 import { unitRatingFor } from "./unit-ratings";
+import { axisLimits, intellipakCoolingTable } from "./intellipak-performance";
 
 export const FAN_MOTOR_EFFICIENCY=.90;
 export const FAN_DRIVE_EFFICIENCY=.97;
 export const MINIMUM_FAN_FLOW_FRACTION=.20;
-export const VARIABLE_FAN_BASIS="Standard motors only; supplied maximum HP/RPM and 480 CFM/ton limits. Fan kW is anchored to gross-minus-net rating heat at AHRI airflow and varies with CFM cubed. Shaft HP ceiling uses assumed 90% motor and 97% drive efficiency. Maximum achievable CFM is reduced when the reference cubic curve reaches the HP ceiling. All fan input is assumed to heat the supply air. Ventilation-only minimum is 20% of maximum; compressor flow stays inside source 300–480 CFM/ton. Duct static reset and part-load motor efficiencies are not supplied. 3-ton standard uses 0.75 HP (non-575 V); larger proxy units scale 25-ton assemblies.";
+export const VARIABLE_FAN_BASIS="Fan kW varies with CFM cubed from a rating-derived reference point. Shaft HP ceiling uses assumed 90% motor and 97% drive efficiency. All fan input is assumed to heat the supply air. Ventilation-only minimum is 20% of maximum; compressor flow stays within the selected cooling table's airflow range. Precedent uses standard motor limits. IntelliPak uses the cooling table's maximum airflow with motor and fan-power assumptions scaled from 25-ton Precedent.";
 export function standardFanLimit(model:Pick<CoolingModel,"nominal_tons"|"efficiency">){
   const tons=Math.min(25,model.nominal_tons),scale=model.nominal_tons>25?model.nominal_tons/25:1;
   const hp=tons===3&&model.efficiency==="standard"?.75:tons<=5&&model.efficiency==="standard"?1:tons<10?2.9:tons===10&&model.efficiency==="standard"?2.9:tons<=12.5?4.2:5.8;
   const rpm=tons<=5&&model.efficiency==="standard"?1200:hp===4.2?1940:1850;
-  return {maxHp:hp*scale,maxRpm:rpm,maxCatalogCfm:480*model.nominal_tons};
+  const table=intellipakCoolingTable(model.nominal_tons,model.efficiency);
+  return {maxHp:hp*scale,maxRpm:rpm,maxCatalogCfm:table?axisLimits(table.cfm)[1]:480*model.nominal_tons};
 }
 export function variableFanModel(model:CoolingModel){
   const rating=unitRatingFor(model);if(!rating||!(rating.ahri_cfm>0)||!(rating.inferred_supply_fan_power_kW>0))return null;

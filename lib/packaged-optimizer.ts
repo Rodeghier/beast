@@ -7,7 +7,7 @@
 import { solve, type Model, type Constraint } from "yalps";
 import { COOLING_MODELS } from "./packaged-cooling";
 import { heatingModelFor } from "./packaged-heating";
-import { matchesStagePreference } from "./precedent-stages";
+import { matchesPackagedScenario } from "./precedent-stages";
 import { unitRatingFor } from "./unit-ratings";
 import { airContext, mixAir } from "./mixed-air";
 import { operatingCoolingPoint, operatingHeatingPoint } from "./curve-evaluation";
@@ -26,7 +26,7 @@ export function optimizePackagedBank(input:SchoolRow[],school:SchoolAssumptions,
   const weights=[...unique.keys()].map(key=>multiplicity.get(key)!);
   const rows=[...unique.values()],contexts=rows.map(r=>airContext(r,school));
   if(!rows.length)return null;
-  const models=COOLING_MODELS.filter(m=>m.efficiency===efficiency&&matchesStagePreference(m.efficiency,m.nominal_tons,stage)&&unitRatingFor(m)&&heatingModelFor(m)).sort((a,b)=>b.nominal_tons-a.nominal_tons);
+  const models=COOLING_MODELS.filter(m=>matchesPackagedScenario(m,efficiency,stage,heating)&&unitRatingFor(m)&&heatingModelFor(m)).sort((a,b)=>b.nominal_tons-a.nominal_tons);
   if(!models.length)return null;
   const peakVent=Math.max(0,...rows.map(r=>finite(r.ventilationCfm)?r.ventilationCfm:0));
   const quantum=models.map(m=>m.fixed_cfm).reduce(gcd),maxAir=Math.max(...models.map(m=>m.fixed_cfm));

@@ -4,12 +4,12 @@
  */
 import type { EquipmentResult, EquipmentHour } from "./equipment-model";
 import { coolingFor } from "./equipment";
-import { compressorStages } from "./precedent-stages";
+import { compressorStages, minimumModulatingCapacity } from "./precedent-stages";
 import { CYCLING_DEGRADATION_COEFFICIENT, type StageOperation } from "./equipment-staging";
 import type { UtilizationMode } from "./equipment-utilization";
 
 export type OperationScope="operating"|"all"|"unit";
-export type OperationSource={id:string;label:string;count:number;stages:number[];kind:"compressor"|"burner"};
+export type OperationSource={id:string;label:string;count:number;stages:number[];modulating?:boolean;kind:"compressor"|"burner"};
 export type OperationOptions={scope?:OperationScope;groupId?:string;unit?:number};
 export type OperationDistribution={source:OperationSource|null;reason:string|null;
   stages:{label:string;unitHours:number;percent:number}[];
@@ -25,8 +25,12 @@ export function operationSources(result:EquipmentResult|undefined,mode:Utilizati
   if(mode==="heating"&&result.scenario.heating==="gas")return {sources:[{id:"boiler",label:"Selected boiler",count:1,stages:[1],kind:"burner"}],reason:null};
   if(mode==="heating"&&result.scenario.heating==="resistance")return {sources:[],reason:"Resistance heat uses proportional electrical input in this model. Element stages and switching times have not been supplied; use the capacity and power view."};
   if(mode==="cooling"&&coolingFor(result.scenario)==="air-cooled-chiller")return {sources:[],reason:"The chiller placeholder has no compressor staging or cycling data. Use the capacity and power view."};
-  const sources=result.selection?.groups.map(g=>({id:g.model.id,label:`${g.count} × ${g.model.nominal_tons} ton units`,count:g.count,
-    stages:compressorStages(g.model.efficiency as "standard"|"high",g.model.nominal_tons),kind:"compressor" as const}))??[];
+  const sources=result.selection?.groups.map(g=>{
+    const minimum=minimumModulatingCapacity(g.model,mode);
+    return {id:g.model.id,label:`${g.count} x ${g.model.nominal_tons} ton units`,count:g.count,
+      stages:minimum===null?compressorStages(g.model.efficiency,g.model.nominal_tons):[minimum],
+      modulating:minimum!==null,kind:"compressor" as const};
+  })??[];
   return {sources,reason:sources.length?null:"No selected unit bank is available for stage analysis."};
 }
 
@@ -39,6 +43,7 @@ function validOperation(value:unknown,source:OperationSource):value is StageOper
     &&finite(op.partialUnitLoadFraction)&&op.partialUnitLoadFraction>=0&&op.partialUnitLoadFraction<=1
     &&op.fullUnits+op.idleUnits+partialUnits===source.count
     &&Array.isArray(op.stageLevels)&&op.stageLevels.length===source.stages.length&&op.stageLevels.every((v,i)=>close(v,source.stages[i]))
+    &&(!source.modulating||(finite(op.modulatingCapacityFraction)&&op.modulatingCapacityFraction>=0&&op.modulatingCapacityFraction<=1))
     &&Array.isArray(op.partialUnitStageTimes)&&op.partialUnitStageTimes.length===source.stages.length
     &&op.partialUnitStageTimes.every(v=>finite(v)&&v>=0&&v<=1)&&finite(op.partialUnitRuntimeFraction)
     &&op.partialUnitRuntimeFraction>=0&&op.partialUnitRuntimeFraction<=1+1e-7
@@ -81,12 +86,14 @@ export function equipmentOperationCsv(result:EquipmentResult) {
   });
   const headers=groups.flatMap(({source,prefix})=>[
     `${prefix}_model`,`${prefix}_unit_count`,
-    ...(source?.stages??[]).flatMap((_,i)=>[`${prefix}_stage_${i+1}_capacity_percent`,`${prefix}_stage_${i+1}_minutes_per_unit`]),
+    ...(source?.modulating?[`${prefix}_modulating_capacity_percent`,`${prefix}_modulating_minutes_per_unit`]:
+      (source?.stages??[]).flatMap((_,i)=>[`${prefix}_stage_${i+1}_capacity_percent`,`${prefix}_stage_${i+1}_minutes_per_unit`])),
     `${prefix}_on_minutes_per_unit`,`${prefix}_off_minutes_per_unit`,`${prefix}_runtime_fraction`,`${prefix}_cycling_PLF`,
   ]);
   const values=(row:EquipmentHour)=>groups.flatMap(({mode,source})=>{
     const op=source&&!result.error?operationForHour(row,source,mode):null;
-    const stageValues=(source?.stages??[]).flatMap((level,i)=>{
+    const stageValues=source?.modulating?[op?(op.modulatingCapacityFraction??0)*100:null,op?60*(op.fullUnits+(op.partialUnits??0)*op.partialUnitRuntimeFraction)/op.unitCount:null]:
+      (source?.stages??[]).flatMap((level,i)=>{
       if(!op)return [level*100,null];
       const partial=op.partialUnits??(op.partialUnitLoadFraction>0?1:0);
       const fullTime=i===op.stageLevels.length-1?op.fullUnits:0;
@@ -112,7 +119,7 @@ export function equipmentOperation(result:EquipmentResult|undefined,mode:Utiliza
   if(!source.stages.length){output.reason="Catalog stage levels are unavailable for this selection.";return output;}
   const scope=options.scope??"operating",unit=options.unit??1;
   if(scope==="unit"&&(!Number.isInteger(unit)||unit<1||unit>source.count)){output.reason=`Choose a unit from 1 to ${source.count}.`;return output;}
-  output.stages=[{label:"Off",unitHours:0,percent:0},...source.stages.map((stage,i)=>({label:source.kind==="burner"?"Full firing":`Stage ${i+1} (${Number((stage*100).toFixed(1))}%)`,unitHours:0,percent:0}))];
+  output.stages=[{label:"Off",unitHours:0,percent:0},...source.stages.map((stage,i)=>({label:source.modulating?`Modulating (${stage*100}–100%)`:source.kind==="burner"?"Full firing":`Stage ${i+1} (${Number((stage*100).toFixed(1))}%)`,unitHours:0,percent:0}))];
   const add=(count:number,times:number[],called:boolean)=>{
     if(!count)return;
     if(scope==="operating"&&!called){output.idleUnitHoursExcluded+=count;return;}

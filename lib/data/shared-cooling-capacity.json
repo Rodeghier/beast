@@ -1,7 +1,7 @@
 {
   "id": "shared-normalized-cooling-capacity-v1",
   "source_sha256": "4bdbf610e98bd81a8ef291d9daf711c9cc4c25d6ed7e0eb88bd0d6a971a8209d",
-  "basis": "Pooled accepted maximum-airflow data, normalized by each source model's 95/67/80 F reference; equal total weight per source model. Applied to all sizes by modeling assumption, including added large sizes; not an independently validated large-unit fit.",
+  "basis": "Pooled accepted maximum-airflow data, normalized by each source model's 95/67/80 F reference; equal total weight per source model. Applied to the 24 Precedent size and efficiency combinations.",
   "reference_temperatures_F": [
     95,
     67,

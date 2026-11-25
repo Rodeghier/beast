@@ -14,7 +14,12 @@ export function hourlyOperation(groups:GroupOperation[]) {
     if(op.idleUnits)profiles.push({count:op.idleUnits,times:op.stageLevels.map(()=>0),plf:1});
     for(const profile of profiles){
       const label=prefix+(profiles.length>1?`${profile.count} units: `:"");
-      const active=profile.times.map((time,i)=>time>1e-9?`Stage ${i+1} (${(op.stageLevels[i]*100).toFixed(1)}%; ${(time*60).toFixed(1)} min)`:null).filter(Boolean);
+      const active=profile.times.map((time,i)=>{
+        if(time<=1e-9)return null;
+        const capacity=op.modulatingCapacityFraction??op.stageLevels[i];
+        const action=op.modulatingCapacityFraction===undefined?`Stage ${i+1}`:"Modulating";
+        return `${action} (${(capacity*100).toFixed(1)}%; ${(time*60).toFixed(1)} min)`;
+      }).filter(Boolean);
       stage.push(label+(active.join(" / ")||"Off"));
       onMinutes.push(label+(profile.times.reduce((sum,t)=>sum+t,0)*60).toFixed(1));
       derate.push(label+profile.plf.toFixed(4));

@@ -20,7 +20,7 @@ gross capacity = unit reference capacity × dot(shared coefficients, terms)
 SHR = clip(dot(unit SHR numerator coefficients, terms) / normalized capacity, 0, 1)
 ```
 
-All 24 source units have individual fitted SHR numerators. The 22 larger modeled sizes/families use the corresponding 25-ton source unit's SHR, airflow per ton and capacity scaling; they have no independent manufacturer data. Thus all 46 runtime size/family combinations use the shared airflow-dependent capacity surface.
+All 24 Precedent units have individual fitted SHR numerators. The 30 IntelliPak cooling models interpolate gross total and sensible capacities at actual airflow within each table’s source airflow range. SHR is sensible capacity divided by total capacity.
 
 Capacity relative RMS error is 1.983%; leaving one complete unit out of the shared fit gives 2.046% RMS. SHR RMS error is 0.002256; withholding the 400 CFM/ton data gives 0.002125 RMS. These measure agreement with catalog data, not field-calibrated building accuracy.
 
@@ -41,7 +41,7 @@ Capacity relative RMS error is 1.983%; leaving one complete unit out of the shar
 | Either family 12.5 tons | 4.2 | 1,940 |
 | Either family 15–25 tons | 5.8 | 1,850 |
 
-Larger proxies scale the 25-ton fan assembly's hp and reference airflow/power with tonnage. High-static motors are excluded. The standard 3-ton 575 V exception is not selected because voltage is not an input.
+IntelliPak uses the cooling table’s airflow ceiling and scales 25-ton Precedent fan horsepower, reference airflow and power by nominal tons. Reference airflow is capped at the catalog ceiling. High-static motors are excluded. The standard 3-ton 575 V exception is not selected because voltage is not an input.
 
 The existing gross-minus-net rating fan heat gives reference electrical input at AHRI airflow. Electrical power varies with the cube of flow relative to that reference. Maximum hp is a mechanical output limit, converted using provisional 90% motor and 97% drive efficiencies. If this ceiling is reached below the catalog maximum CFM, the model reduces attainable maximum flow instead of inventing flat fan power at greater flow. RPM is retained as a limit; the table does not establish an actual RPM operating curve.
 
@@ -75,4 +75,4 @@ Cooling source fits describe full-output capacity and SHR as functions of temper
 
 The former maximum-airflow evaluator remains available for strict source checks and explicit fixed-airflow comparison fixtures. The website requires a populated airflow dropdown, defaulting to variable; constant mode holds each running unit at its AHRI reference airflow, capped by standard-motor HP. Both modes use the physical airside/reheat balance and are rechecked at design conditions. CSV metadata identifies the active policy and coefficients.
 
-Verification: `node scripts/check-variable-airflow.mjs` checks every accepted source sample, all 46 sizes/families, cubic fan power and motor ceilings, air/moisture/energy balances, dehumidification, MHGRH, backup interactions, sizing, numeric exports and a complete annual simulation. `node scripts/check-air-state-control.mjs` independently checks the final-state controller against sensible-plus-latent balances, sensible/moisture loads without a fixed supply target, true capacity limits, reduced overconditioning, and humid-weather regressions. Existing fixed-airflow regression checks remain separate reference checks.
+Verification: `node scripts/check-variable-airflow.mjs` checks every accepted source sample, all 54 catalog models, cubic fan power and motor ceilings, air/moisture/energy balances, dehumidification, MHGRH, backup interactions, sizing, numeric exports and a complete annual simulation. `node scripts/check-air-state-control.mjs` independently checks the final-state controller against sensible-plus-latent balances, sensible/moisture loads without a fixed supply target, true capacity limits, reduced overconditioning, and humid-weather regressions. Existing fixed-airflow regression checks remain separate reference checks.

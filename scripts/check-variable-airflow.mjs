@@ -35,7 +35,7 @@ const header=source.shift(),at=(row,key)=>row[header.indexOf(key)];
 let capacityError=0,shrError=0,n=0;
 for(const row of source){
   if(at(row,'accepted_for_fit')!=='True'||at(row,'gross_capacity_MBh')==='')continue;
-  const model=COOLING_MODELS.find(m=>m.table===Number(at(row,'table'))&&!m.scaledFromNominalTons);
+  const model=COOLING_MODELS.find(m=>m.table===Number(at(row,'table'))&&!m.intellipak);
   const point=airflowCoolingPoint(model,...['outdoor_dry_bulb_F','entering_wet_bulb_F','entering_dry_bulb_F','cfm'].map(k=>Number(at(row,k))),'strict');
   assert.ok(point,`Source point unavailable: ${row.join(',')}`);
   const actual=Number(at(row,'gross_capacity_MBh'))*1000;
@@ -45,15 +45,15 @@ assert.equal(n,7192);near(100*Math.sqrt(capacityError/n),AIRFLOW_COOLING_FIT.cap
 near(Math.sqrt(shrError/n),AIRFLOW_COOLING_FIT.shr_rmse,1e-10);
 assert.ok(Math.sqrt(capacityError/n)<.021);assert.ok(Math.sqrt(shrError/n)<.003);
 for(const model of COOLING_MODELS){
-  const max=airflowCoolingPoint(model,95,67,80,480*model.nominal_tons,'strict');
+  const max=airflowCoolingPoint(model,95,67,80,model.fixed_cfm,'strict');
   near(max.normalized,1);near(max.capacityBtuHr,model.reference_capacity_Btu_hr);
-  for(const perTon of [300,330,360,400,440,480]){
+  for(const perTon of model.intellipak?[]:[300,330,360,400,440,480]){
     const point=airflowCoolingPoint(model,95,67,80,perTon*model.nominal_tons,'strict');assert.ok(point);assert.ok(point.shr>0&&point.shr<=1);
     const reference=airflowCoolingPoint(COOLING_MODELS[0],95,67,80,perTon*3,'strict');near(point.normalized,reference.normalized);
   }
-  assert.equal(airflowCoolingPoint(model,95,67,80,299*model.nominal_tons),null);
+  assert.equal(airflowCoolingPoint(model,95,67,80,(model.intellipak?.cfm[0]??300*model.nominal_tons)-1),null);
   const fan=variableFanModel(model);assert.ok(fan);near(fan.power(fan.referenceCfm*.8)/fan.power(fan.referenceCfm),.8**3);
-  assert.ok(fan.maxCfm<=480*model.nominal_tons+1e-6);assert.ok(fan.power(fan.maxCfm)<=fan.maxElectricalKw+1e-7);
+  assert.ok(fan.maxCfm<=fan.maxCatalogCfm+1e-6);assert.ok(fan.power(fan.maxCfm)<=fan.maxElectricalKw+1e-7);
 }
 near(standardFanLimit({nominal_tons:3,efficiency:'standard'}).maxHp,.75);
 near(standardFanLimit({nominal_tons:3,efficiency:'high'}).maxHp,2.9);
@@ -132,6 +132,41 @@ near(recoveryAfterDrySizing.rows[0].reheatDelivered,air[1].reheatNeed);
 const missing=simulateSchool([raw(80,null)],school);
 assert.equal(simulateEquipment(missing,school,scenarios[1],prepared,sizing).rows[0].electricity,null);
 
+// Exercise an installed IntelliPak through hourly cooling, heat-pump heating and CSV export.
+const largeModel=COOLING_MODELS.find(m=>m.nominal_tons===130&&m.efficiency==='standard');
+const largeHeat=heatingModelFor(largeModel);
+const largeSelection={...prepared,groups:[{model:largeModel,heatingModel:largeHeat,count:1}],count:1,totalTons:130,
+  supplyCfm:largeModel.fixed_cfm,referenceCoolingBtuHr:largeModel.reference_capacity_Btu_hr,
+  referenceHeatingBtuHr:largeHeat.reference_capacity_Btu_hr};
+const largeScenario={...newScenario(),backupSwitchoverF:0};
+for(const airflowMode of ['fixed','variable']){
+  const result=simulateEquipment(rows,school,{...largeScenario,airflowMode},largeSelection,sizing);
+  assert.equal(result.error,null);
+  assert.ok(result.rows[0].availableCooling>0);
+  assert.ok(result.rows[3].availableHeating>0);
+  const csv=parseCsv(equipmentResultsCsv(rows,school,result,'Test','Local'));
+  const tables=JSON.parse(csv[1][csv[0].indexOf('IntelliPak_capacity_tables')]);
+  assert.equal(tables[0].coolingTable,65);
+  assert.equal(tables[0].heating.scaledFromTons,60);
+  assert.ok(csv[2].includes('Heating_modulating_capacity_percent'));
+  assert.ok(csv[2].includes('Cooling_stage_4_capacity_percent'));
+  const html=renderToStaticMarkup(createElement(EquipmentScenarios,{choices:[result.scenario],results:[result],active:0,onActive:()=>{},onChange:()=>{}}));
+  assert.doesNotMatch(html,/extrapolat/i);
+  assert.match(html,/23% \/ 46% \/ 73% \/ 100% cooling stages/);
+}
+
+const eModel=COOLING_MODELS.find(m=>m.table===54);
+const eHeat=heatingModelFor(eModel);
+const eSelection={...largeSelection,groups:[{model:eModel,heatingModel:eHeat,count:1}],totalTons:60,
+  supplyCfm:eModel.fixed_cfm,referenceCoolingBtuHr:eModel.reference_capacity_Btu_hr,referenceHeatingBtuHr:eHeat.reference_capacity_Btu_hr};
+const eResult=simulateEquipment(rows,{...school,minimumCompressorOnMinutes:0},{...largeScenario,stage:'variable'},eSelection,sizing);
+assert.equal(eResult.error,null);
+const eCsv=parseCsv(equipmentResultsCsv(rows,school,eResult,'Test','Local'));
+const eCapacityColumn=eCsv[2].indexOf('Cooling_modulating_capacity_percent');
+assert.ok(eCapacityColumn>=0);
+assert.ok(Number(eCsv[3][eCapacityColumn])>=15);
+assert.ok(eCsv[2].includes('Cooling_modulating_minutes_per_unit'));
+
 // Exercise the website's default sizing path, rather than only prepared banks.
 const {nearestDesignStations}=load('lib/ashrae-design-stations.ts');
 const {buildDesignSizing}=load('lib/design-sizing.ts');
@@ -139,7 +174,7 @@ const response=nearestDesignStations(43.14,-89.35);
 const actualDesign=buildDesignSizing(response.stations[0],school,response.source,{latitude:43.14,longitude:-89.35});
 const start=performance.now();
 const autosized=simulateEquipment(rows,school,scenarios[1],undefined,actualDesign);
-assert.equal(autosized.error,null);assert.ok(autosized.selection);assert.match(autosized.selection.basis,/all-airflow/);
+assert.equal(autosized.error,null);assert.ok(autosized.selection);assert.match(autosized.selection.basis,/airflow-dependent catalog cooling/);
 assert.ok(autosized.selection.supplyCfm>=Math.max(...actualDesign.rows.map(r=>r.ventilationCfm)));
 for(const row of actualDesign.rows){
   const designAir=solveVariableAirside(autosized.selection.groups,row,school,'bounded');
@@ -180,4 +215,4 @@ near(annual.summary.reheatBtu,annual.rows.reduce((s,r)=>s+r.reheatDelivered,0),1
 assert.equal(annual.summary.reheatElectricity,0);
 assert.equal(annual.summary.reheatGasTherms,0);
 console.log(`Annual variable-airflow simulation: ${(performance.now()-annualStart).toFixed(0)} ms for 8760 hours.`);
-console.log('PASS: all 7192 source points, 46 sizes/families, shared airflow capacity, SHR, fan cubic law/HP limits, airflow and moisture balances, supply temperature reporting, MHGRH, backup, stages and CSVs.');
+console.log('PASS: all 7192 source points, 54 catalog models, shared airflow capacity, SHR, fan cubic law/HP limits, airflow and moisture balances, supply temperature reporting, MHGRH, backup, stages and CSVs.');

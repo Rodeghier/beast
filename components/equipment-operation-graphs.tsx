@@ -11,8 +11,8 @@ export function EquipmentOperationGraphs({data}:{data:OperationDistribution}) {
   const empty=data.knownClockHours>0?"No units in this size group were called to run. Select all installed units or another size.":"No valid hourly stage data for this selection.";
   return <>
     <div className="distribution-grid operation-grid">
-      <figure><figcaption>Time at each {data.source?.kind==="burner"?"burner":"unit"} stage</figcaption>
-        <p className="distribution-basis">Estimated time at each modeled capacity stage, including OFF time. One unit-hour is one unit observed for one hour.</p>
+      <figure><figcaption>{data.source?.modulating?"Modulation runtime":`Time at each ${data.source?.kind==="burner"?"burner":"unit"} stage`}</figcaption>
+        <p className="distribution-basis">{data.source?.modulating?"Time modulating and time OFF.":"Estimated time at each modeled capacity stage, including OFF time."} One unit-hour is one unit observed for one hour.</p>
         {data.includedUnitHours>0?<ChartContainer className="utilization-graph" config={{unitHours:{label:"Unit-hours",color:"#2878a1"}}}>
           <BarChart accessibilityLayer data={data.stages} margin={{left:0,right:12,top:12,bottom:12}}>
             <CartesianGrid vertical={false}/><XAxis dataKey="label" interval={0} angle={-20} textAnchor="end" height={55} tick={{fontSize:10}}/>

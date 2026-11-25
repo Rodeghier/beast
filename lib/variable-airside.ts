@@ -10,8 +10,8 @@ import { airContext, mixAir } from "./mixed-air";
 import { airflowCoolingPoint, coolingAirflowRange } from "./airflow-cooling";
 import { variableFanModel, MINIMUM_FAN_FLOW_FRACTION } from "./variable-fan";
 import { unitRatingFor } from "./unit-ratings";
-import { compressorStages } from "./precedent-stages";
-import { zonedSystemOperation, belowMinimumOnTime, compressorOnMinutes } from "./equipment-staging";
+import { packagedCompressorOperation } from "./precedent-stages";
+import { belowMinimumOnTime, compressorOnMinutes } from "./equipment-staging";
 
 const BTU_PER_KWH=3412.141633,SENSIBLE=1.08,LATENT=.68*7000;
 export const MINIMUM_COIL_LEAVING_F=45;
@@ -78,7 +78,7 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
   const maxCfm=fan.maxCfm*count;
   const heatingCfm=Math.max(0,-totalSensible)/(SENSIBLE*30);
   const minimum=runs?Math.min(maxCfm,Math.max(vent,maxCfm*MINIMUM_FAN_FLOW_FRACTION,heatingCfm)):0;
-  const stages=compressorStages(group.model.efficiency as "standard"|"high",group.model.nominal_tons);
+  const compressor=(load:number,capacity:number)=>packagedCompressorOperation(group.model,"cooling",load,capacity,count);
   const coolingPerOutdoorCfm=SENSIBLE*(zone-context.outdoorF);
   const canEconomize=options.economizer&&row.heating===0&&coolingPerOutdoorCfm>0&&context.outdoorW<=context.returnW;
   // The enthalpy mixer weights each temperature by the moist-air heat capacity.
@@ -101,12 +101,12 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     // Apply the annual cutoff to the feasible output AFTER the physical-state
     // solve, for each airflow candidate. Recompute every dependent quantity from
     // the OFF state; otherwise latent removal and reheat could survive lockout.
-    const requestedOperation=zonedSystemOperation(requestedCoolingBtuHr,point?.capacityBtuHr??0,count,stages);
+    const requestedOperation=compressor(requestedCoolingBtuHr,point?.capacityBtuHr??0);
     const minimumRuntimeLockout=belowMinimumOnTime(requestedOperation,options.minimumOnMinutes??0),requestedOnMinutesPerUnit=compressorOnMinutes(requestedOperation);
     const delivered=minimumRuntimeLockout?0:requestedCoolingBtuHr;
     const leaving=leavingAirState(mixed.dryF,mixed.humidityRatio,cfm,delivered,shr);
     const dehumidifying=leaving.latent>1e-6;
-    const operation=zonedSystemOperation(delivered,point?.capacityBtuHr??0,count,stages);
+    const operation=compressor(delivered,point?.capacityBtuHr??0);
     const electricity=rating.cooling_non_supply_fan_power_kW*operation.powerEquivalentUnits;
     const beforeReheatF=leaving.dryF+fanHeat/(SENSIBLE*cfm);
     const requiredPostCoilHeat=Math.max(0,SENSIBLE*cfm*(desiredSupplyF-beforeReheatF));
@@ -146,14 +146,16 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     return {model:group.model.id,count,share,cfm:0,returnCfm:0,outdoorCfm:0,economizerCfm:0,economizerSensibleCooling:0,fanKw:0,fanHeat:0,
       fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed:null,cooling:null,capacity:0,shr:1,deliverableCapacity:0,availableSensible:0,availableLatent:0,
       sensibleNeed:0,latentNeed:0,required:0,linearRequired:0,delivered:0,deliveredSensible:0,deliveredLatent:0,electricity:0,recovery:null,recoveryCapacity:0,
-      staging:zonedSystemOperation(0,1,count,stages),called:false,minimumRuntimeLockout:false,requestedOnMinutesPerUnit:0,requestedCoolingBtuHr:0,coilLeavingF:zone,supplyHumidityRatio:context.returnW,
+      staging:compressor(0,1),called:false,minimumRuntimeLockout:false,requestedOnMinutesPerUnit:0,requestedCoolingBtuHr:0,coilLeavingF:zone,supplyHumidityRatio:context.returnW,
       desiredSupplyF:zone,beforeReheatF:zone,dehumidifying:false,primaryHeatNeed:0,reheatNeed:0,requiredPostCoilHeat:0,
       unmet:0,unmetSensible:0,unmetLatent:0,unmetVentilationCfm:0,score:0};
   }
   if(options.airflowMode==="fixed")return evaluate(Math.min(fan.referenceCfm,fan.maxCfm)*count);
   const sourceMin=range[0]*count;
+  const airflowSamples=group.model.intellipak?.cfm
+    ??[300,330,360,380,400,420,440,460,480].map(perTon=>perTon*group.model.nominal_tons);
   const candidates=new Set<number>([minimum,maxCfm,Math.max(minimum,Math.min(maxCfm,sourceMin)),
-    ...[300,330,360,380,400,420,440,460,480].map(perTon=>Math.max(minimum,Math.min(maxCfm,perTon*group.model.nominal_tons*count)))]);
+    ...airflowSamples.map(cfm=>Math.max(minimum,Math.min(maxCfm,cfm*count)))]);
   let best:ReturnType<typeof evaluate>=null;
   for(const cfm of candidates){if(cfm<=0)continue;const candidate=evaluate(cfm);if(candidate&&(!best||candidate.score<best.score))best=candidate;}
   return best;
