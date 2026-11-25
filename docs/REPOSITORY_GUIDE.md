@@ -387,7 +387,7 @@ In the legacy seed search, all heating selections use cooling-only packaged-bank
 
 ### Current airflow, reheat and backup dispatch
 
-`simulateEquipment` uses the physical airside balance and MHGRH for packaged cooling in both airflow modes. The equipment model version is `equipment-mhgrh-21.3`.
+`simulateEquipment` uses the physical airside balance and MHGRH for packaged cooling in both airflow modes. The equipment model version is `equipment-economizer-21.4`.
 
 Fans run through occupied hours and other heating/cooling/ventilation calls, with airflow and power established by the selected controller. Full-hour fan operation does not mean full reference fan power in variable mode. Each group's fixed nominal-tonnage zone share retains its own cooling duty, fan heat and stage records. Spare capacity is not transferred between assigned zones.
 

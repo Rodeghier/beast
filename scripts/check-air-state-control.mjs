@@ -96,4 +96,49 @@ assert.match(metadata.Cooling_power_basis,/Supply-fan power varies with operatin
 near(Number(csv[3][csv[2].indexOf('Cooling_SHR')]),hour.coolingShr,1e-10);
 near(Number(csv[3][csv[2].indexOf('Operating_cooling_SHR')]),hour.coolingOperatingShr,1e-10);
 near(hour.availableSensibleCooling+hour.availableLatentCooling,hour.deliverableCooling);
-console.log(`PASS: load-driven cooling without a fixed supply target, temperature CSV outputs, sensible/latent control, true capacity limits, 45 F floor and ${cases} humid-weather cases.`);
+
+const dryCoolingRow={...humidRows[0],temperature:celsius(55),temperatureF:55,humidity:30,
+  freeFloatF:75,coolingSetpointF:75,heating:0,ventilationCfm:100,infiltrationCfm:0,occupants:0,
+  coolBalance:4000,sensibleCooling:-4000,latentCooling:0,totalCooling:-4000};
+for(const airflowMode of ['fixed','variable']){
+  const options={airflowMode,economizer:true,minimumOnMinutes:20};
+  // Full economizing works even when no mechanical cooling curve covers the weather.
+  const fullyEconomized=solveVariableAirside(groups,dryCoolingRow,humidSchool,'strict',true,options);
+  assert.ok(fullyEconomized.economizerCfm>0);
+  near(fullyEconomized.outdoorCfm+fullyEconomized.returnCfm,fullyEconomized.cfm);
+  near(fullyEconomized.economizerSensibleCooling,1.08*20*fullyEconomized.economizerCfm);
+  near(fullyEconomized.economizerSensibleCooling,4000+fullyEconomized.fanHeat);
+  near(fullyEconomized.electricity,0);
+  near(fullyEconomized.unmet,0);
+  assert.ok(fullyEconomized.fanKw>0);
+  const warmMoist={...dryCoolingRow,temperature:celsius(72),temperatureF:72,humidity:100};
+  near(solveVariableAirside(groups,warmMoist,humidSchool,'bounded',true,options).economizerCfm,0);
+  const hotDry={...dryCoolingRow,temperature:celsius(85),temperatureF:85};
+  near(solveVariableAirside(groups,hotDry,humidSchool,'bounded',true,options).economizerCfm,0);
+  const heatingCall={...dryCoolingRow,heating:1000};
+  near(solveVariableAirside(groups,heatingCall,humidSchool,'bounded',true,options).economizerCfm,0);
+}
+
+const largeCoolingRow={...dryCoolingRow,coolBalance:33000,sensibleCooling:-33000,totalCooling:-33000};
+const integrated=solveVariableAirside(groups,largeCoolingRow,humidSchool,'bounded',true,{airflowMode:'fixed',economizer:true});
+const mechanicalOnly=solveVariableAirside(groups,largeCoolingRow,humidSchool,'bounded',true,{airflowMode:'fixed'});
+assert.ok(integrated.economizerCfm>0&&integrated.delivered>0);
+assert.ok(integrated.electricity<mechanicalOnly.electricity);
+near(integrated.outdoorCfm,integrated.cfm);
+near(integrated.unmet,0);
+const coldCoolingRow={...largeCoolingRow,temperature:celsius(25),temperatureF:25};
+const limited=solveVariableAirside(groups,coldCoolingRow,humidSchool,'bounded',true,{airflowMode:'fixed',economizer:true});
+assert.ok(limited.economizerCfm>0&&limited.outdoorCfm<limited.cfm);
+near(limited.details[0].mixed.dryF,45,1e-6);
+
+const economizerResult=simulateEquipment([dryCoolingRow],humidSchool,{...scenario,airflowMode:'fixed'},selection,sizing);
+const economizerHour=economizerResult.rows[0];
+assert.equal(economizerResult.error,null);
+assert.ok(economizerHour.economizerOutdoorAirCfm>0);
+near(economizerHour.coolingElectricity,0);
+near(economizerHour.outdoorAirFraction,economizerHour.actualOutdoorAirCfm/economizerHour.supplyCfm);
+assert.match(economizerHour.status,/Airside economizer supplied/);
+const econCsv=parseCsv(equipmentResultsCsv([dryCoolingRow],humidSchool,economizerResult,'Test','Local'));
+near(Number(econCsv[3][econCsv[2].indexOf('Economizer_outdoor_air_CFM')]),economizerHour.economizerOutdoorAirCfm,1e-10);
+near(Number(econCsv[3][econCsv[2].indexOf('Economizer_sensible_cooling_BTU_hr')]),economizerHour.economizerSensibleCoolingBtuHr,1e-10);
+console.log(`PASS: load-driven cooling, temperature and economizer CSV outputs, sensible/latent control, capacity limits, 45 F floor, ${cases} humid-weather cases, and full and integrated economizing.`);

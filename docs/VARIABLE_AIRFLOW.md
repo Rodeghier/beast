@@ -61,6 +61,8 @@ Cooling duty is solved against that final corrected air state. Dividing sensible
 
 `Cooling_SHR` reports the capacity-weighted source-curve fit. `Operating_cooling_SHR` reports delivered sensible cooling divided by delivered total cooling after the air-state correction. The CSV also separates raw source-curve capacity from `Deliverable_cooling_at_45F_limit_BTU_hr` and its sensible/latent components. Both new constant- and variable-airflow scenarios export these fields. The original fixed-rating worksheet remains available through the explicit reference calculation.
 
+Annual packaged cooling uses an airside economizer in both airflow modes. With a sensible cooling demand and cooler outdoor air at or below the return-air humidity ratio, the damper can increase outdoor airflow up to the supply CFM. It limits extra outdoor air to the sensible demand and a 45°F mixed-air minimum. The solver compares this option with minimum ventilation, then applies the compressor runtime cutoff to any remaining mechanical load. Design sizing uses scheduled ventilation. Hourly CSV columns report extra economizer CFM and its sensible cooling contribution. The chiller placeholder has no airside model.
+
 Both airflow modes use modulating hot gas reheat (MHGRH). When the heat-pump compressors are cooling for dehumidification, recovered heat can serve the remaining heating demand.
 
 Occupied ASHRAE design airside operation estimates peak reheat demand. In the annual run, heat recovery depends on the MHGRH tables and compressor operation. The model reports residual overcooling as unmet reheat. The recovered heat needs no separate purchased reheat energy.
