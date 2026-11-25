@@ -15,6 +15,8 @@ import { belowMinimumOnTime, compressorOnMinutes } from "./equipment-staging";
 
 const BTU_PER_KWH=3412.141633,SENSIBLE=1.08,LATENT=.68*7000;
 export const MINIMUM_COIL_LEAVING_F=45;
+const MINIMUM_ECONOMIZER_MIXED_F=45;
+export const ECONOMIZER_BASIS="Packaged units can admit additional outdoor air during annual sensible cooling when it is cooler and no more humid by humidity ratio than return air. The outside-air damper modulates up to supply airflow without overcooling the zone or lowering mixed air below 45 F. The compressor handles remaining load, subject to its minimum runtime. ASHRAE design sizing uses scheduled ventilation.";
 export const VARIABLE_AIRSIDE_BASIS="Supply CFM includes outdoor air plus return air; infiltration is excluded from the mixer. Each equipment group serves its nominal-tonnage share. Search supported airflow for sensible/moisture demand and ventilation while respecting fan HP and CFM limits. Cooling follows sensible and latent loads, with no fixed supply-temperature target or dew-point threshold. Coil leaving and final supply dry-bulb temperatures are calculated outputs exported for user analysis. Coil leaving DB is limited to >=45 F; unmet moisture demand is reported. Reheat addresses excess sensible cooling from serving the loads. Fan heat is added downstream of cooling. Zone balances remove mechanical ventilation before the coil mixer adds it once. Compressor stages retain the provisional proportional-power and cycling model.";
 const finite=(v:unknown):v is number=>typeof v==="number"&&Number.isFinite(v);
 const saturated=(f:number)=>humidityRatio(celsius(f),100)!;
@@ -65,7 +67,7 @@ export function coolingForAirState(dryF:number,w:number,cfm:number,capacity:numb
   return {required:meets(full)?delivered:null,linearRequired:required,delivered,leaving,deliverableCapacity,availableSensible:full.sensible,availableLatent:full.latent};
 }
 
-export type AirsideOptions={airflowMode?:"variable"|"fixed";minimumOnMinutes?:number};
+export type AirsideOptions={airflowMode?:"variable"|"fixed";minimumOnMinutes?:number;economizer?:boolean};
 function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,share:number,mode:CurveRangeMode,runs:boolean,options:AirsideOptions){
   const fan=variableFanModel(group.model),range=coolingAirflowRange(group.model),rating=unitRatingFor(group.model),context=airContext(row,school);
   if(!fan||!range||!rating||!context||!finite(row.coolBalance)||!finite(row.latentCooling)||!finite(row.heating))return null;
@@ -77,14 +79,16 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
   const heatingCfm=Math.max(0,-totalSensible)/(SENSIBLE*30);
   const minimum=runs?Math.min(maxCfm,Math.max(vent,maxCfm*MINIMUM_FAN_FLOW_FRACTION,heatingCfm)):0;
   const compressor=(load:number,capacity:number)=>packagedCompressorOperation(group.model,"cooling",load,capacity,count);
-  const evaluate=(cfm:number)=>{
-    const fanKw=fan.power(cfm/count)!*count,fanHeat=fanKw*BTU_PER_KWH;
-    const localContext={...context,ventilationCfm:vent};
-    const mixed=cfm>0?mixAir(localContext,cfm):null;
+  const coolingPerOutdoorCfm=SENSIBLE*(zone-context.outdoorF);
+  const canEconomize=options.economizer&&row.heating===0&&coolingPerOutdoorCfm>0&&context.outdoorW<=context.returnW;
+  // The enthalpy mixer weights each temperature by the moist-air heat capacity.
+  const warmSide=Math.max(0,zone-MINIMUM_ECONOMIZER_MIXED_F)*(1.006+1.86*context.returnW);
+  const coldSide=Math.max(0,MINIMUM_ECONOMIZER_MIXED_F-context.outdoorF)*(1.006+1.86*context.outdoorW);
+  const mixedAirOutdoorLimit=coldSide>0?warmSide/(warmSide+coldSide):1;
+  const evaluateAtOutdoorFlow=(cfm:number,admitted:number,fanKw:number)=>{
+    const fanHeat=fanKw*BTU_PER_KWH;
+    const mixed=mixAir({...context,ventilationCfm:admitted},cfm);
     if(!mixed)return null;
-    // Demand for the airflow actually admitted. Ventilation shortfall is
-    // reported separately; unserved outdoor air is never assumed to be mixed.
-    const admitted=Math.min(vent,cfm);
     const sensibleNeed=Math.max(0,zoneSensible+SENSIBLE*admitted*(context.outdoorF-zone)+fanHeat);
     const latentNeed=Math.max(0,zoneLatent+LATENT*admitted*(context.outdoorW-context.returnW));
     const desiredSupplyF=zone-zoneSensible/(SENSIBLE*cfm);
@@ -117,16 +121,29 @@ function solveGroup(group:PackagedGroup,row:SchoolRow,school:SchoolAssumptions,s
     const reheatShortfall=Math.max(0,reheatNeed-recoveryCapacity);
     const penalty=unmet+missingOutdoor*1000+reheatShortfall;
     const score=penalty*1000+electricity+fanKw;
-    return {model:group.model.id,count,share,cfm,returnCfm:Math.max(0,cfm-vent),outdoorCfm:admitted,
+    const economizerCfm=Math.max(0,admitted-vent);
+    return {model:group.model.id,count,share,cfm,returnCfm:cfm-admitted,outdoorCfm:admitted,
+      economizerCfm,economizerSensibleCooling:economizerCfm*coolingPerOutdoorCfm,
       fanKw,fanHeat,fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed,
       cooling:point,capacity,shr,deliverableCapacity,availableSensible,availableLatent,sensibleNeed,latentNeed,required,linearRequired,delivered,deliveredSensible:leaving.sensible,deliveredLatent:leaving.latent,
       electricity,staging:operation,called,minimumRuntimeLockout,requestedOnMinutesPerUnit,requestedCoolingBtuHr,recovery,recoveryCapacity,coilLeavingF:leaving.dryF,supplyHumidityRatio:leaving.humidityRatio,
       desiredSupplyF,beforeReheatF,dehumidifying,primaryHeatNeed,reheatNeed,requiredPostCoilHeat,
       unmet,unmetSensible,unmetLatent,unmetVentilationCfm:missingOutdoor,score};
   };
+  const evaluate=(cfm:number)=>{
+    const fanKw=fan.power(cfm/count)!*count;
+    const minimumOutdoor=Math.min(vent,cfm);
+    const baseline=evaluateAtOutdoorFlow(cfm,minimumOutdoor,fanKw);
+    if(!canEconomize)return baseline;
+    const modulatedOutdoor=Math.min(cfm*mixedAirOutdoorLimit,
+      (zoneSensible+fanKw*BTU_PER_KWH)/coolingPerOutdoorCfm);
+    if(modulatedOutdoor<=minimumOutdoor+1e-6)return baseline;
+    const economized=evaluateAtOutdoorFlow(cfm,modulatedOutdoor,fanKw);
+    return economized&&(!baseline||economized.score<baseline.score)?economized:baseline;
+  };
   if(!runs){
     // No fan or conditioning call: do not request source curves at zero CFM.
-    return {model:group.model.id,count,share,cfm:0,returnCfm:0,outdoorCfm:0,fanKw:0,fanHeat:0,
+    return {model:group.model.id,count,share,cfm:0,returnCfm:0,outdoorCfm:0,economizerCfm:0,economizerSensibleCooling:0,fanKw:0,fanHeat:0,
       fanMaxHp:fan.maxHp*count,fanMaxRpm:fan.maxRpm,maxCfm,mixed:null,cooling:null,capacity:0,shr:1,deliverableCapacity:0,availableSensible:0,availableLatent:0,
       sensibleNeed:0,latentNeed:0,required:0,linearRequired:0,delivered:0,deliveredSensible:0,deliveredLatent:0,electricity:0,recovery:null,recoveryCapacity:0,
       staging:compressor(0,1),called:false,minimumRuntimeLockout:false,requestedOnMinutesPerUnit:0,requestedCoolingBtuHr:0,coilLeavingF:zone,supplyHumidityRatio:context.returnW,
@@ -150,11 +167,12 @@ export function solveVariableAirside(groups:PackagedGroup[],row:SchoolRow,school
   const details=groups.map(g=>solveGroup(g,row,school,g.count*g.model.nominal_tons/tons,mode,runs,options));
   if(details.some(d=>!d))return null;
   const known=details.map(d=>d!);
-  const sum=(key:"cfm"|"returnCfm"|"outdoorCfm"|"fanKw"|"fanHeat"|"capacity"|"deliverableCapacity"|"availableSensible"|"availableLatent"|"delivered"|"deliveredSensible"|"deliveredLatent"|"electricity"|"primaryHeatNeed"|"reheatNeed"|"unmet"|"unmetLatent"|"unmetVentilationCfm"|"maxCfm")=>known.reduce((s,d)=>s+d[key],0);
+  const sum=(key:"cfm"|"returnCfm"|"outdoorCfm"|"economizerCfm"|"economizerSensibleCooling"|"fanKw"|"fanHeat"|"capacity"|"deliverableCapacity"|"availableSensible"|"availableLatent"|"delivered"|"deliveredSensible"|"deliveredLatent"|"electricity"|"primaryHeatNeed"|"reheatNeed"|"unmet"|"unmetLatent"|"unmetVentilationCfm"|"maxCfm")=>known.reduce((s,d)=>s+d[key],0);
   const cfm=sum("cfm"),weighted=(key:"coilLeavingF"|"beforeReheatF"|"desiredSupplyF"|"supplyHumidityRatio")=>cfm>0?known.reduce((s,d)=>s+d[key]*d.cfm,0)/cfm:null;
   const pointGroups=known.filter(d=>d.cooling);
   const common=(key:"curveOutdoorF"|"curveWetF"|"curveDryF")=>pointGroups.length&&pointGroups.every(d=>Math.abs(d.cooling![key]-pointGroups[0].cooling![key])<1e-7)?pointGroups[0].cooling![key]:null;
   return {details:known,cfm,returnCfm:sum("returnCfm"),outdoorCfm:sum("outdoorCfm"),maxCfm:sum("maxCfm"),
+    economizerCfm:sum("economizerCfm"),economizerSensibleCooling:sum("economizerSensibleCooling"),
     fanKw:sum("fanKw"),fanHeat:sum("fanHeat"),capacity:sum("capacity"),required:known.every(d=>d.required!==null)?known.reduce((s,d)=>s+d.required!,0):null,
     deliverableCapacity:sum("deliverableCapacity"),availableSensible:sum("availableSensible"),availableLatent:sum("availableLatent"),
     sourceShr:sum("capacity")>0?known.reduce((s,d)=>s+d.capacity*d.shr,0)/sum("capacity"):null,

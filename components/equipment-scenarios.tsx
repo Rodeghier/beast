@@ -24,6 +24,7 @@ function EquipmentEditor({value,onChange}:{value:EquipmentScenario;onChange:(v:E
   {cooling==="heat-pump"&&<>
     <label htmlFor={`${id}-airflow`}>Airflow — required<select id={`${id}-airflow`} required value={value.airflowMode??"variable"} onChange={e=>onChange({...value,airflowMode:e.target.value as EquipmentScenario["airflowMode"]})}><option value="variable">Variable airflow</option><option value="fixed">Constant airflow</option></select></label>
     <p className="scenario-description"><strong>Modulating hot gas reheat (MHGRH)</strong> uses heat recovered during cooling. BEAST reports any reheat demand beyond available recovery.</p>
+    <p className="scenario-description">The airside economizer admits extra outdoor air for cooling when it is cooler and no more humid than return air by humidity ratio.</p>
   </>}
   </fieldset>
   {value.heating==="heat-pump"&&<fieldset className="equipment-fields"><legend>Required backup heat</legend>
